@@ -1,120 +1,124 @@
 # Org AI Agent MVP
 
-조직 내 회의 기록, 최근 문서, 공식 기준 문서를 근거로 답변하는 작은 에이전트 MVP입니다. Hermes Agent의 ReAct loop와 tool result 재주입 구조를 참고해, `retrieve_memory` 도구와 STM / MTM / LTM 메모리 계층을 실험합니다.
+조직의 최신 대화, 진행 문서, 공식 기준을 근거로 답하는 세션형 에이전트 프로토타입이다.
+Hermes의 ReAct 반복 구조와 prefetch 개념을 참고했으며, 현재는 실제 벡터 DB 대신
+STM / MTM / LTM seed 폴더를 RAG 검색기처럼 사용한다.
 
-## Core Flow
+## Current Flow
 
 ```text
-User question
--> LLM-first ReAct loop
--> retrieve_memory tool call
--> STM / MTM / LTM memory search
--> evidence cards
--> LLM re-check
--> final answer with sources
+사용자 질문
+→ 세션의 최근 대화 요약 로드
+→ 규칙 기반 Query Analyzer
+→ STM / MTM / LTM 검색 비율 결정
+→ 비율 기반 prefetch + 점수 재정렬 + top-k
+→ 현재 턴의 컨텍스트 구성
+→ OpenRouter 또는 Mock LLM 호출
+→ 필요 시 retrieve_memory tool call
+→ tool result를 포함해 LLM 재호출
+→ 최종 답변 + 출처
+→ 세션 캐시와 선택적 턴 로그 저장
 ```
 
-현재 구현은 **prefetch RAG 없이** LLM이 먼저 판단하고 필요한 경우 메모리 도구를 호출하는 구조입니다. 검색은 벡터 DB가 아니라 seed 파일을 대상으로 한 keyword 기반 top-k 검색입니다.
+Query Analyzer는 우선 판단 근거를 확인하기 쉬운 규칙 기반 baseline으로 구현했다.
+검색기는 keyword top-k 방식이며 `MemoryStore.retrieve()` 경계를 유지하므로 이후
+BM25, vector RAG, hybrid RAG 구현으로 교체할 수 있다.
 
 ## Quick Start
 
-API 키 없이 구조만 확인하려면 mock 모드로 실행합니다.
-
 ```powershell
-python -m org_agent_mvp --mock --verbose --trace --question "오늘 회의 결정이 공식 계획서와 충돌해?"
+cd C:\ine_project\중기청_조직지식AI플랫폼\org_agent_mvp
+python -m org_agent_mvp --mock --verbose --trace --save-log --question "A 과제의 최근 내부 목표일이 공식 계획과 충돌해?"
 ```
 
-OpenRouter를 사용하려면 `.env.example`을 복사해 `.env`를 만들고 `OPENROUTER_API_KEY`를 입력합니다.
+질문을 이어가는 CLI 세션:
 
 ```powershell
-copy .env.example .env
-notepad .env
-python -m org_agent_mvp --verbose --trace --question "아까 회의에서 다음 일정 뭐였지?"
+python -m org_agent_mvp --mock --verbose
 ```
 
-기본 모델:
+대화 중 `exit` 또는 `quit`로 종료하고 `/new`로 새 세션을 시작한다. 기존 세션을
+다시 열 때는 `--session-id session-...`를 사용한다.
+
+OpenRouter 사용 시 `.env`의 빈 키 입력란을 채우고 `--mock`을 제거한다.
 
 ```env
+OPENROUTER_API_KEY=
 OPENROUTER_MODEL=google/gemma-4-31b-it:free
+PREFETCH_TOP_K=8
+SESSION_CACHE_TURNS=8
 ```
 
-## Useful Options
+## Terminal Events
 
-| Option | Description |
-|---|---|
-| `--mock` | OpenRouter 호출 없이 deterministic mock LLM 사용 |
-| `--verbose` | LLM 판단과 tool 실행 과정을 터미널에 출력 |
-| `--trace` | 실행 후 요약 trace JSON 출력 |
-| `--save-log` | 한 턴의 실행 로그를 `logs/turns/*.json`에 저장 |
-| `--question`, `-q` | 단일 질문 실행 |
-
-로그를 남기는 예시:
-
-```powershell
-python -m org_agent_mvp --mock --verbose --trace --save-log --question "A 과제 예산 검토에서 보완해야 할 점이 뭐야?"
-```
-
-로그의 핵심 필드:
+`--verbose` 실행 시 다음 단계가 순서대로 보인다.
 
 ```text
-summary
-reasoning_steps
-tool_executions
-trace
-answer
-transcript
-debug_events
+[session]     세션 ID와 이전 턴 수
+[analyzer]    질문 의도, 검색 필요 여부, tier 비율
+[prefetch]    tier별 후보 수와 rerank 점수
+[context]     이번 호출에 포함한 최근 턴과 근거 수
+[llm]         모델 호출 시작과 종료
+[reasoning]   final_answer 또는 tool_call 판단 요약
+[tool]        검색 tier, query, top-k, 결과 출처
+[final]       답변 준비 완료
 ```
 
-`reasoning_steps`는 모델의 내부 chain-of-thought가 아니라, 실제 assistant 응답과 tool call 결과를 바탕으로 만든 관찰 가능한 판단 요약입니다.
+`reasoning`은 모델의 숨겨진 사고 과정이 아니라 실제 응답과 tool call에서 확인할 수
+있는 판단 결과를 요약한 값이다.
+
+## Session And Logs
+
+- `logs/sessions/*.json`: 최근 8턴의 질문, 답변 요약, 출처 ID를 보관하는 세션 캐시
+- `logs/turns/*.json`: `--save-log` 사용 시 한 턴의 분석, prefetch, LLM, tool 실행 기록
+- prefetched 문서 원문은 세션에 누적하지 않고 매 질문마다 다시 선별
+
+`logs/`, `.env`, `docs/`는 Git 추적에서 제외한다.
 
 ## Memory Tiers
 
-| Tier | Purpose | Examples |
+| Tier | 역할 | 예시 |
 |---|---|---|
-| STM | 오늘/최근 대화, 회의, action item | "아까 회의에서 다음 일정 뭐였지?" |
-| MTM | 최근 한 달 문서, 회의록, 제안서 초안 | "최근 제안서 초안 일정이 뭐야?" |
-| LTM | 공식 계획서, 조직 기준, 장기 지식 | "공식 계획서 기준 마일스톤 알려줘" |
+| STM | 최신 대화와 당일 업무 흐름 | 대화 요약, 통화 메모, action item |
+| MTM | 진행 중인 프로젝트 지식 | 회의록, 제안서 초안, 일정표, 분석 보고 |
+| LTM | 승인된 조직 기준 지식 | 최종 계획서, 규정, 작성 기준 |
+
+seed 데이터의 기준과 연결된 질문은 `memory_seed/README.md`에 정리했다.
 
 ## Project Structure
 
 ```text
 org_agent_mvp/
-  org_agent_mvp/
-    __main__.py
-    agent_runtime.py
-    config.py
-    memory_store.py
-    mock_llm.py
-    openrouter_client.py
-    prompts.py
-    schemas.py
-  memory_seed/
-    stm/
-    mtm/
-    ltm/
-  .env.example
-  .gitignore
-  README.md
+├─ org_agent_mvp/
+│  ├─ __main__.py
+│  ├─ agent_runtime.py
+│  ├─ query_analyzer.py
+│  ├─ prefetch.py
+│  ├─ context_builder.py
+│  ├─ session_store.py
+│  ├─ memory_store.py
+│  ├─ mock_llm.py
+│  └─ openrouter_client.py
+├─ memory_seed/
+│  ├─ stm/
+│  ├─ mtm/
+│  └─ ltm/
+├─ tests/
+└─ .env.example
 ```
 
-`docs/`, `logs/`, `.env`는 로컬 작업용으로 Git 추적에서 제외합니다.
+## Test
 
-## Example Questions
-
-```text
-아까 회의에서 다음 일정 뭐였지?
-오늘 회의 결정이 공식 계획서와 충돌해?
-A 과제 예산 검토에서 보완해야 할 점이 뭐야?
-B 과제 시범 분석 결과는 언제 공유하기로 했어?
-MTM 문서를 LTM으로 승격하는 기준이 뭐야?
-A 과제 수정 일정표에서 공식 마일스톤과 내부 목표일이 어떻게 달라?
+```powershell
+python -m unittest discover -s tests -v
 ```
 
-## Next Steps
+현재 비교 질문의 혼합 계획, 후속 질문의 프로젝트 복원, 비율 기반 prefetch,
+mock ReAct 실행과 동일 세션 이어가기를 자동 검증한다.
 
-- Query Analyzer 추가
-- Prefetch RAG 추가
-- keyword search를 BM25 / vector / hybrid retrieval로 확장
-- MTM -> LTM 승격 후보 추천 workflow 구현
-- test question set과 turn log 기반 평가 체계 구축
+## Deferred Work
+
+- keyword 검색을 BM25 / vector / hybrid RAG로 교체
+- Query Analyzer의 작은 LLM 및 encoder 방식 비교
+- 장기 세션 요약과 일일 STM 적재 작업
+- 메모리 승격 후보 선정 및 관리자 검토 시스템

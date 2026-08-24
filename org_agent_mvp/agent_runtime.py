@@ -8,9 +8,13 @@ from typing import Any, Callable, Protocol
 from uuid import uuid4
 
 from .config import AppConfig
+from .context_builder import ContextBuilder
 from .memory_store import MemoryStore
+from .prefetch import MemoryPrefetcher
 from .prompts import SYSTEM_PROMPT
+from .query_analyzer import RuleBasedQueryAnalyzer
 from .schemas import RETRIEVE_MEMORY_TOOL
+from .session_store import SessionStore
 
 
 class ChatClient(Protocol):
@@ -24,6 +28,9 @@ class AgentTrace:
     tool_calls: list[dict[str, Any]] = field(default_factory=list)
     final_sources: list[str] = field(default_factory=list)
     stopped_reason: str = ""
+    session_id: str = ""
+    query_analysis: dict[str, Any] = field(default_factory=dict)
+    prefetch: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -75,22 +82,93 @@ class AgentRuntime:
         self.client = client
         self.memory_store = memory_store
         self.tools = [RETRIEVE_MEMORY_TOOL]
+        self.query_analyzer = RuleBasedQueryAnalyzer()
+        self.prefetcher = MemoryPrefetcher(memory_store, total_top_k=config.prefetch_top_k)
+        self.context_builder = ContextBuilder()
+        self.session_store = SessionStore(
+            config.project_root / "logs" / "sessions",
+            cache_turns=config.session_cache_turns,
+        )
 
     def run(
         self,
         user_query: str,
         event_callback: Callable[[str, dict[str, Any]], None] | None = None,
         log_dir: Path | None = None,
+        session_id: str | None = None,
     ) -> dict[str, Any]:
+        session = self.session_store.load_or_create(session_id)
+        recent_turns = list(session.get("turns", []))
+        plan = self.query_analyzer.analyze(user_query, recent_turns)
+        prefetch = self.prefetcher.prefetch(plan)
+        runtime_context = self.context_builder.build(plan, prefetch.cards, recent_turns)
         messages: list[dict[str, Any]] = [
             {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": runtime_context},
             {"role": "user", "content": user_query},
         ]
-        trace = AgentTrace()
+        trace = AgentTrace(
+            session_id=session["session_id"],
+            query_analysis=plan.to_dict(),
+            prefetch={
+                "allocations": prefetch.allocations,
+                "result_count": len(prefetch.cards),
+                "sources": [
+                    card.get("source_ref", {}).get("document_id", "")
+                    for card in prefetch.cards
+                ],
+            },
+        )
         turn_logger = TurnLogger(log_dir) if log_dir else None
         seen_tier_queries: set[tuple[str, str]] = set()
 
-        self._emit(event_callback, turn_logger, "turn_start", {"query": user_query})
+        self._emit(
+            event_callback,
+            turn_logger,
+            "turn_start",
+            {
+                "query": user_query,
+                "session_id": session["session_id"],
+                "previous_turn_count": len(recent_turns),
+            },
+        )
+        self._emit(event_callback, turn_logger, "query_analysis", plan.to_dict())
+        self._emit(
+            event_callback,
+            turn_logger,
+            "prefetch_start",
+            {"allocations": prefetch.allocations, "query": plan.query_rewrites[-1]},
+        )
+        self._emit(
+            event_callback,
+            turn_logger,
+            "prefetch_end",
+            {
+                "result_count": len(prefetch.cards),
+                "sources": [
+                    {
+                        "tier": card.get("tier"),
+                        "document_id": card.get("source_ref", {}).get("document_id", ""),
+                        "score": card.get("rerank_score"),
+                    }
+                    for card in prefetch.cards
+                ],
+            },
+        )
+        self._emit(
+            event_callback,
+            turn_logger,
+            "context_built",
+            {
+                "recent_turn_count": min(len(recent_turns), 4),
+                "evidence_count": len(prefetch.cards),
+                "context_chars": len(runtime_context),
+            },
+        )
+        for card in prefetch.cards:
+            source = card.get("source_ref", {}).get("document_id")
+            if source and source not in trace.final_sources:
+                trace.final_sources.append(source)
         for _ in range(self.config.max_tool_calls + 1):
             trace.llm_calls += 1
             message_roles = [message.get("role", "") for message in messages]
@@ -147,6 +225,7 @@ class AgentRuntime:
                     "trace": self._trace_dict(trace),
                     "messages": messages + [assistant_message],
                 }
+                self._save_session_turn(session, turn_logger, user_query, result)
                 self._write_turn_log(turn_logger, user_query, result)
                 return result
 
@@ -182,8 +261,33 @@ class AgentRuntime:
             "trace": self._trace_dict(trace),
             "messages": messages,
         }
+        self._save_session_turn(session, turn_logger, user_query, result)
         self._write_turn_log(turn_logger, user_query, result)
         return result
+
+    def _save_session_turn(
+        self,
+        session: dict[str, Any],
+        turn_logger: TurnLogger | None,
+        user_query: str,
+        result: dict[str, Any],
+    ) -> None:
+        turn_id = turn_logger.turn_id if turn_logger else (
+            datetime.now().strftime("%Y%m%d-%H%M%S-") + uuid4().hex[:8]
+        )
+        session_path = self.session_store.append_turn(
+            session,
+            {
+                "turn_id": turn_id,
+                "timestamp": datetime.now().isoformat(timespec="seconds"),
+                "user_query": user_query,
+                "answer_summary": str(result.get("answer", ""))[:700],
+                "source_ids": result["trace"].get("final_sources", []),
+                "query_intent": result["trace"].get("query_analysis", {}).get("intent", ""),
+            },
+        )
+        result["session_id"] = session["session_id"]
+        result["session_log_path"] = str(session_path)
 
     def _execute_tool_call(
         self,
@@ -321,6 +425,9 @@ class AgentRuntime:
 
     def _trace_dict(self, trace: AgentTrace) -> dict[str, Any]:
         return {
+            "session_id": trace.session_id,
+            "query_analysis": trace.query_analysis,
+            "prefetch": trace.prefetch,
             "llm_calls": trace.llm_calls,
             "tool_calls": trace.tool_calls,
             "final_sources": trace.final_sources,

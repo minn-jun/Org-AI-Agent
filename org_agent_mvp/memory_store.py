@@ -4,6 +4,7 @@ import json
 import math
 import re
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -93,6 +94,12 @@ class MemoryStore:
     def __init__(self, root: Path):
         self.root = root
         self.documents = self._load_all()
+        document_dates = [
+            parsed
+            for doc in self.documents
+            if (parsed := self._document_date(doc)) is not None
+        ]
+        self.latest_document_date = max(document_dates, default=date.today())
 
     def _load_all(self) -> list[MemoryDocument]:
         docs: list[MemoryDocument] = []
@@ -185,12 +192,27 @@ class MemoryStore:
             for marker in ["아까", "오늘", "today", "earlier", "방금"]
         ):
             score += 2.0
+        if any(
+            marker in expanded_query.lower()
+            for marker in ["아까", "오늘", "최근", "today", "earlier", "방금"]
+        ):
+            document_date = self._document_date(doc)
+            if document_date:
+                age_days = max(0, (self.latest_document_date - document_date).days)
+                score += max(0.0, 4.0 - (age_days * 0.5))
         if doc.tier == "ltm" and any(
             marker in expanded_query.lower()
             for marker in ["공식", "최종", "official", "approved", "기준"]
         ):
             score += 2.0
         return score
+
+    def _document_date(self, doc: MemoryDocument) -> date | None:
+        raw = str(doc.metadata.get("date", ""))[:10]
+        try:
+            return date.fromisoformat(raw)
+        except ValueError:
+            return None
 
     def _evidence_card(self, doc: MemoryDocument, score: float) -> dict[str, Any]:
         quote = str(doc.metadata.get("summary") or self._best_quote(doc.text))
@@ -204,11 +226,13 @@ class MemoryStore:
             "project": doc.metadata.get("project", ""),
             "summary": doc.metadata.get("summary", quote),
             "quote": quote,
+            "content_excerpt": self._content_excerpt(doc.text),
             "source_ref": {
                 "document_id": doc.path.name,
                 "path": str(doc.path.relative_to(self.root)),
             },
             "confidence": round(confidence, 2),
+            "retrieval_score": round(score, 3),
             "permission_scope": doc.metadata.get("permission_scope", "internal"),
         }
 
@@ -218,3 +242,7 @@ class MemoryStore:
             if len(line) >= 15:
                 return line[:220]
         return (lines[0] if lines else "")[:220]
+
+    def _content_excerpt(self, text: str) -> str:
+        compact = re.sub(r"\s+", " ", text).strip()
+        return compact[:600]

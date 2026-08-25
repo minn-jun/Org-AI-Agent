@@ -33,6 +33,8 @@ class AppConfig:
     max_tool_calls: int = 3
     max_same_tier_calls: int = 1
     default_top_k: int = 5
+    prefetch_top_k: int = 8
+    session_cache_turns: int = 8
 
     @classmethod
     def load(cls) -> "AppConfig":
@@ -49,4 +51,6 @@ class AppConfig:
             ).rstrip("/"),
             app_name=os.environ.get("OPENROUTER_APP_NAME", "Org Agent MVP"),
             site_url=os.environ.get("OPENROUTER_SITE_URL", "http://localhost"),
+            prefetch_top_k=int(os.environ.get("PREFETCH_TOP_K", "8")),
+            session_cache_turns=int(os.environ.get("SESSION_CACHE_TURNS", "8")),
         )

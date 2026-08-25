@@ -10,11 +10,26 @@ class MockLLMClient:
     def chat(self, messages: list[dict[str, Any]], tools: list[dict[str, Any]]) -> dict[str, Any]:
         user_query = self._last_user_query(messages)
         tool_results = self._tool_results(messages)
+        runtime_context = self._runtime_context(messages)
+        prefetch_cards = runtime_context.get("prefetched_evidence", [])
+        query_plan = runtime_context.get("query_plan", {})
         tried_tiers = {result.get("tier", "").lower() for result in tool_results}
 
         if not tool_results:
+            if not query_plan.get("memory_needed", True):
+                return {
+                    "role": "assistant",
+                    "content": (
+                        "이 질문은 조직 메모리 검색 없이 답변 가능한 일반 질문으로 분류되었습니다. "
+                        "실제 OpenRouter 연결 시 모델이 현재 대화만으로 답변합니다."
+                    ),
+                }
             tier = self._first_tier(user_query)
-            return self._tool_call(tier, user_query, f"사용자 질문에 대한 {tier.upper()} 근거 확인")
+            reason = (
+                f"prefetch 후보 {len(prefetch_cards)}건을 확인했으며, "
+                f"답변 근거를 구체화하기 위해 {tier.upper()}를 추가 탐색"
+            )
+            return self._tool_call(tier, user_query, reason)
 
         if self._needs_comparison(user_query) and "ltm" not in tried_tiers:
             return self._tool_call("ltm", user_query, "최근 결정과 공식 기준을 비교하기 위해 LTM 확인")
@@ -25,7 +40,10 @@ class MockLLMClient:
         if not self._has_results(tool_results) and "ltm" not in tried_tiers:
             return self._tool_call("ltm", user_query, "이전 tier에서 근거가 부족해 LTM으로 확장")
 
-        return {"role": "assistant", "content": self._final_answer(user_query, tool_results)}
+        return {
+            "role": "assistant",
+            "content": self._final_answer(user_query, tool_results, prefetch_cards),
+        }
 
     def _last_user_query(self, messages: list[dict[str, Any]]) -> str:
         for message in reversed(messages):
@@ -43,6 +61,18 @@ class MockLLMClient:
             except json.JSONDecodeError:
                 pass
         return results
+
+    def _runtime_context(self, messages: list[dict[str, Any]]) -> dict[str, Any]:
+        for message in messages:
+            content = str(message.get("content", ""))
+            if "[RUNTIME_CONTEXT]" not in content:
+                continue
+            try:
+                raw = content.split("[RUNTIME_CONTEXT]", 1)[1].split("[/RUNTIME_CONTEXT]", 1)[0]
+                return json.loads(raw)
+            except (IndexError, json.JSONDecodeError):
+                continue
+        return {}
 
     def _first_tier(self, query: str) -> str:
         if self._needs_comparison(query):
@@ -87,10 +117,31 @@ class MockLLMClient:
             ],
         }
 
-    def _final_answer(self, query: str, tool_results: list[dict[str, Any]]) -> str:
+    def _final_answer(
+        self,
+        query: str,
+        tool_results: list[dict[str, Any]],
+        prefetch_cards: list[dict[str, Any]],
+    ) -> str:
         cards: list[dict[str, Any]] = []
+        for card in prefetch_cards:
+            cards.append(
+                {
+                    **card,
+                    "source_ref": {"document_id": card.get("source_id", "")},
+                }
+            )
         for result in tool_results:
             cards.extend(result.get("results", []))
+        unique_cards: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for card in cards:
+            source = card.get("source_ref", {}).get("document_id", "")
+            if source in seen:
+                continue
+            seen.add(source)
+            unique_cards.append(card)
+        cards = unique_cards
         if not cards:
             return "확인 가능한 근거를 찾지 못했습니다. 현재 seed memory에는 해당 질문에 답할 자료가 부족합니다."
 
@@ -102,4 +153,3 @@ class MockLLMClient:
         lines.append("")
         lines.append("출처: " + ", ".join(card.get("source_ref", {}).get("document_id", "") for card in cards[:4]))
         return "\n".join(lines)
-

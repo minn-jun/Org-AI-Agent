@@ -20,6 +20,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--verbose", "-v", action="store_true", help="Print live ReAct events.")
     parser.add_argument("--save-log", action="store_true", help="Save full turn log as JSON.")
     parser.add_argument("--log-dir", type=Path, help="Directory for saved turn logs.")
+    parser.add_argument("--session-id", help="Continue an existing saved session.")
     return parser
 
 
@@ -31,7 +32,34 @@ def build_runtime(config: AppConfig, use_mock: bool) -> AgentRuntime:
 
 def print_event(event: str, payload: dict) -> None:
     if event == "turn_start":
-        print(f"\n[turn] 사용자 질문: {payload['query']}")
+        print(f"\n[session] {payload['session_id']} (이전 턴 {payload['previous_turn_count']}개)")
+        print(f"[turn] 사용자 질문: {payload['query']}")
+    elif event == "query_analysis":
+        print(f"[analyzer] intent={payload['intent']} memory_needed={payload['memory_needed']}")
+        print(f"           reason={payload['reason']}")
+        weights = payload["memory_weights"]
+        print(
+            "           weights="
+            f"STM {weights['stm']:.0%} / MTM {weights['mtm']:.0%} / LTM {weights['ltm']:.0%}"
+        )
+    elif event == "prefetch_start":
+        allocation = payload["allocations"]
+        print(
+            "[prefetch] 후보 검색 시작 "
+            f"(STM {allocation['stm']} / MTM {allocation['mtm']} / LTM {allocation['ltm']})"
+        )
+    elif event == "prefetch_end":
+        print(f"[prefetch] rerank 후 컨텍스트 후보 {payload['result_count']}건")
+        for source in payload.get("sources", [])[:8]:
+            print(
+                f"           [{source['tier']}] {source['document_id']} "
+                f"score={source['score']}"
+            )
+    elif event == "context_built":
+        print(
+            f"[context] 최근 턴 {payload['recent_turn_count']}개 + "
+            f"근거 {payload['evidence_count']}건 ({payload['context_chars']} chars)"
+        )
     elif event == "llm_call_start":
         print(
             f"[llm #{payload['llm_call']}] 호출 시작 "
@@ -73,11 +101,13 @@ def ask_once(
     show_trace: bool,
     verbose: bool,
     log_dir: Path | None,
-) -> None:
+    session_id: str | None = None,
+) -> dict:
     result = runtime.run(
         question,
         event_callback=print_event if verbose else None,
         log_dir=log_dir,
+        session_id=session_id,
     )
     print("\n[답변]\n")
     print(result["answer"])
@@ -86,6 +116,7 @@ def ask_once(
     if show_trace:
         print("\n[trace]\n")
         print(json.dumps(result["trace"], ensure_ascii=False, indent=2))
+    return result
 
 
 def interactive(
@@ -93,15 +124,24 @@ def interactive(
     show_trace: bool,
     verbose: bool,
     log_dir: Path | None,
+    session_id: str | None = None,
 ) -> None:
-    print("조직지식 에이전트 MVP입니다. 종료하려면 exit 또는 quit를 입력하세요.")
+    active_session_id = session_id
+    print("조직지식 에이전트 MVP입니다. exit/quit: 종료, /new: 새 세션")
     while True:
         question = input("\n질문> ").strip()
         if question.lower() in {"exit", "quit"}:
             return
+        if question == "/new":
+            active_session_id = None
+            print("새 세션을 시작합니다.")
+            continue
         if not question:
             continue
-        ask_once(runtime, question, show_trace, verbose, log_dir)
+        result = ask_once(
+            runtime, question, show_trace, verbose, log_dir, active_session_id
+        )
+        active_session_id = result["session_id"]
 
 
 def main() -> int:
@@ -121,9 +161,16 @@ def main() -> int:
         log_dir = args.log_dir or (config.project_root / "logs" / "turns")
 
     if args.question:
-        ask_once(runtime, args.question, args.trace, args.verbose, log_dir)
+        ask_once(
+            runtime,
+            args.question,
+            args.trace,
+            args.verbose,
+            log_dir,
+            args.session_id,
+        )
     else:
-        interactive(runtime, args.trace, args.verbose, log_dir)
+        interactive(runtime, args.trace, args.verbose, log_dir, args.session_id)
     return 0
 
 

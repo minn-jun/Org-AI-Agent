@@ -42,5 +42,16 @@ class OpenRouterClient:
             raise RuntimeError(f"OpenRouter HTTP {exc.code}: {detail}") from exc
         except urllib.error.URLError as exc:
             raise RuntimeError(f"OpenRouter request failed: {exc}") from exc
-        return data["choices"][0]["message"]
+        if "error" in data:
+            detail = json.dumps(data["error"], ensure_ascii=False)
+            raise RuntimeError(f"OpenRouter API error: {detail}")
+        choices = data.get("choices")
+        if not isinstance(choices, list) or not choices:
+            preview = json.dumps(data, ensure_ascii=False)[:1000]
+            raise RuntimeError(f"OpenRouter response missing choices: {preview}")
+        message = choices[0].get("message")
+        if not isinstance(message, dict):
+            preview = json.dumps(choices[0], ensure_ascii=False)[:1000]
+            raise RuntimeError(f"OpenRouter response missing message: {preview}")
+        return message
 

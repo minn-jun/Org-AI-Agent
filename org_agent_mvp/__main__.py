@@ -102,13 +102,17 @@ def ask_once(
     verbose: bool,
     log_dir: Path | None,
     session_id: str | None = None,
-) -> dict:
-    result = runtime.run(
-        question,
-        event_callback=print_event if verbose else None,
-        log_dir=log_dir,
-        session_id=session_id,
-    )
+) -> dict | None:
+    try:
+        result = runtime.run(
+            question,
+            event_callback=print_event if verbose else None,
+            log_dir=log_dir,
+            session_id=session_id,
+        )
+    except RuntimeError as exc:
+        print(f"\n[error]\n{exc}")
+        return None
     print("\n[답변]\n")
     print(result["answer"])
     if result.get("turn_log_path"):
@@ -141,7 +145,8 @@ def interactive(
         result = ask_once(
             runtime, question, show_trace, verbose, log_dir, active_session_id
         )
-        active_session_id = result["session_id"]
+        if result:
+            active_session_id = result["session_id"]
 
 
 def main() -> int:

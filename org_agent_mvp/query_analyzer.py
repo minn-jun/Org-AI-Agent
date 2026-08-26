@@ -7,7 +7,7 @@ from typing import Any
 from .normalization import normalize_project_name
 
 
-PROJECT_RE = re.compile(r"([A-Za-z0-9가-힣]+\s*[-_]?\s*과제)")
+PROJECT_RE = re.compile(r"([A-Za-z0-9가-힣]+\s*[-_]?\s*(?:과제|프로젝트|사업|과업))")
 
 
 @dataclass(frozen=True)
@@ -27,10 +27,29 @@ class QueryPlan:
 class RuleBasedQueryAnalyzer:
     """Transparent baseline that can later be replaced by a small LLM or encoder."""
 
-    RECENT_MARKERS = ("아까", "방금", "오늘", "어제", "최근 대화", "이번 회의", "이전 턴")
+    RECENT_MARKERS = ("아까", "방금", "오늘", "어제", "최근", "최근 대화", "이번 회의", "이전 턴")
     MTM_MARKERS = ("회의록", "초안", "보고서", "진행 중", "이번 달", "수정안", "일정표")
     LTM_MARKERS = ("공식", "최종", "기준", "규칙", "지침", "정책", "회사", "승인")
-    COMPARISON_MARKERS = ("충돌", "비교", "차이", "달라", "맞아", "일치")
+    COMPARISON_MARKERS = ("충돌", "비교", "차이", "달라", "다른", "어긋", "맞아", "일치")
+    SESSION_REFERENCE_MARKERS = (
+        "그거",
+        "그 내용",
+        "그 일정",
+        "그 담당자",
+        "그 문서",
+        "여기서",
+        "위 내용",
+        "위에서",
+        "앞에서",
+        "앞 답변",
+        "방금 답변",
+        "이어서",
+        "그러면",
+        "해당",
+        "이 내용",
+        "이 일정",
+        "아까",
+    )
     MEMORY_MARKERS = (
         "일정",
         "담당자",
@@ -60,28 +79,19 @@ class RuleBasedQueryAnalyzer:
         has_memory_signal = self._contains(text, self.MEMORY_MARKERS)
         refers_to_session = bool(recent_turns) and self._contains(
             text,
-            (
-                "그거",
-                "그 내용",
-                "그 일정",
-                "그 담당자",
-                "그 문서",
-                "앞에서",
-                "이어서",
-                "그러면",
-                "아까",
-            ),
+            self.SESSION_REFERENCE_MARKERS,
         )
-        previous_query = str(recent_turns[-1].get("user_query", "")) if recent_turns else ""
-        if refers_to_session and "project" not in filters:
-            previous_project = PROJECT_RE.search(previous_query)
-            if previous_project:
-                filters["project"] = normalize_project_name(previous_project.group(1))
-
         memory_needed = has_memory_signal or is_recent or is_mtm or is_ltm or refers_to_session
         can_answer_directly = not memory_needed and self._contains(text, self.DIRECT_MARKERS)
         if not memory_needed and not can_answer_directly:
             can_answer_directly = True
+
+        previous_query = str(recent_turns[-1].get("user_query", "")) if recent_turns else ""
+        should_inherit_project = bool(recent_turns) and memory_needed
+        if should_inherit_project and "project" not in filters:
+            previous_project = self._latest_project_from_turns(recent_turns)
+            if previous_project:
+                filters["project"] = previous_project
 
         if is_comparison:
             intent = "memory_comparison"
@@ -110,7 +120,8 @@ class RuleBasedQueryAnalyzer:
 
         rewrites = [text]
         if refers_to_session and previous_query:
-            rewrites.append(f"이전 질문: {previous_query} 후속 질문: {text}")
+            project_context = f" 프로젝트: {filters['project']}" if "project" in filters else ""
+            rewrites.append(f"이전 질문: {previous_query}{project_context} 후속 질문: {text}")
         if is_recent:
             rewrites.append(f"{text} 최신 결정 일정 담당자")
         if is_comparison:
@@ -131,3 +142,17 @@ class RuleBasedQueryAnalyzer:
     def _contains(self, text: str, markers: tuple[str, ...]) -> bool:
         lowered = text.lower()
         return any(marker.lower() in lowered for marker in markers)
+
+    def _latest_project_from_turns(self, recent_turns: list[dict[str, Any]]) -> str:
+        for turn in reversed(recent_turns):
+            cached_project = (
+                turn.get("query_analysis", {})
+                .get("filters", {})
+                .get("project", "")
+            )
+            if cached_project:
+                return normalize_project_name(str(cached_project))
+            project_match = PROJECT_RE.search(str(turn.get("user_query", "")))
+            if project_match:
+                return normalize_project_name(project_match.group(1))
+        return ""

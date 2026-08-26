@@ -25,6 +25,7 @@ class ChatClient(Protocol):
 @dataclass
 class AgentTrace:
     llm_calls: int = 0
+    reasoning_steps: list[dict[str, Any]] = field(default_factory=list)
     tool_calls: list[dict[str, Any]] = field(default_factory=list)
     final_sources: list[str] = field(default_factory=list)
     stopped_reason: str = ""
@@ -194,6 +195,13 @@ class AgentRuntime:
             )
             if turn_logger:
                 turn_logger.record_reasoning_step(decision_payload)
+            trace.reasoning_steps.append(
+                {
+                    "step": len(trace.reasoning_steps) + 1,
+                    "timestamp": datetime.now().isoformat(timespec="seconds"),
+                    **decision_payload,
+                }
+            )
             self._emit(event_callback, turn_logger, "llm_decision", decision_payload)
             self._emit(
                 event_callback,
@@ -284,6 +292,11 @@ class AgentRuntime:
                 "answer_summary": str(result.get("answer", ""))[:700],
                 "source_ids": result["trace"].get("final_sources", []),
                 "query_intent": result["trace"].get("query_analysis", {}).get("intent", ""),
+                "query_analysis": result["trace"].get("query_analysis", {}),
+                "prefetch": result["trace"].get("prefetch", {}),
+                "reasoning_steps": result["trace"].get("reasoning_steps", []),
+                "tool_calls": result["trace"].get("tool_calls", []),
+                "stopped_reason": result["trace"].get("stopped_reason", ""),
             },
         )
         result["session_id"] = session["session_id"]
@@ -429,6 +442,7 @@ class AgentRuntime:
             "query_analysis": trace.query_analysis,
             "prefetch": trace.prefetch,
             "llm_calls": trace.llm_calls,
+            "reasoning_steps": trace.reasoning_steps,
             "tool_calls": trace.tool_calls,
             "final_sources": trace.final_sources,
             "stopped_reason": trace.stopped_reason,

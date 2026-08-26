@@ -24,7 +24,18 @@ class ContextBuilder:
                     "turn_id": turn.get("turn_id", ""),
                     "user": str(turn.get("user_query", ""))[:300],
                     "answer_summary": str(turn.get("answer_summary", ""))[:500],
+                    "query_intent": turn.get("query_intent", ""),
+                    "project": turn.get("query_analysis", {}).get("filters", {}).get("project", ""),
                     "source_ids": turn.get("source_ids", []),
+                    "tool_calls": [
+                        {
+                            "tool": call.get("tool", ""),
+                            "tier": call.get("tier", ""),
+                            "query": call.get("query", ""),
+                            "result_count": call.get("result_count", 0),
+                        }
+                        for call in turn.get("tool_calls", [])[:3]
+                    ],
                 }
             )
 

@@ -151,7 +151,7 @@ class MemoryStore:
         if project := filters.get("project"):
             document_project = normalized_project_key(str(doc.metadata.get("project", "")))
             filter_project = normalized_project_key(str(project))
-            if document_project != filter_project:
+            if document_project not in {filter_project, normalized_project_key("공통")}:
                 return False
         if source_type := filters.get("source_type"):
             if str(doc.metadata.get("source_type", "")).lower() != str(source_type).lower():

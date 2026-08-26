@@ -3,8 +3,6 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from .normalization import normalized_project_key
-
 
 class MockLLMClient:
     """Deterministic local model stub for testing the ReAct loop without an API key."""
@@ -31,16 +29,31 @@ class MockLLMClient:
                 f"prefetch 후보 {len(prefetch_cards)}건을 확인했으며, "
                 f"답변 근거를 구체화하기 위해 {tier.upper()}를 추가 탐색"
             )
-            return self._tool_call(tier, user_query, reason)
+            return self._tool_call(tier, user_query, reason, query_plan.get("filters", {}))
 
         if self._needs_comparison(user_query) and "ltm" not in tried_tiers:
-            return self._tool_call("ltm", user_query, "최근 결정과 공식 기준을 비교하기 위해 LTM 확인")
+            return self._tool_call(
+                "ltm",
+                user_query,
+                "최근 결정과 공식 기준을 비교하기 위해 LTM 확인",
+                query_plan.get("filters", {}),
+            )
 
         if self._is_recent(user_query) and not self._has_results(tool_results) and "mtm" not in tried_tiers:
-            return self._tool_call("mtm", user_query, "STM에서 충분한 근거를 찾지 못해 MTM으로 확장")
+            return self._tool_call(
+                "mtm",
+                user_query,
+                "STM에서 충분한 근거를 찾지 못해 MTM으로 확장",
+                query_plan.get("filters", {}),
+            )
 
         if not self._has_results(tool_results) and "ltm" not in tried_tiers:
-            return self._tool_call("ltm", user_query, "이전 tier에서 근거가 부족해 LTM으로 확장")
+            return self._tool_call(
+                "ltm",
+                user_query,
+                "이전 tier에서 근거가 부족해 LTM으로 확장",
+                query_plan.get("filters", {}),
+            )
 
         return {
             "role": "assistant",
@@ -96,11 +109,17 @@ class MockLLMClient:
     def _has_results(self, tool_results: list[dict[str, Any]]) -> bool:
         return any(int(result.get("result_count", 0)) > 0 for result in tool_results)
 
-    def _tool_call(self, tier: str, query: str, reason: str) -> dict[str, Any]:
+    def _tool_call(
+        self,
+        tier: str,
+        query: str,
+        reason: str,
+        filters: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         arguments = {
             "tier": tier,
             "query": query,
-            "filters": {"project": "A 과제"} if "a과제" in normalized_project_key(query) else {},
+            "filters": filters or {},
             "top_k": 5,
             "reason": reason,
         }

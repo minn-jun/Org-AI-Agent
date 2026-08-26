@@ -120,9 +120,9 @@ flowchart LR
 | 일정, 담당자, 문서, 과제, 예산 등 | `organization_memory_lookup` | STM 34%, MTM 43%, LTM 23% |
 | 조직 메모리 신호가 없는 일반 질문 | `direct_answer` | 검색 없음 |
 
-질문에 `A 과제` 같은 과제명이 들어가면 `project` 필터가 설정된다. 후속 질문에서 `그 일정`, `아까`처럼 이전 턴을 가리키면 직전 질문의 과제명을 이어받을 수 있다.
+질문에 `A 과제`, `CRM 프로젝트`, `신규 사업` 같은 업무 단위명이 들어가면 `project` 필터가 설정된다. 후속 질문에서 `그 일정`, `여기서`, `위 내용`, `이어서`처럼 이전 답변을 가리키면 최근 세션 턴에서 업무 단위명을 찾아 이어받는다. 직전 질문에 업무 단위명이 없더라도 더 앞선 최근 턴에 `project` 필터가 있으면 해당 필터를 유지한다.
 
-과제명은 기본 정규화를 거친다. 예를 들어 `A과제`, `A 과제`, `A-과제`, `a과제`는 모두 `A 과제`로 처리한다. 이 정규화는 질문 분석에서 필터를 만들 때와 `memory_seed` 문서의 `project` 메타데이터를 비교할 때 동일하게 적용된다.
+업무 단위명은 기본 정규화를 거친다. 예를 들어 `A과제`, `A 과제`, `A-과제`, `a과제`는 모두 `A 과제`로 처리하고, `CRM프로젝트`와 `CRM 프로젝트`도 같은 값으로 처리한다. 이 정규화는 질문 분석에서 필터를 만들 때와 `memory_seed` 문서의 `project` 메타데이터를 비교할 때 동일하게 적용된다.
 
 ## 검색 방식
 
@@ -173,6 +173,16 @@ logs/sessions/session-YYYYMMDD-HHMMSS-xxxxxx.json
 ```
 
 세션 파일에는 최근 턴의 질문, 답변 요약, 출처 ID, query intent가 저장된다. 기본 보관 턴 수는 `SESSION_CACHE_TURNS=8`이다.
+
+각 세션 턴에는 다음 실행 요약도 함께 저장된다.
+
+- `query_analysis`: 질문 intent, tier 비율, query rewrite, project 필터
+- `prefetch`: tier별 검색 배분, 후보 개수, 후보 source ID
+- `reasoning_steps`: LLM 호출별 결정 요약, 다음 액션, tool call 요청 요약
+- `tool_calls`: 실행된 tool, 검색 tier, query, reason, 결과 개수
+- `stopped_reason`: 최종 답변, tool 제한 도달 등 종료 이유
+
+다음 턴의 `RUNTIME_CONTEXT`에는 최근 세션 턴의 질문, 답변 요약, intent, project, source ID, tool call 요약이 포함된다. 그래서 `여기서`, `그 일정`, `위 내용`처럼 이전 답변을 가리키는 질문에서 이전 과제 맥락을 이어받을 수 있다.
 
 `--save-log`를 붙이면 한 턴의 상세 로그가 추가로 저장된다.
 
@@ -327,7 +337,7 @@ Get-ChildItem "logs\turns" | Sort-Object LastWriteTime -Descending | Select-Obje
 
 - 현재 `memory_seed` 검색은 벡터 검색이 아니라 키워드 검색이다.
 - `memory_seed`의 하위 tier 폴더 바로 아래 파일만 읽는다. 더 깊은 하위 폴더는 검색하지 않는다.
-- 과제명은 `A과제`, `A 과제`, `A-과제`처럼 흔들리는 표기를 같은 값으로 정규화한다.
+- 업무 단위명은 `A과제`, `A 과제`, `A-과제`, `CRM프로젝트`, `CRM 프로젝트`처럼 흔들리는 표기를 같은 값으로 정규화한다.
 - `.md` 파일은 YAML frontmatter가 있으면 메타데이터로 사용한다.
 - `.json` 파일은 전체 JSON을 본문처럼 검색하고, `body`, `content`를 제외한 필드는 메타데이터로 쓴다.
 - OpenRouter 실제 호출은 네트워크 상태와 모델 상태에 따라 지연될 수 있다.

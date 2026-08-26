@@ -36,6 +36,11 @@ class QueryAnalyzerTests(unittest.TestCase):
         self.assertEqual(plan.filters["project"], "A 과제")
         self.assertIn("A 과제", plan.query_rewrites[-1])
 
+    def test_project_name_without_space_is_normalized(self) -> None:
+        plan = RuleBasedQueryAnalyzer().analyze("A과제 최근 회의 내용 알려줘")
+
+        self.assertEqual(plan.filters["project"], "A 과제")
+
 
 class PrefetchTests(unittest.TestCase):
     def test_prefetch_respects_total_top_k(self) -> None:
@@ -45,6 +50,16 @@ class PrefetchTests(unittest.TestCase):
         self.assertEqual(sum(result.allocations.values()), 8)
         self.assertLessEqual(len(result.cards), 8)
         self.assertTrue(result.cards)
+
+    def test_prefetch_matches_normalized_project_name(self) -> None:
+        store = MemoryStore(PROJECT_ROOT / "memory_seed")
+        plan = RuleBasedQueryAnalyzer().analyze("A과제 최근 회의 내용 알려줘")
+        result = MemoryPrefetcher(store, total_top_k=8).prefetch(plan)
+
+        self.assertTrue(result.cards)
+        self.assertTrue(
+            all(card.get("project") == "A 과제" for card in result.cards)
+        )
 
 
 class SessionRuntimeTests(unittest.TestCase):

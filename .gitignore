@@ -1,7 +1,5 @@
 .env
-logs/*
-!logs/turns/
-!logs/turns/**
+logs/
 docs/
 __pycache__/
 *.py[cod]

@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from .normalization import normalized_project_key
+
 
 class MockLLMClient:
     """Deterministic local model stub for testing the ReAct loop without an API key."""
@@ -98,7 +100,7 @@ class MockLLMClient:
         arguments = {
             "tier": tier,
             "query": query,
-            "filters": {"project": "A 과제"} if "A 과제" in query else {},
+            "filters": {"project": "A 과제"} if "a과제" in normalized_project_key(query) else {},
             "top_k": 5,
             "reason": reason,
         }

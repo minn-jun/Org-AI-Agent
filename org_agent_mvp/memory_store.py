@@ -8,6 +8,8 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from .normalization import normalize_project_name, normalized_project_key
+
 
 TOKEN_RE = re.compile(r"[0-9A-Za-z가-힣_]+")
 
@@ -147,7 +149,9 @@ class MemoryStore:
 
     def _matches_filters(self, doc: MemoryDocument, filters: dict[str, Any]) -> bool:
         if project := filters.get("project"):
-            if str(doc.metadata.get("project", "")).lower() != str(project).lower():
+            document_project = normalized_project_key(str(doc.metadata.get("project", "")))
+            filter_project = normalized_project_key(str(project))
+            if document_project != filter_project:
                 return False
         if source_type := filters.get("source_type"):
             if str(doc.metadata.get("source_type", "")).lower() != str(source_type).lower():
@@ -171,7 +175,12 @@ class MemoryStore:
         title = str(doc.metadata.get("title", ""))
         project = str(doc.metadata.get("project", ""))
         source_type = str(doc.metadata.get("source_type", ""))
-        haystack = f"{title}\n{project}\n{source_type}\n{doc.text}"
+        normalized_project = normalize_project_name(project)
+        project_key = normalized_project_key(project)
+        haystack = (
+            f"{title}\n{project}\n{normalized_project}\n"
+            f"{project_key}\n{source_type}\n{doc.text}"
+        )
         hay_tokens = _tokenize(haystack)
         if not hay_tokens:
             return 0.0

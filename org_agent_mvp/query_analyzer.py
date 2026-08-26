@@ -4,8 +4,10 @@ import re
 from dataclasses import asdict, dataclass
 from typing import Any
 
+from .normalization import normalize_project_name
 
-PROJECT_RE = re.compile(r"([A-Za-z0-9가-힣_-]+\s*과제)")
+
+PROJECT_RE = re.compile(r"([A-Za-z0-9가-힣]+\s*[-_]?\s*과제)")
 
 
 @dataclass(frozen=True)
@@ -49,7 +51,7 @@ class RuleBasedQueryAnalyzer:
         project_match = PROJECT_RE.search(text)
         filters: dict[str, Any] = {}
         if project_match:
-            filters["project"] = " ".join(project_match.group(1).split())
+            filters["project"] = normalize_project_name(project_match.group(1))
 
         is_comparison = self._contains(text, self.COMPARISON_MARKERS)
         is_recent = self._contains(text, self.RECENT_MARKERS)
@@ -74,7 +76,7 @@ class RuleBasedQueryAnalyzer:
         if refers_to_session and "project" not in filters:
             previous_project = PROJECT_RE.search(previous_query)
             if previous_project:
-                filters["project"] = " ".join(previous_project.group(1).split())
+                filters["project"] = normalize_project_name(previous_project.group(1))
 
         memory_needed = has_memory_signal or is_recent or is_mtm or is_ltm or refers_to_session
         can_answer_directly = not memory_needed and self._contains(text, self.DIRECT_MARKERS)

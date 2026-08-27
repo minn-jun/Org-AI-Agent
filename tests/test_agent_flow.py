@@ -11,10 +11,23 @@ from org_agent_mvp.config import AppConfig
 from org_agent_mvp.memory_store import MemoryStore
 from org_agent_mvp.mock_llm import MockLLMClient
 from org_agent_mvp.prefetch import MemoryPrefetcher
-from org_agent_mvp.query_analyzer import RuleBasedQueryAnalyzer
+from org_agent_mvp.query_analyzer import LLMQueryAnalyzer, RuleBasedQueryAnalyzer
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
+class FakeAnalyzerClient:
+    def __init__(self, content: str | None = None, error: Exception | None = None):
+        self.content = content
+        self.error = error
+        self.calls: list[dict] = []
+
+    def chat(self, messages, tools=None, **kwargs):
+        self.calls.append({"messages": messages, "tools": tools, **kwargs})
+        if self.error:
+            raise self.error
+        return {"role": "assistant", "content": self.content}
 
 
 class QueryAnalyzerTests(unittest.TestCase):
@@ -36,6 +49,29 @@ class QueryAnalyzerTests(unittest.TestCase):
         self.assertEqual(plan.intent, "recent_context_lookup")
         self.assertEqual(plan.filters["project"], "A 과제")
         self.assertIn("A 과제", plan.query_rewrites[-1])
+
+    def test_session_summary_uses_session_only_plan(self) -> None:
+        plan = RuleBasedQueryAnalyzer().analyze(
+            "아까 말한거 요약해줘",
+            [{"user_query": "A 과제 공식 일정 알려줘", "answer_summary": "공식 제출일 확인"}],
+        )
+
+        self.assertEqual(plan.intent, "session_context_answer")
+        self.assertEqual(plan.answer_source, "session_only")
+        self.assertTrue(plan.use_session_context)
+        self.assertFalse(plan.memory_needed)
+        self.assertEqual(plan.memory_weights, {"stm": 0.0, "mtm": 0.0, "ltm": 0.0})
+
+    def test_session_referenced_fact_still_uses_memory(self) -> None:
+        plan = RuleBasedQueryAnalyzer().analyze(
+            "아까 말한 일정의 담당자는?",
+            [{"user_query": "A 과제 공식 일정 알려줘", "answer_summary": "공식 제출일 확인"}],
+        )
+
+        self.assertEqual(plan.intent, "recent_context_lookup")
+        self.assertEqual(plan.answer_source, "memory_prefetch")
+        self.assertTrue(plan.use_session_context)
+        self.assertTrue(plan.memory_needed)
 
     def test_project_name_without_space_is_normalized(self) -> None:
         plan = RuleBasedQueryAnalyzer().analyze("A과제 최근 회의 내용 알려줘")
@@ -71,6 +107,43 @@ class QueryAnalyzerTests(unittest.TestCase):
 
         self.assertEqual(plan.intent, "memory_comparison")
         self.assertEqual(plan.filters["project"], "A 과제")
+
+    def test_llm_query_analyzer_uses_model_json_plan(self) -> None:
+        client = FakeAnalyzerClient(
+            json.dumps(
+                {
+                    "intent": "recent_context_lookup",
+                    "can_answer_directly": False,
+                    "memory_needed": True,
+                    "answer_source": "memory_prefetch",
+                    "use_session_context": False,
+                    "memory_weights": {"stm": 0.7, "mtm": 0.2, "ltm": 0.1},
+                    "query_rewrites": ["A과제 최근 회의 내용 알려줘"],
+                    "filters": {"project": "A과제"},
+                    "reason": "최근 회의 맥락 확인 필요",
+                },
+                ensure_ascii=False,
+            )
+        )
+
+        plan = LLMQueryAnalyzer(client, model="small-model").analyze(
+            "A과제 최근 회의 내용 알려줘"
+        )
+
+        self.assertEqual(plan.intent, "recent_context_lookup")
+        self.assertEqual(plan.filters["project"], "A 과제")
+        self.assertAlmostEqual(sum(plan.memory_weights.values()), 1.0)
+        self.assertEqual(client.calls[0]["model"], "small-model")
+
+    def test_llm_query_analyzer_falls_back_on_error(self) -> None:
+        client = FakeAnalyzerClient(error=RuntimeError("rate limited"))
+
+        plan = LLMQueryAnalyzer(client, model="small-model").analyze(
+            "A 과제의 최근 일정이 공식 계획과 충돌해?"
+        )
+
+        self.assertEqual(plan.intent, "memory_comparison")
+        self.assertIn("fallback", plan.reason)
 
 
 class PrefetchTests(unittest.TestCase):
@@ -168,6 +241,24 @@ class SessionRuntimeTests(unittest.TestCase):
             self.assertGreater(turn["prefetch"]["result_count"], 0)
             self.assertGreaterEqual(len(turn["reasoning_steps"]), 1)
             self.assertGreaterEqual(len(turn["tool_calls"]), 1)
+
+    def test_mock_runtime_answers_session_summary_without_prefetch(self) -> None:
+        base = AppConfig.load()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config = replace(
+                base,
+                project_root=Path(temp_dir),
+                memory_root=PROJECT_ROOT / "memory_seed",
+            )
+            runtime = AgentRuntime(config, MockLLMClient(), MemoryStore(config.memory_root))
+            first = runtime.run("A 과제 최근 일정이 공식 계획과 충돌해?")
+            second = runtime.run("아까 말한거 요약해줘", session_id=first["session_id"])
+
+            self.assertEqual(second["trace"]["query_analysis"]["intent"], "session_context_answer")
+            self.assertFalse(second["trace"]["query_analysis"]["memory_needed"])
+            self.assertEqual(second["trace"]["prefetch"]["result_count"], 0)
+            self.assertEqual(second["trace"]["tool_calls"], [])
+            self.assertIn("앞선 대화 요약", second["answer"])
 
     def test_mock_runtime_uses_query_plan_filter_for_any_project(self) -> None:
         base = AppConfig.load()

@@ -10,6 +10,7 @@ from .config import AppConfig
 from .memory_store import MemoryStore
 from .mock_llm import MockLLMClient
 from .openrouter_client import OpenRouterClient
+from .query_analyzer import LLMQueryAnalyzer, RuleBasedQueryAnalyzer
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -26,8 +27,18 @@ def build_parser() -> argparse.ArgumentParser:
 
 def build_runtime(config: AppConfig, use_mock: bool) -> AgentRuntime:
     client = MockLLMClient() if use_mock else OpenRouterClient(config)
+    query_analyzer = (
+        RuleBasedQueryAnalyzer()
+        if use_mock
+        else LLMQueryAnalyzer(client, model=config.query_analyzer_model)
+    )
     memory_store = MemoryStore(config.memory_root)
-    return AgentRuntime(config=config, client=client, memory_store=memory_store)
+    return AgentRuntime(
+        config=config,
+        client=client,
+        memory_store=memory_store,
+        query_analyzer=query_analyzer,
+    )
 
 
 def print_event(event: str, payload: dict) -> None:
@@ -35,7 +46,16 @@ def print_event(event: str, payload: dict) -> None:
         print(f"\n[session] {payload['session_id']} (이전 턴 {payload['previous_turn_count']}개)")
         print(f"[turn] 사용자 질문: {payload['query']}")
     elif event == "query_analysis":
-        print(f"[analyzer] intent={payload['intent']} memory_needed={payload['memory_needed']}")
+        print(
+            f"[analyzer] intent={payload['intent']} "
+            f"answer_source={payload.get('answer_source', '')} "
+            f"memory_needed={payload['memory_needed']}"
+        )
+        analyzer = payload.get("analyzer") or {}
+        if analyzer:
+            label = analyzer.get("type", "")
+            model = analyzer.get("model", "")
+            print(f"           analyzer={label}" + (f" model={model}" if model else ""))
         print(f"           reason={payload['reason']}")
         weights = payload["memory_weights"]
         print(
@@ -44,12 +64,29 @@ def print_event(event: str, payload: dict) -> None:
         )
     elif event == "prefetch_start":
         allocation = payload["allocations"]
+        if sum(allocation.values()) == 0:
+            print("[prefetch] 메모리 검색 생략 (세션/직접 답변 흐름)")
+            return
         print(
             "[prefetch] 후보 검색 시작 "
             f"(STM {allocation['stm']} / MTM {allocation['mtm']} / LTM {allocation['ltm']})"
         )
     elif event == "prefetch_end":
-        print(f"[prefetch] rerank 후 컨텍스트 후보 {payload['result_count']}건")
+        if payload.get("result_count", 0) == 0 and payload.get("collected_count", 0) == 0:
+            print("[prefetch] 컨텍스트 후보 0건")
+            return
+        counts = payload.get("tier_result_counts") or {}
+        if counts:
+            print(
+                "[prefetch] 검색 결과 "
+                f"(STM {counts.get('stm', 0)} / MTM {counts.get('mtm', 0)} / "
+                f"LTM {counts.get('ltm', 0)})"
+            )
+        print(
+            f"[prefetch] 수집 {payload.get('collected_count', payload['result_count'])}건 "
+            f"→ 중복제거 {payload.get('deduped_count', payload['result_count'])}건 "
+            f"→ 컨텍스트 후보 {payload['result_count']}건"
+        )
         for source in payload.get("sources", [])[:8]:
             print(
                 f"           [{source['tier']}] {source['document_id']} "
@@ -72,7 +109,6 @@ def print_event(event: str, payload: dict) -> None:
             print(f"[llm #{payload['llm_call']}] 최종 답변 생성")
     elif event == "llm_decision":
         print(f"[reasoning #{payload['llm_call']}] decision={payload['decision']}")
-        print(f"              {payload['reasoning_summary']}")
     elif event == "tool_call_start":
         print(f"[tool] {payload['tool']} 시작")
         print(f"       tier={payload['tier']} top_k={payload['top_k']}")

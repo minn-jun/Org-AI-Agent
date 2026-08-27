@@ -12,13 +12,21 @@ from .context_builder import ContextBuilder
 from .memory_store import MemoryStore
 from .prefetch import MemoryPrefetcher
 from .prompts import SYSTEM_PROMPT
-from .query_analyzer import RuleBasedQueryAnalyzer
+from .query_analyzer import QueryAnalyzer, RuleBasedQueryAnalyzer
 from .schemas import RETRIEVE_MEMORY_TOOL
 from .session_store import SessionStore
 
 
 class ChatClient(Protocol):
-    def chat(self, messages: list[dict[str, Any]], tools: list[dict[str, Any]]) -> dict[str, Any]:
+    def chat(
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None = None,
+        *,
+        model: str | None = None,
+        temperature: float = 0.2,
+        response_format: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         ...
 
 
@@ -78,12 +86,18 @@ class TurnLogger:
 
 
 class AgentRuntime:
-    def __init__(self, config: AppConfig, client: ChatClient, memory_store: MemoryStore):
+    def __init__(
+        self,
+        config: AppConfig,
+        client: ChatClient,
+        memory_store: MemoryStore,
+        query_analyzer: QueryAnalyzer | None = None,
+    ):
         self.config = config
         self.client = client
         self.memory_store = memory_store
         self.tools = [RETRIEVE_MEMORY_TOOL]
-        self.query_analyzer = RuleBasedQueryAnalyzer()
+        self.query_analyzer = query_analyzer or RuleBasedQueryAnalyzer()
         self.prefetcher = MemoryPrefetcher(memory_store, total_top_k=config.prefetch_top_k)
         self.context_builder = ContextBuilder()
         self.session_store = SessionStore(
@@ -101,6 +115,13 @@ class AgentRuntime:
         session = self.session_store.load_or_create(session_id)
         recent_turns = list(session.get("turns", []))
         plan = self.query_analyzer.analyze(user_query, recent_turns)
+        plan_payload = {
+            **plan.to_dict(),
+            "analyzer": {
+                "type": type(self.query_analyzer).__name__,
+                "model": getattr(self.query_analyzer, "model", ""),
+            },
+        }
         prefetch = self.prefetcher.prefetch(plan)
         runtime_context = self.context_builder.build(plan, prefetch.cards, recent_turns)
         messages: list[dict[str, Any]] = [
@@ -110,9 +131,12 @@ class AgentRuntime:
         ]
         trace = AgentTrace(
             session_id=session["session_id"],
-            query_analysis=plan.to_dict(),
+            query_analysis=plan_payload,
             prefetch={
                 "allocations": prefetch.allocations,
+                "tier_result_counts": prefetch.tier_result_counts,
+                "collected_count": prefetch.collected_count,
+                "deduped_count": prefetch.deduped_count,
                 "result_count": len(prefetch.cards),
                 "sources": [
                     card.get("source_ref", {}).get("document_id", "")
@@ -133,7 +157,7 @@ class AgentRuntime:
                 "previous_turn_count": len(recent_turns),
             },
         )
-        self._emit(event_callback, turn_logger, "query_analysis", plan.to_dict())
+        self._emit(event_callback, turn_logger, "query_analysis", plan_payload)
         self._emit(
             event_callback,
             turn_logger,
@@ -146,6 +170,9 @@ class AgentRuntime:
             "prefetch_end",
             {
                 "result_count": len(prefetch.cards),
+                "tier_result_counts": prefetch.tier_result_counts,
+                "collected_count": prefetch.collected_count,
+                "deduped_count": prefetch.deduped_count,
                 "sources": [
                     {
                         "tier": card.get("tier"),
@@ -184,7 +211,12 @@ class AgentRuntime:
                     "message_roles": message_roles,
                 },
             )
-            assistant_message = self.client.chat(messages, self.tools)
+            assistant_message = self.client.chat(
+                messages,
+                self.tools,
+                model=self.config.agent_model,
+                temperature=0.2,
+            )
             tool_calls = assistant_message.get("tool_calls") or []
             decision_payload = self._build_decision_payload(
                 llm_call=trace.llm_calls,

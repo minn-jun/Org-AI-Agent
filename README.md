@@ -9,9 +9,9 @@ STM / MTM / LTM seed 폴더를 RAG 검색기처럼 사용한다.
 ```text
 사용자 질문
 → 세션의 최근 대화 요약 로드
-→ 규칙 기반 Query Analyzer
-→ STM / MTM / LTM 검색 비율 결정
-→ 비율 기반 prefetch + 점수 재정렬 + top-k
+→ LLM 기반 Query Analyzer
+→ answer_source와 STM / MTM / LTM 검색 비율 결정
+→ 필요 시 비율 기반 prefetch + 점수 재정렬 + top-k
 → 현재 턴의 컨텍스트 구성
 → OpenRouter 또는 Mock LLM 호출
 → 필요 시 retrieve_memory tool call
@@ -20,7 +20,11 @@ STM / MTM / LTM seed 폴더를 RAG 검색기처럼 사용한다.
 → 세션 캐시와 선택적 턴 로그 저장
 ```
 
-Query Analyzer는 우선 판단 근거를 확인하기 쉬운 규칙 기반 baseline으로 구현했다.
+Query Analyzer는 실제 OpenRouter 실행에서는 가벼운 분석 모델을 호출해 `QueryPlan`
+JSON을 만들고, 실패 시 규칙 기반 baseline으로 fallback한다. `--mock` 실행에서는
+API 없이 흐름을 재현하기 위해 규칙 기반 분석기를 사용한다.
+“아까 말한거 요약”처럼 세션 대화만 필요한 질문은 `session_only`로 분기되어
+문서 검색 없이 최근 세션 요약만으로 답변한다.
 검색기는 keyword top-k 방식이며 `MemoryStore.retrieve()` 경계를 유지하므로 이후
 BM25, vector RAG, hybrid RAG 구현으로 교체할 수 있다.
 
@@ -44,7 +48,8 @@ OpenRouter 사용 시 `.env`의 빈 키 입력란을 채우고 `--mock`을 제�
 
 ```env
 OPENROUTER_API_KEY=
-OPENROUTER_MODEL=google/gemma-4-31b-it:free
+QUERY_ANALYZER_MODEL=liquid/lfm-2.5-2.6b:free
+AGENT_MODEL=nvidia/nemotron-3-super-120b-a12b:free
 PREFETCH_TOP_K=8
 SESSION_CACHE_TURNS=8
 ```
@@ -56,7 +61,7 @@ SESSION_CACHE_TURNS=8
 ```text
 [session]     세션 ID와 이전 턴 수
 [analyzer]    질문 의도, 검색 필요 여부, tier 비율
-[prefetch]    tier별 후보 수와 rerank 점수
+[prefetch]    tier별 후보 수와 rerank 점수 또는 검색 생략
 [context]     이번 호출에 포함한 최근 턴과 근거 수
 [llm]         모델 호출 시작과 종료
 [reasoning]   final_answer 또는 tool_call 판단 요약
@@ -119,6 +124,6 @@ mock ReAct 실행과 동일 세션 이어가기를 자동 검증한다.
 ## Deferred Work
 
 - keyword 검색을 BM25 / vector / hybrid RAG로 교체
-- Query Analyzer의 작은 LLM 및 encoder 방식 비교
+- Query Analyzer의 작은 LLM, 규칙 기반 fallback, encoder 방식 비교
 - 장기 세션 요약과 일일 STM 적재 작업
 - 메모리 승격 후보 선정 및 관리자 검토 시스템

@@ -11,9 +11,18 @@ from .query_analyzer import QueryPlan
 class PrefetchResult:
     allocations: dict[str, int]
     cards: list[dict[str, Any]]
+    tier_result_counts: dict[str, int]
+    collected_count: int
+    deduped_count: int
 
     def to_dict(self) -> dict[str, Any]:
-        return {"allocations": self.allocations, "cards": self.cards}
+        return {
+            "allocations": self.allocations,
+            "cards": self.cards,
+            "tier_result_counts": self.tier_result_counts,
+            "collected_count": self.collected_count,
+            "deduped_count": self.deduped_count,
+        }
 
 
 class MemoryPrefetcher:
@@ -23,11 +32,18 @@ class MemoryPrefetcher:
 
     def prefetch(self, plan: QueryPlan) -> PrefetchResult:
         if not plan.memory_needed:
-            return PrefetchResult(allocations={"stm": 0, "mtm": 0, "ltm": 0}, cards=[])
+            return PrefetchResult(
+                allocations={"stm": 0, "mtm": 0, "ltm": 0},
+                cards=[],
+                tier_result_counts={"stm": 0, "mtm": 0, "ltm": 0},
+                collected_count=0,
+                deduped_count=0,
+            )
 
         allocations = self._allocate(plan.memory_weights)
         query = plan.query_rewrites[-1]
         collected: list[dict[str, Any]] = []
+        tier_result_counts = {"stm": 0, "mtm": 0, "ltm": 0}
         for tier in ("stm", "mtm", "ltm"):
             top_k = allocations[tier]
             if top_k == 0:
@@ -38,6 +54,7 @@ class MemoryPrefetcher:
                 filters=plan.filters,
                 top_k=top_k,
             )
+            tier_result_counts[tier] = int(result.get("result_count", 0))
             for card in result["results"]:
                 card = dict(card)
                 card["prefetch_tier_weight"] = plan.memory_weights[tier]
@@ -51,10 +68,19 @@ class MemoryPrefetcher:
         deduped: dict[str, dict[str, Any]] = {}
         for card in collected:
             evidence_id = str(card["evidence_id"])
-            if evidence_id not in deduped or card["rerank_score"] > deduped[evidence_id]["rerank_score"]:
+            if (
+                evidence_id not in deduped
+                or card["rerank_score"] > deduped[evidence_id]["rerank_score"]
+            ):
                 deduped[evidence_id] = card
         cards = sorted(deduped.values(), key=lambda item: item["rerank_score"], reverse=True)
-        return PrefetchResult(allocations=allocations, cards=cards[: self.total_top_k])
+        return PrefetchResult(
+            allocations=allocations,
+            cards=cards[: self.total_top_k],
+            tier_result_counts=tier_result_counts,
+            collected_count=len(collected),
+            deduped_count=len(deduped),
+        )
 
     def _allocate(self, weights: dict[str, float]) -> dict[str, int]:
         tiers = ("stm", "mtm", "ltm")

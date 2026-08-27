@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import asdict, dataclass
-from typing import Any
+from typing import Any, Protocol
 
 from .normalization import normalize_project_name
 
@@ -15,6 +16,8 @@ class QueryPlan:
     intent: str
     can_answer_directly: bool
     memory_needed: bool
+    answer_source: str
+    use_session_context: bool
     memory_weights: dict[str, float]
     query_rewrites: list[str]
     filters: dict[str, Any]
@@ -22,6 +25,11 @@ class QueryPlan:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+class QueryAnalyzer(Protocol):
+    def analyze(self, query: str, recent_turns: list[dict[str, Any]] | None = None) -> QueryPlan:
+        ...
 
 
 class RuleBasedQueryAnalyzer:
@@ -63,6 +71,7 @@ class RuleBasedQueryAnalyzer:
         "근거",
     )
     DIRECT_MARKERS = ("개념", "뜻", "일반적으로", "아이디어", "브레인스토밍")
+    SESSION_SUMMARY_MARKERS = ("요약", "정리", "다시 말", "말한거", "말한 것", "정리해줘")
 
     def analyze(self, query: str, recent_turns: list[dict[str, Any]] | None = None) -> QueryPlan:
         recent_turns = recent_turns or []
@@ -81,9 +90,22 @@ class RuleBasedQueryAnalyzer:
             text,
             self.SESSION_REFERENCE_MARKERS,
         )
-        memory_needed = has_memory_signal or is_recent or is_mtm or is_ltm or refers_to_session
+        is_session_summary = (
+            refers_to_session
+            and self._contains(text, self.SESSION_SUMMARY_MARKERS)
+            and not has_memory_signal
+            and not is_comparison
+            and not is_mtm
+            and not is_ltm
+        )
+        memory_needed = (
+            not is_session_summary
+            and (has_memory_signal or is_recent or is_mtm or is_ltm or refers_to_session)
+        )
         can_answer_directly = not memory_needed and self._contains(text, self.DIRECT_MARKERS)
-        if not memory_needed and not can_answer_directly:
+        if is_session_summary:
+            can_answer_directly = True
+        elif not memory_needed and not can_answer_directly:
             can_answer_directly = True
 
         previous_query = str(recent_turns[-1].get("user_query", "")) if recent_turns else ""
@@ -93,30 +115,41 @@ class RuleBasedQueryAnalyzer:
             if previous_project:
                 filters["project"] = previous_project
 
-        if is_comparison:
+        if is_session_summary:
+            intent = "session_context_answer"
+            weights = {"stm": 0.0, "mtm": 0.0, "ltm": 0.0}
+            reason = "이전 대화 맥락만으로 답변 가능한 세션 후속 질문"
+            answer_source = "session_only"
+        elif is_comparison:
             intent = "memory_comparison"
             weights = {"stm": 0.35, "mtm": 0.25, "ltm": 0.40}
             reason = "최근 정보와 공식 기준을 함께 비교해야 하는 질문"
+            answer_source = "memory_prefetch"
         elif is_recent or refers_to_session:
             intent = "recent_context_lookup"
             weights = {"stm": 0.65, "mtm": 0.25, "ltm": 0.10}
             reason = "최근 대화나 최신 결정의 확인이 필요한 질문"
+            answer_source = "memory_prefetch"
         elif is_ltm:
             intent = "official_knowledge_lookup"
             weights = {"stm": 0.10, "mtm": 0.20, "ltm": 0.70}
             reason = "공식 문서 또는 조직 기준 확인이 필요한 질문"
+            answer_source = "memory_prefetch"
         elif is_mtm:
             intent = "working_document_lookup"
             weights = {"stm": 0.20, "mtm": 0.65, "ltm": 0.15}
             reason = "진행 중 문서와 최근 산출물 확인이 필요한 질문"
+            answer_source = "memory_prefetch"
         elif memory_needed:
             intent = "organization_memory_lookup"
             weights = {"stm": 0.34, "mtm": 0.43, "ltm": 0.23}
             reason = "조직 메모리 근거가 필요한 사실 질문"
+            answer_source = "memory_prefetch"
         else:
             intent = "direct_answer"
             weights = {"stm": 0.0, "mtm": 0.0, "ltm": 0.0}
             reason = "조직 메모리 검색 없이 답변 가능한 일반 질문"
+            answer_source = "direct_answer"
 
         rewrites = [text]
         if refers_to_session and previous_query:
@@ -133,6 +166,8 @@ class RuleBasedQueryAnalyzer:
             intent=intent,
             can_answer_directly=can_answer_directly,
             memory_needed=memory_needed,
+            answer_source=answer_source,
+            use_session_context=bool(recent_turns) and (refers_to_session or is_session_summary),
             memory_weights=weights,
             query_rewrites=list(dict.fromkeys(rewrites)),
             filters=filters,
@@ -156,3 +191,260 @@ class RuleBasedQueryAnalyzer:
             if project_match:
                 return normalize_project_name(project_match.group(1))
         return ""
+
+
+class LLMQueryAnalyzer:
+    """Uses a small LLM to build QueryPlan, with rule-based fallback for resilience."""
+
+    VALID_INTENTS = {
+        "direct_answer",
+        "session_context_answer",
+        "recent_context_lookup",
+        "working_document_lookup",
+        "official_knowledge_lookup",
+        "organization_memory_lookup",
+        "memory_comparison",
+    }
+
+    RESPONSE_FORMAT = {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "query_plan",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": [
+                    "intent",
+                    "can_answer_directly",
+                    "memory_needed",
+                    "answer_source",
+                    "use_session_context",
+                    "memory_weights",
+                    "query_rewrites",
+                    "filters",
+                    "reason",
+                ],
+                "properties": {
+                    "intent": {
+                        "type": "string",
+                        "enum": sorted(VALID_INTENTS),
+                    },
+                    "can_answer_directly": {"type": "boolean"},
+                    "memory_needed": {"type": "boolean"},
+                    "answer_source": {
+                        "type": "string",
+                        "enum": ["direct_answer", "session_only", "memory_prefetch"],
+                    },
+                    "use_session_context": {"type": "boolean"},
+                    "memory_weights": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": ["stm", "mtm", "ltm"],
+                        "properties": {
+                            "stm": {"type": "number"},
+                            "mtm": {"type": "number"},
+                            "ltm": {"type": "number"},
+                        },
+                    },
+                    "query_rewrites": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "minItems": 1,
+                    },
+                    "filters": {
+                        "type": "object",
+                        "additionalProperties": True,
+                    },
+                    "reason": {"type": "string"},
+                },
+            },
+        },
+    }
+
+    def __init__(
+        self,
+        client: Any,
+        model: str,
+        fallback: RuleBasedQueryAnalyzer | None = None,
+    ):
+        self.client = client
+        self.model = model
+        self.fallback = fallback or RuleBasedQueryAnalyzer()
+
+    def analyze(self, query: str, recent_turns: list[dict[str, Any]] | None = None) -> QueryPlan:
+        recent_turns = recent_turns or []
+        fallback_plan = self.fallback.analyze(query, recent_turns)
+        try:
+            raw_plan = self._call_llm(query, recent_turns, fallback_plan)
+            return self._normalize_plan(raw_plan, query, fallback_plan)
+        except Exception as exc:
+            return QueryPlan(
+                **{
+                    **fallback_plan.to_dict(),
+                    "reason": f"{fallback_plan.reason} (LLM query analyzer fallback: {exc})",
+                }
+            )
+
+    def _call_llm(
+        self,
+        query: str,
+        recent_turns: list[dict[str, Any]],
+        fallback_plan: QueryPlan,
+    ) -> dict[str, Any]:
+        compact_turns = [
+            {
+                "user_query": turn.get("user_query", ""),
+                "query_intent": turn.get("query_intent", ""),
+                "project": turn.get("query_analysis", {}).get("filters", {}).get("project", ""),
+                "source_ids": turn.get("source_ids", []),
+            }
+            for turn in recent_turns[-4:]
+        ]
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "너는 조직지식 에이전트의 Query Analyzer다. "
+                    "문서 내용의 실제 존재 여부를 판단하지 말고, 사용자의 질문 의도와 "
+                    "검색 전략만 결정한다. 반드시 JSON schema에 맞춰 답한다. "
+                    "모든 문자열 값은 한국어로 작성하고, intent는 허용 목록 중 하나만 사용한다."
+                ),
+            },
+            {
+                "role": "user",
+                "content": json.dumps(
+                    {
+                        "user_query": query,
+                        "recent_session_turns": compact_turns,
+                        "allowed_intents": sorted(self.VALID_INTENTS),
+                        "memory_tiers": {
+                            "stm": "최신 대화, 오늘/방금/아까 결정, 세션성 정보",
+                            "mtm": "최근 회의록, 제안서 초안, 진행 중 보고서",
+                            "ltm": "공식 계획서, 승인 문서, 조직 기준",
+                        },
+                        "rules": [
+                            "일반 개념 질문이면 direct_answer와 memory_needed=false",
+                            "아까 말한거 요약/정리처럼 이전 대화만 묻는 질문이면 session_context_answer, answer_source=session_only, memory_needed=false",
+                            "이전 대화를 참고하되 일정/담당자/근거/문서/공식 기준 확인이 필요하면 memory_needed=true",
+                            "최근/아까/오늘/후속 질문이면 STM 비중을 높임",
+                            "회의록/초안/보고서 질문이면 MTM 비중을 높임",
+                            "공식/최종/기준/정책 질문이면 LTM 비중을 높임",
+                            "비교/충돌/차이 질문이면 관련 tier를 함께 검색",
+                            "query_rewrites에는 원 질문을 첫 항목으로 포함",
+                            "filters.project가 있으면 표준 띄어쓰기 형태로 포함",
+                        ],
+                        "fallback_reference": fallback_plan.to_dict(),
+                    },
+                    ensure_ascii=False,
+                ),
+            },
+        ]
+        message = self.client.chat(
+            messages,
+            [],
+            model=self.model,
+            temperature=0.0,
+            response_format=self.RESPONSE_FORMAT,
+        )
+        content = str(message.get("content") or "").strip()
+        return self._loads_json_object(content)
+
+    def _loads_json_object(self, content: str) -> dict[str, Any]:
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError:
+            start = content.find("{")
+            end = content.rfind("}")
+            if start == -1 or end == -1 or end <= start:
+                raise
+            data = json.loads(content[start : end + 1])
+        if not isinstance(data, dict):
+            raise ValueError("query analyzer response is not a JSON object")
+        return data
+
+    def _normalize_plan(
+        self,
+        raw: dict[str, Any],
+        query: str,
+        fallback_plan: QueryPlan,
+    ) -> QueryPlan:
+        intent = str(raw.get("intent") or fallback_plan.intent)
+        if intent not in self.VALID_INTENTS:
+            intent = fallback_plan.intent
+
+        memory_needed = self._as_bool(raw.get("memory_needed"), fallback_plan.memory_needed)
+        can_answer_directly = self._as_bool(
+            raw.get("can_answer_directly"),
+            fallback_plan.can_answer_directly,
+        )
+        answer_source = str(raw.get("answer_source") or fallback_plan.answer_source)
+        if answer_source not in {"direct_answer", "session_only", "memory_prefetch"}:
+            answer_source = fallback_plan.answer_source
+        if answer_source == "session_only":
+            memory_needed = False
+            can_answer_directly = True
+        elif answer_source == "memory_prefetch":
+            memory_needed = True
+        use_session_context = self._as_bool(
+            raw.get("use_session_context"),
+            fallback_plan.use_session_context,
+        )
+        weights = self._normalize_weights(raw.get("memory_weights"), memory_needed, fallback_plan)
+        rewrites = [
+            str(item).strip()
+            for item in raw.get("query_rewrites", [])
+            if str(item).strip()
+        ]
+        if query.strip() not in rewrites:
+            rewrites.insert(0, query.strip())
+        for rewrite in fallback_plan.query_rewrites:
+            if rewrite not in rewrites:
+                rewrites.append(rewrite)
+        filters = dict(raw.get("filters") or fallback_plan.filters or {})
+        if filters.get("project"):
+            filters["project"] = normalize_project_name(str(filters["project"]))
+        elif fallback_plan.filters.get("project"):
+            filters["project"] = fallback_plan.filters["project"]
+
+        return QueryPlan(
+            intent=intent,
+            can_answer_directly=can_answer_directly,
+            memory_needed=memory_needed,
+            answer_source=answer_source,
+            use_session_context=use_session_context,
+            memory_weights=weights,
+            query_rewrites=list(dict.fromkeys(rewrites)),
+            filters=filters,
+            reason=str(raw.get("reason") or fallback_plan.reason),
+        )
+
+    def _as_bool(self, value: Any, default: bool) -> bool:
+        if isinstance(value, bool):
+            return value
+        if isinstance(value, str):
+            lowered = value.strip().lower()
+            if lowered in {"true", "yes", "y", "1", "needed"}:
+                return True
+            if lowered in {"false", "no", "n", "0", "none"}:
+                return False
+        return default
+
+    def _normalize_weights(
+        self,
+        raw: Any,
+        memory_needed: bool,
+        fallback_plan: QueryPlan,
+    ) -> dict[str, float]:
+        if not memory_needed:
+            return {"stm": 0.0, "mtm": 0.0, "ltm": 0.0}
+        if not isinstance(raw, dict):
+            return fallback_plan.memory_weights
+        weights = {
+            tier: max(0.0, min(1.0, float(raw.get(tier, 0.0) or 0.0)))
+            for tier in ("stm", "mtm", "ltm")
+        }
+        total = sum(weights.values())
+        if total <= 0:
+            return fallback_plan.memory_weights
+        return {tier: round(value / total, 4) for tier, value in weights.items()}

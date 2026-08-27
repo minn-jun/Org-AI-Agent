@@ -7,7 +7,12 @@ from typing import Any
 class MockLLMClient:
     """Deterministic local model stub for testing the ReAct loop without an API key."""
 
-    def chat(self, messages: list[dict[str, Any]], tools: list[dict[str, Any]]) -> dict[str, Any]:
+    def chat(
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None = None,
+        **_: Any,
+    ) -> dict[str, Any]:
         user_query = self._last_user_query(messages)
         tool_results = self._tool_results(messages)
         runtime_context = self._runtime_context(messages)
@@ -16,6 +21,11 @@ class MockLLMClient:
         tried_tiers = {result.get("tier", "").lower() for result in tool_results}
 
         if not tool_results:
+            if query_plan.get("answer_source") == "session_only":
+                return {
+                    "role": "assistant",
+                    "content": self._session_answer(runtime_context),
+                }
             if not query_plan.get("memory_needed", True):
                 return {
                     "role": "assistant",
@@ -88,6 +98,21 @@ class MockLLMClient:
             except (IndexError, json.JSONDecodeError):
                 continue
         return {}
+
+    def _session_answer(self, runtime_context: dict[str, Any]) -> str:
+        turns = runtime_context.get("recent_session_turns", [])
+        if not turns:
+            return "현재 세션에서 요약할 이전 대화를 찾지 못했습니다."
+
+        lines = ["앞선 대화 요약입니다.", ""]
+        for turn in turns[-3:]:
+            user = str(turn.get("user", "")).strip()
+            answer = str(turn.get("answer_summary", "")).strip()
+            if user:
+                lines.append(f"- 질문: {user}")
+            if answer:
+                lines.append(f"  답변 요지: {answer[:220]}")
+        return "\n".join(lines)
 
     def _first_tier(self, query: str) -> str:
         if self._needs_comparison(query):
@@ -164,13 +189,13 @@ class MockLLMClient:
             unique_cards.append(card)
         cards = unique_cards
         if not cards:
-            return "확인 가능한 근거를 찾지 못했습니다. 현재 seed memory에는 해당 질문에 답할 자료가 부족합니다."
+            return "확인 가능한 근거를 찾지 못했습니다. 현재 자료만으로는 해당 질문에 답하기 어렵습니다."
 
-        lines = [f"질문에 대해 seed memory 근거를 확인했습니다: {query}", ""]
+        lines = ["확인한 내용입니다.", ""]
         for card in cards[:4]:
+            source = card.get("source_ref", {}).get("document_id", "")
             lines.append(
-                f"- [{card.get('tier')}] {card.get('title')}: {card.get('summary') or card.get('quote')}"
+                f"- {card.get('title')}: {card.get('summary') or card.get('quote')} "
+                f"(출처: {source})"
             )
-        lines.append("")
-        lines.append("출처: " + ", ".join(card.get("source_ref", {}).get("document_id", "") for card in cards[:4]))
         return "\n".join(lines)

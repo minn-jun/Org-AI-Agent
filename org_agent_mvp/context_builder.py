@@ -64,9 +64,20 @@ class ContextBuilder:
             "recent_session_turns": compact_turns,
             "prefetched_evidence": compact_cards,
         }
+        if plan.answer_source == "session_only":
+            guidance = (
+                "이번 질문은 최근 세션 맥락으로 답한다. prefetched_evidence가 비어 있으면 "
+                "recent_session_turns의 user와 answer_summary를 기준으로 요약하고, "
+                "조직 문서 근거가 필요해지는 경우에만 retrieve_memory를 호출한다."
+            )
+        else:
+            guidance = (
+                "위 컨텍스트는 이번 호출을 위해 선별된 자료다. 충분하면 바로 답하고, "
+                "부족하거나 더 구체적인 근거가 필요하면 retrieve_memory를 호출한다."
+            )
         return (
             "[RUNTIME_CONTEXT]\n"
             + json.dumps(payload, ensure_ascii=False, indent=2)
             + "\n[/RUNTIME_CONTEXT]\n"
-            "위 컨텍스트는 이번 호출을 위해 선별된 자료다. 충분하면 바로 답하고, 부족하거나 더 구체적인 근거가 필요하면 retrieve_memory를 호출한다."
+            + guidance
         )

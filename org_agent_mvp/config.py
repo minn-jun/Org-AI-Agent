@@ -27,6 +27,8 @@ class AppConfig:
     memory_root: Path
     api_key: str
     model: str
+    query_analyzer_model: str
+    agent_model: str
     base_url: str
     app_name: str
     site_url: str
@@ -39,13 +41,23 @@ class AppConfig:
     @classmethod
     def load(cls) -> "AppConfig":
         load_dotenv(PROJECT_ROOT / ".env")
+        agent_model = os.environ.get(
+            "AGENT_MODEL",
+            os.environ.get(
+                "OPENROUTER_MODEL",
+                "nvidia/nemotron-3-super-120b-a12b:free",
+            ),
+        ).strip()
         return cls(
             project_root=PROJECT_ROOT,
             memory_root=PROJECT_ROOT / "memory_seed",
             api_key=os.environ.get("OPENROUTER_API_KEY", "").strip(),
-            model=os.environ.get(
-                "OPENROUTER_MODEL", "google/gemma-4-31b-it:free"
+            model=agent_model,
+            query_analyzer_model=os.environ.get(
+                "QUERY_ANALYZER_MODEL",
+                "liquid/lfm-2.5-2.6b:free",
             ).strip(),
+            agent_model=agent_model,
             base_url=os.environ.get(
                 "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"
             ).rstrip("/"),

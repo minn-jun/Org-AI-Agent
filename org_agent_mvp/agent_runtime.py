@@ -348,9 +348,6 @@ class AgentRuntime:
                         "tokens": trace.tokens.to_dict(),
                         "context_mode": trace.context_mode,
                         "expansion_count": len(trace.expanded_ids),
-            "context_mode": trace.context_mode,
-            "expanded_ids": list(trace.expanded_ids),
-            "expansion_count": len(trace.expanded_ids),
                     },
                 )
                 result = {

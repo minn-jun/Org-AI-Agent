@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 from .agent_runtime import AgentRuntime
@@ -22,6 +23,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--save-log", action="store_true", help="Save full turn log as JSON.")
     parser.add_argument("--log-dir", type=Path, help="Directory for saved turn logs.")
     parser.add_argument("--session-id", help="Continue an existing saved session.")
+    parser.add_argument(
+        "--context-mode",
+        choices=["full", "summary", "hybrid"],
+        help="1차 컨텍스트에 원문을 얼마나 넣을지 (기본값은 .env의 CONTEXT_MODE).",
+    )
     return parser
 
 
@@ -30,7 +36,11 @@ def build_runtime(config: AppConfig, use_mock: bool) -> AgentRuntime:
     query_analyzer = (
         RuleBasedQueryAnalyzer()
         if use_mock
-        else LLMQueryAnalyzer(client, model=config.query_analyzer_model)
+        else LLMQueryAnalyzer(
+            client,
+            model=config.query_analyzer_model,
+            max_tokens=config.query_analyzer_max_tokens,
+        )
     )
     memory_store = MemoryStore(config.memory_root)
     return AgentRuntime(
@@ -55,7 +65,8 @@ def print_event(event: str, payload: dict) -> None:
         if analyzer:
             label = analyzer.get("type", "")
             model = analyzer.get("model", "")
-            print(f"           analyzer={label}" + (f" model={model}" if model else ""))
+            fb = " [규칙 fallback 사용]" if analyzer.get("fallback_used") else ""
+            print(f"           analyzer={label}" + (f" model={model}" if model else "") + fb)
         print(f"           reason={payload['reason']}")
         weights = payload["memory_weights"]
         print(
@@ -63,13 +74,14 @@ def print_event(event: str, payload: dict) -> None:
             f"STM {weights['stm']:.0%} / MTM {weights['mtm']:.0%} / LTM {weights['ltm']:.0%}"
         )
     elif event == "prefetch_start":
-        allocation = payload["allocations"]
-        if sum(allocation.values()) == 0:
+        priors = payload["tier_priors"]
+        pool = payload.get("pool_per_tier", 0)
+        if pool == 0:
             print("[prefetch] 메모리 검색 생략 (세션/직접 답변 흐름)")
             return
         print(
-            "[prefetch] 후보 검색 시작 "
-            f"(STM {allocation['stm']} / MTM {allocation['mtm']} / LTM {allocation['ltm']})"
+            f"[prefetch] 후보 검색 시작 (tier당 {pool}건 수집, prior "
+            f"STM {priors['stm']:.2f} / MTM {priors['mtm']:.2f} / LTM {priors['ltm']:.2f})"
         )
     elif event == "prefetch_end":
         if payload.get("result_count", 0) == 0 and payload.get("collected_count", 0) == 0:
@@ -85,12 +97,14 @@ def print_event(event: str, payload: dict) -> None:
         print(
             f"[prefetch] 수집 {payload.get('collected_count', payload['result_count'])}건 "
             f"→ 중복제거 {payload.get('deduped_count', payload['result_count'])}건 "
+            f"→ 컷 {payload.get('cut_threshold', 0)} 이상 "
             f"→ 컨텍스트 후보 {payload['result_count']}건"
         )
         for source in payload.get("sources", [])[:8]:
             print(
                 f"           [{source['tier']}] {source['document_id']} "
-                f"score={source['score']}"
+                f"raw={source.get('raw_score')} norm={source.get('normalized_score')} "
+                f"prior={source.get('tier_prior')} final={source.get('final_score')}"
             )
     elif event == "context_built":
         print(
@@ -107,6 +121,13 @@ def print_event(event: str, payload: dict) -> None:
             print(f"[llm #{payload['llm_call']}] tool_call {payload['tool_call_count']}개 요청")
         else:
             print(f"[llm #{payload['llm_call']}] 최종 답변 생성")
+        usage = payload.get("usage") or {}
+        if usage.get("total_tokens"):
+            mark = " (추정치)" if usage.get("estimated") else ""
+            print(
+                f"           tokens prompt={usage.get('prompt_tokens', 0)} "
+                f"completion={usage.get('completion_tokens', 0)}{mark}"
+            )
     elif event == "llm_decision":
         print(f"[reasoning #{payload['llm_call']}] decision={payload['decision']}")
     elif event == "tool_call_start":
@@ -123,10 +144,34 @@ def print_event(event: str, payload: dict) -> None:
             print(f"       source={source}")
         if payload.get("warning"):
             print(f"       warning={payload['warning']}")
+    elif event == "expand_start":
+        print(f"[expand] 원문 요청 {len(payload['evidence_ids'])}건 "
+              f"(보유 근거 {payload.get('available', 0)}건)")
+        if payload.get("reason"):
+            print(f"         reason={payload['reason']}")
+    elif event == "expand_end":
+        print(f"[expand] 원문 반환 {payload['expanded_count']}건")
+        for eid in payload.get("expanded_ids", [])[:5]:
+            print(f"         {eid}")
+        if payload.get("unknown_evidence_ids"):
+            print(f"         알 수 없는 id={payload['unknown_evidence_ids']}")
     elif event == "tool_limit_reached":
         print(f"[policy] tool call 제한 도달: {payload['max_tool_calls']}회")
     elif event == "final_answer":
         print(f"[final] 답변 준비 완료 (sources={payload['source_count']})")
+        if payload.get("expansion_count"):
+            print(f"[expand] 이번 턴 확장 {payload['expansion_count']}건")
+        tokens = payload.get("tokens") or {}
+        if tokens.get("total_tokens"):
+            mark = " (추정치)" if tokens.get("estimated") else ""
+            analyzer = tokens.get("analyzer", {}).get("total_tokens", 0)
+            agent = tokens.get("agent", {}).get("total_tokens", 0)
+            print(
+                f"[tokens] prompt={tokens.get('prompt_tokens', 0)} "
+                f"completion={tokens.get('completion_tokens', 0)} "
+                f"total={tokens.get('total_tokens', 0)} "
+                f"(analyzer {analyzer} / agent {agent}, llm_calls={tokens.get('llm_calls', 0)}){mark}"
+            )
     elif event == "loop_exhausted":
         print("[final] loop exhausted")
 
@@ -192,6 +237,8 @@ def main() -> int:
     args = parser.parse_args()
     config = AppConfig.load()
     try:
+        if args.context_mode:
+            config = replace(config, context_mode=args.context_mode)
         runtime = build_runtime(config, use_mock=args.mock)
     except ValueError as exc:
         print(str(exc))

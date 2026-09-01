@@ -27,7 +27,15 @@ class FakeAnalyzerClient:
         self.calls.append({"messages": messages, "tools": tools, **kwargs})
         if self.error:
             raise self.error
-        return {"role": "assistant", "content": self.content}
+        return {
+            "message": {"role": "assistant", "content": self.content},
+            "usage": {
+                "prompt_tokens": 120,
+                "completion_tokens": 30,
+                "total_tokens": 150,
+                "estimated": False,
+            },
+        }
 
 
 class QueryAnalyzerTests(unittest.TestCase):
@@ -135,6 +143,60 @@ class QueryAnalyzerTests(unittest.TestCase):
         self.assertAlmostEqual(sum(plan.memory_weights.values()), 1.0)
         self.assertEqual(client.calls[0]["model"], "small-model")
 
+    def test_llm_query_analyzer_keeps_search_when_model_skips_it(self) -> None:
+        """규칙은 검색이 필요하다는데 LLM만 session_only면 검색을 유지한다."""
+        client = FakeAnalyzerClient(
+            json.dumps(
+                {
+                    "intent": "session_context_answer",
+                    "can_answer_directly": True,
+                    "memory_needed": False,
+                    "answer_source": "session_only",
+                    "use_session_context": True,
+                    "memory_weights": {"stm": 0.0, "mtm": 0.0, "ltm": 0.0},
+                    "query_rewrites": ["A 과제 예산 산정 기준이 뭐야?"],
+                    "filters": {},
+                    "reason": "세션만으로 답변 가능",
+                },
+                ensure_ascii=False,
+            )
+        )
+
+        plan = LLMQueryAnalyzer(client, model="small-model").analyze(
+            "A 과제 예산 산정 기준이 뭐야?"
+        )
+
+        self.assertTrue(plan.memory_needed)
+        self.assertEqual(plan.answer_source, "memory_prefetch")
+        self.assertFalse(plan.can_answer_directly)
+        self.assertGreater(sum(plan.memory_weights.values()), 0)
+
+    def test_llm_query_analyzer_rejects_unknown_and_translated_filters(self) -> None:
+        """스키마 밖 필터는 버리고, 과제명은 규칙 기반 추출값을 지킨다."""
+        client = FakeAnalyzerClient(
+            json.dumps(
+                {
+                    "intent": "official_knowledge_lookup",
+                    "can_answer_directly": False,
+                    "memory_needed": True,
+                    "answer_source": "memory_prefetch",
+                    "use_session_context": False,
+                    "memory_weights": {"stm": 0.1, "mtm": 0.2, "ltm": 0.7},
+                    "query_rewrites": ["A 과제 공식 제출일"],
+                    "filters": {"project": "assignment_a", "type": "deadline"},
+                    "reason": "공식 기준 확인 필요",
+                },
+                ensure_ascii=False,
+            )
+        )
+
+        plan = LLMQueryAnalyzer(client, model="small-model").analyze(
+            "A 과제 공식 제출일 알려줘"
+        )
+
+        self.assertEqual(plan.filters["project"], "A 과제")
+        self.assertNotIn("type", plan.filters)
+
     def test_llm_query_analyzer_falls_back_on_error(self) -> None:
         client = FakeAnalyzerClient(error=RuntimeError("rate limited"))
 
@@ -151,9 +213,58 @@ class PrefetchTests(unittest.TestCase):
         store = MemoryStore(PROJECT_ROOT / "memory_seed")
         plan = RuleBasedQueryAnalyzer().analyze("A 과제 공식 일정과 최근 결정 비교")
         result = MemoryPrefetcher(store, total_top_k=8).prefetch(plan)
-        self.assertEqual(sum(result.allocations.values()), 8)
         self.assertLessEqual(len(result.cards), 8)
         self.assertTrue(result.cards)
+
+    def test_prefetch_uses_tier_prior_instead_of_quota(self) -> None:
+        """tier 가중치는 자리 수가 아니라 점수 배수로만 작용해야 한다."""
+        store = MemoryStore(PROJECT_ROOT / "memory_seed")
+        plan = RuleBasedQueryAnalyzer().analyze("A 과제 공식 일정과 최근 결정 비교")
+        result = MemoryPrefetcher(store, total_top_k=8, alpha=1.0).prefetch(plan)
+
+        self.assertEqual(result.tier_priors, plan.memory_weights)
+        for card in result.cards:
+            expected = round(
+                card["normalized_score"] * (1.0 + card["tier_prior"]), 4
+            )
+            self.assertAlmostEqual(card["final_score"], expected, places=3)
+        scores = [card["final_score"] for card in result.cards]
+        self.assertEqual(scores, sorted(scores, reverse=True))
+
+    def test_prefetch_cuts_by_relative_threshold(self) -> None:
+        """최고점 대비 비율 아래는 버리고, 최소 건수는 보장한다."""
+        store = MemoryStore(PROJECT_ROOT / "memory_seed")
+        plan = RuleBasedQueryAnalyzer().analyze("A 과제 공식 일정과 최근 결정 비교")
+        result = MemoryPrefetcher(
+            store, total_top_k=8, cut_ratio=0.9, min_cards=2
+        ).prefetch(plan)
+
+        self.assertGreaterEqual(len(result.cards), 2)
+        top = result.cards[0]["final_score"]
+        self.assertAlmostEqual(result.cut_threshold, round(top * 0.9, 4), places=3)
+
+    def test_prefetch_alpha_zero_ignores_tier(self) -> None:
+        """alpha=0이면 tier를 무시하고 관련성 순수 순위가 된다 (ablation arm)."""
+        store = MemoryStore(PROJECT_ROOT / "memory_seed")
+        plan = RuleBasedQueryAnalyzer().analyze("A 과제 공식 일정과 최근 결정 비교")
+        result = MemoryPrefetcher(store, total_top_k=8, alpha=0.0).prefetch(plan)
+
+        for card in result.cards:
+            self.assertAlmostEqual(
+                card["final_score"], card["normalized_score"], places=3
+            )
+
+    def test_prefetch_skips_search_when_memory_not_needed(self) -> None:
+        store = MemoryStore(PROJECT_ROOT / "memory_seed")
+        plan = RuleBasedQueryAnalyzer().analyze(
+            "아까 말한거 요약해줘",
+            [{"user_query": "A 과제 최근 회의 내용 알려줘"}],
+        )
+        result = MemoryPrefetcher(store, total_top_k=8).prefetch(plan)
+
+        self.assertFalse(plan.memory_needed)
+        self.assertEqual(result.cards, [])
+        self.assertEqual(result.pool_per_tier, 0)
 
     def test_prefetch_matches_normalized_project_name(self) -> None:
         store = MemoryStore(PROJECT_ROOT / "memory_seed")
@@ -161,9 +272,11 @@ class PrefetchTests(unittest.TestCase):
         result = MemoryPrefetcher(store, total_top_k=8).prefetch(plan)
 
         self.assertTrue(result.cards)
-        self.assertTrue(
-            all(card.get("project") == "A 과제" for card in result.cards)
-        )
+        # 공통 기준 문서는 어느 과제 질문에서든 후보가 된다.
+        # 막아야 하는 것은 "다른 과제"가 섞이는 경우다.
+        projects = {card.get("project") for card in result.cards}
+        self.assertIn("A 과제", projects)
+        self.assertTrue(projects <= {"A 과제", "공통"}, f"다른 과제가 섞였다: {projects}")
 
     def test_prefetch_follow_up_does_not_mix_other_project(self) -> None:
         store = MemoryStore(PROJECT_ROOT / "memory_seed")

@@ -13,11 +13,17 @@ from .memory_store import MemoryStore
 from .prefetch import MemoryPrefetcher
 from .prompts import SYSTEM_PROMPT
 from .query_analyzer import QueryAnalyzer, RuleBasedQueryAnalyzer
-from .schemas import RETRIEVE_MEMORY_TOOL
+from .schemas import EXPAND_EVIDENCE_TOOL, RETRIEVE_MEMORY_TOOL
 from .session_store import SessionStore
 
 
 class ChatClient(Protocol):
+    """chat()은 {"message": ..., "usage": ...} 형태를 돌려준다.
+
+    usage에는 prompt_tokens, completion_tokens, total_tokens, estimated가 들어간다.
+    mock 클라이언트는 문자 수 기반 근사값을 쓰므로 estimated=True로 표시한다.
+    """
+
     def chat(
         self,
         messages: list[dict[str, Any]],
@@ -30,6 +36,45 @@ class ChatClient(Protocol):
         ...
 
 
+def _empty_usage() -> dict[str, Any]:
+    return {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+
+
+@dataclass
+class TokenUsage:
+    """한 턴에서 쓴 토큰을 analyzer와 agent로 나눠 집계한다."""
+
+    analyzer: dict[str, Any] = field(default_factory=_empty_usage)
+    agent: dict[str, Any] = field(default_factory=_empty_usage)
+    analyzer_calls: int = 0
+    agent_calls: int = 0
+    estimated: bool = False
+
+    def add(self, bucket: str, usage: dict[str, Any] | None) -> None:
+        usage = usage or {}
+        target = getattr(self, bucket)
+        for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
+            target[key] += int(usage.get(key) or 0)
+        if usage.get("estimated"):
+            self.estimated = True
+
+    def to_dict(self) -> dict[str, Any]:
+        total = {
+            key: self.analyzer[key] + self.agent[key]
+            for key in ("prompt_tokens", "completion_tokens", "total_tokens")
+        }
+        return {
+            **total,
+            # analyzer 호출까지 포함한 턴 전체 LLM 호출 수
+            "llm_calls": self.analyzer_calls + self.agent_calls,
+            "analyzer_calls": self.analyzer_calls,
+            "agent_calls": self.agent_calls,
+            "analyzer": dict(self.analyzer),
+            "agent": dict(self.agent),
+            "estimated": self.estimated,
+        }
+
+
 @dataclass
 class AgentTrace:
     llm_calls: int = 0
@@ -40,6 +85,9 @@ class AgentTrace:
     session_id: str = ""
     query_analysis: dict[str, Any] = field(default_factory=dict)
     prefetch: dict[str, Any] = field(default_factory=dict)
+    tokens: TokenUsage = field(default_factory=TokenUsage)
+    expanded_ids: list[str] = field(default_factory=list)
+    context_mode: str = "full"
 
 
 @dataclass
@@ -97,9 +145,20 @@ class AgentRuntime:
         self.client = client
         self.memory_store = memory_store
         self.tools = [RETRIEVE_MEMORY_TOOL]
+        if config.context_mode != "full":
+            # full 모드는 원문을 이미 전부 넣으므로 확장할 것이 없다.
+            self.tools.append(EXPAND_EVIDENCE_TOOL)
         self.query_analyzer = query_analyzer or RuleBasedQueryAnalyzer()
-        self.prefetcher = MemoryPrefetcher(memory_store, total_top_k=config.prefetch_top_k)
-        self.context_builder = ContextBuilder()
+        self.prefetcher = MemoryPrefetcher(
+            memory_store,
+            total_top_k=config.prefetch_top_k,
+            alpha=config.tier_prior_alpha,
+            pool_per_tier=config.prefetch_pool_per_tier,
+            cut_ratio=config.prefetch_cut_ratio,
+            min_cards=config.prefetch_min_cards,
+            tier_floor=config.prefetch_tier_floor,
+        )
+        self.context_builder = ContextBuilder(context_mode=config.context_mode)
         self.session_store = SessionStore(
             config.project_root / "logs" / "sessions",
             cache_turns=config.session_cache_turns,
@@ -113,13 +172,17 @@ class AgentRuntime:
         session_id: str | None = None,
     ) -> dict[str, Any]:
         session = self.session_store.load_or_create(session_id)
-        recent_turns = list(session.get("turns", []))
+        # 저장본은 전체를 유지하고, 컨텍스트에는 최근 구간만 넘긴다.
+        recent_turns = self.session_store.recent(session)
         plan = self.query_analyzer.analyze(user_query, recent_turns)
         plan_payload = {
             **plan.to_dict(),
             "analyzer": {
                 "type": type(self.query_analyzer).__name__,
                 "model": getattr(self.query_analyzer, "model", ""),
+                "fallback_used": bool(
+                    getattr(self.query_analyzer, "last_fallback_used", False)
+                ),
             },
         }
         prefetch = self.prefetcher.prefetch(plan)
@@ -133,10 +196,13 @@ class AgentRuntime:
             session_id=session["session_id"],
             query_analysis=plan_payload,
             prefetch={
-                "allocations": prefetch.allocations,
+                "tier_priors": prefetch.tier_priors,
+                "pool_per_tier": prefetch.pool_per_tier,
                 "tier_result_counts": prefetch.tier_result_counts,
                 "collected_count": prefetch.collected_count,
                 "deduped_count": prefetch.deduped_count,
+                "max_raw_score": prefetch.max_raw_score,
+                "cut_threshold": prefetch.cut_threshold,
                 "result_count": len(prefetch.cards),
                 "sources": [
                     card.get("source_ref", {}).get("document_id", "")
@@ -144,6 +210,13 @@ class AgentRuntime:
                 ],
             },
         )
+        analyzer_usage = getattr(self.query_analyzer, "last_usage", {}) or {}
+        trace.tokens.add("analyzer", analyzer_usage)
+        # 규칙 기반 analyzer는 LLM을 호출하지 않으므로 0으로 남는다.
+        trace.tokens.analyzer_calls = 1 if analyzer_usage else 0
+        trace.context_mode = self.config.context_mode
+        # expand_evidence는 재검색이 아니라 이 색인을 조회한다.
+        evidence_index = {str(card["evidence_id"]): card for card in prefetch.cards}
         turn_logger = TurnLogger(log_dir) if log_dir else None
         seen_tier_queries: set[tuple[str, str]] = set()
 
@@ -162,7 +235,11 @@ class AgentRuntime:
             event_callback,
             turn_logger,
             "prefetch_start",
-            {"allocations": prefetch.allocations, "query": plan.query_rewrites[-1]},
+            {
+                "tier_priors": prefetch.tier_priors,
+                "pool_per_tier": prefetch.pool_per_tier,
+                "query": plan.query_rewrites[-1],
+            },
         )
         self._emit(
             event_callback,
@@ -173,11 +250,16 @@ class AgentRuntime:
                 "tier_result_counts": prefetch.tier_result_counts,
                 "collected_count": prefetch.collected_count,
                 "deduped_count": prefetch.deduped_count,
+                "max_raw_score": prefetch.max_raw_score,
+                "cut_threshold": prefetch.cut_threshold,
                 "sources": [
                     {
                         "tier": card.get("tier"),
                         "document_id": card.get("source_ref", {}).get("document_id", ""),
-                        "score": card.get("rerank_score"),
+                        "raw_score": card.get("retrieval_score"),
+                        "normalized_score": card.get("normalized_score"),
+                        "tier_prior": card.get("tier_prior"),
+                        "final_score": card.get("final_score"),
                     }
                     for card in prefetch.cards
                 ],
@@ -211,12 +293,16 @@ class AgentRuntime:
                     "message_roles": message_roles,
                 },
             )
-            assistant_message = self.client.chat(
+            chat_response = self.client.chat(
                 messages,
                 self.tools,
                 model=self.config.agent_model,
                 temperature=0.2,
             )
+            assistant_message = chat_response.get("message") or {}
+            call_usage = chat_response.get("usage") or {}
+            trace.tokens.add("agent", call_usage)
+            trace.tokens.agent_calls = trace.llm_calls
             tool_calls = assistant_message.get("tool_calls") or []
             decision_payload = self._build_decision_payload(
                 llm_call=trace.llm_calls,
@@ -245,6 +331,7 @@ class AgentRuntime:
                     "tool_call_count": len(tool_calls),
                     "content_preview": (assistant_message.get("content") or "")[:160],
                     "assistant_message": assistant_message,
+                    "usage": call_usage,
                 },
             )
 
@@ -258,6 +345,12 @@ class AgentRuntime:
                     {
                         "stopped_reason": trace.stopped_reason,
                         "source_count": len(trace.final_sources),
+                        "tokens": trace.tokens.to_dict(),
+                        "context_mode": trace.context_mode,
+                        "expansion_count": len(trace.expanded_ids),
+            "context_mode": trace.context_mode,
+            "expanded_ids": list(trace.expanded_ids),
+            "expansion_count": len(trace.expanded_ids),
                     },
                 )
                 result = {
@@ -272,7 +365,12 @@ class AgentRuntime:
             messages.append(assistant_message)
             for tool_call in tool_calls:
                 result_message = self._execute_tool_call(
-                    tool_call, seen_tier_queries, trace, event_callback, turn_logger
+                    tool_call,
+                    seen_tier_queries,
+                    evidence_index,
+                    trace,
+                    event_callback,
+                    turn_logger,
                 )
                 messages.append(result_message)
 
@@ -334,10 +432,118 @@ class AgentRuntime:
         result["session_id"] = session["session_id"]
         result["session_log_path"] = str(session_path)
 
+    def _execute_expand_evidence(
+        self,
+        tool_call: dict[str, Any],
+        evidence_index: dict[str, dict[str, Any]],
+        trace: AgentTrace,
+        event_callback: Callable[[str, dict[str, Any]], None] | None = None,
+        turn_logger: TurnLogger | None = None,
+    ) -> dict[str, Any]:
+        """이미 제시한 근거의 원문만 돌려준다. 새로 검색하지 않는다."""
+        tool_call_id = tool_call.get("id", "unknown_tool_call")
+        function = tool_call.get("function", {})
+        try:
+            args = json.loads(function.get("arguments") or "{}")
+        except json.JSONDecodeError as exc:
+            content = {"error": f"Invalid JSON arguments: {exc}"}
+            if turn_logger:
+                turn_logger.record_tool_execution(
+                    {
+                        "tool": "expand_evidence",
+                        "tool_call_id": tool_call_id,
+                        "status": "invalid_arguments",
+                        "error": content["error"],
+                    }
+                )
+            return {
+                "role": "tool",
+                "tool_call_id": tool_call_id,
+                "content": json.dumps(content, ensure_ascii=False),
+            }
+
+        requested = [str(item) for item in (args.get("evidence_ids") or [])]
+        reason = str(args.get("reason", ""))
+        self._emit(
+            event_callback,
+            turn_logger,
+            "expand_start",
+            {
+                "tool_call_id": tool_call_id,
+                "evidence_ids": requested,
+                "reason": reason,
+                "available": len(evidence_index),
+            },
+        )
+
+        expanded: list[dict[str, Any]] = []
+        unknown: list[str] = []
+        for evidence_id in requested:
+            card = evidence_index.get(evidence_id)
+            if card is None:
+                unknown.append(evidence_id)
+                continue
+            expanded.append(
+                {
+                    "evidence_id": evidence_id,
+                    "title": card.get("title"),
+                    "date": card.get("date"),
+                    "project": card.get("project"),
+                    "source_id": card.get("source_ref", {}).get("document_id", ""),
+                    "content": card.get("content_excerpt", ""),
+                }
+            )
+            if evidence_id not in trace.expanded_ids:
+                trace.expanded_ids.append(evidence_id)
+
+        result = {
+            "expanded": expanded,
+            "expanded_count": len(expanded),
+            "unknown_evidence_ids": unknown,
+        }
+        self._emit(
+            event_callback,
+            turn_logger,
+            "expand_end",
+            {
+                "tool_call_id": tool_call_id,
+                "expanded_count": len(expanded),
+                "expanded_ids": [item["evidence_id"] for item in expanded],
+                "unknown_evidence_ids": unknown,
+            },
+        )
+        if turn_logger:
+            turn_logger.record_tool_execution(
+                {
+                    "tool": "expand_evidence",
+                    "tool_call_id": tool_call_id,
+                    "status": "completed",
+                    "evidence_ids": requested,
+                    "expanded_count": len(expanded),
+                    "unknown_evidence_ids": unknown,
+                    "reason": reason,
+                }
+            )
+        trace.tool_calls.append(
+            {
+                "tool": "expand_evidence",
+                "evidence_ids": requested,
+                "reason": reason,
+                "result_count": len(expanded),
+            }
+        )
+        return {
+            "role": "tool",
+            "tool_call_id": tool_call_id,
+            "name": "expand_evidence",
+            "content": json.dumps(result, ensure_ascii=False),
+        }
+
     def _execute_tool_call(
         self,
         tool_call: dict[str, Any],
         seen_tier_queries: set[tuple[str, str]],
+        evidence_index: dict[str, dict[str, Any]],
         trace: AgentTrace,
         event_callback: Callable[[str, dict[str, Any]], None] | None = None,
         turn_logger: TurnLogger | None = None,
@@ -345,6 +551,10 @@ class AgentRuntime:
         function = tool_call.get("function", {})
         name = function.get("name")
         tool_call_id = tool_call.get("id", "unknown_tool_call")
+        if name == "expand_evidence":
+            return self._execute_expand_evidence(
+                tool_call, evidence_index, trace, event_callback, turn_logger
+            )
         if name != "retrieve_memory":
             content = {"error": f"Unsupported tool: {name}"}
             if turn_logger:
@@ -474,6 +684,10 @@ class AgentRuntime:
             "query_analysis": trace.query_analysis,
             "prefetch": trace.prefetch,
             "llm_calls": trace.llm_calls,
+            "tokens": trace.tokens.to_dict(),
+            "context_mode": trace.context_mode,
+            "expanded_ids": list(trace.expanded_ids),
+            "expansion_count": len(trace.expanded_ids),
             "reasoning_steps": trace.reasoning_steps,
             "tool_calls": trace.tool_calls,
             "final_sources": trace.final_sources,
@@ -563,6 +777,7 @@ class AgentRuntime:
                     "llm_calls": result["trace"]["llm_calls"],
                     "tool_call_count": len(result["trace"]["tool_calls"]),
                     "source_count": len(result["trace"]["final_sources"]),
+                    "tokens": result["trace"]["tokens"],
                 },
                 "reasoning_steps": turn_logger.reasoning_steps,
                 "tool_executions": turn_logger.tool_executions,

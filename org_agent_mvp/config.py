@@ -26,17 +26,24 @@ class AppConfig:
     project_root: Path
     memory_root: Path
     api_key: str
-    model: str
     query_analyzer_model: str
     agent_model: str
     base_url: str
     app_name: str
     site_url: str
     max_tool_calls: int = 3
-    max_same_tier_calls: int = 1
     default_top_k: int = 5
     prefetch_top_k: int = 8
     session_cache_turns: int = 8
+    # A방식: tier 가중치를 검색 자리 수가 아니라 점수 prior로 사용한다.
+    tier_prior_alpha: float = 1.0
+    prefetch_pool_per_tier: int = 20
+    prefetch_cut_ratio: float = 0.3
+    prefetch_min_cards: int = 1
+    prefetch_tier_floor: int = 1
+    query_analyzer_max_tokens: int = 4096
+    # B방식: 1차 컨텍스트에 원문을 얼마나 넣을지 (full | summary | hybrid)
+    context_mode: str = "full"
 
     @classmethod
     def load(cls) -> "AppConfig":
@@ -52,7 +59,6 @@ class AppConfig:
             project_root=PROJECT_ROOT,
             memory_root=PROJECT_ROOT / "memory_seed",
             api_key=os.environ.get("OPENROUTER_API_KEY", "").strip(),
-            model=agent_model,
             query_analyzer_model=os.environ.get(
                 "QUERY_ANALYZER_MODEL",
                 "liquid/lfm-2.5-2.6b:free",
@@ -65,4 +71,13 @@ class AppConfig:
             site_url=os.environ.get("OPENROUTER_SITE_URL", "http://localhost"),
             prefetch_top_k=int(os.environ.get("PREFETCH_TOP_K", "8")),
             session_cache_turns=int(os.environ.get("SESSION_CACHE_TURNS", "8")),
+            tier_prior_alpha=float(os.environ.get("TIER_PRIOR_ALPHA", "1.0")),
+            prefetch_pool_per_tier=int(os.environ.get("PREFETCH_POOL_PER_TIER", "20")),
+            prefetch_cut_ratio=float(os.environ.get("PREFETCH_CUT_RATIO", "0.3")),
+            prefetch_min_cards=int(os.environ.get("PREFETCH_MIN_CARDS", "1")),
+            prefetch_tier_floor=int(os.environ.get("PREFETCH_TIER_FLOOR", "1")),
+            query_analyzer_max_tokens=int(
+                os.environ.get("QUERY_ANALYZER_MAX_TOKENS", "4096")
+            ),
+            context_mode=os.environ.get("CONTEXT_MODE", "full").strip().lower(),
         )

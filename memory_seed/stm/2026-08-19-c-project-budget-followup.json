@@ -1,0 +1,21 @@
+{
+  "memory_tier": "stm",
+  "source_type": "action_items",
+  "project": "C 과제",
+  "title": "2026-08-19 C 과제 예산 후속 조치",
+  "date": "2026-08-19",
+  "permission_scope": "project_team",
+  "summary": "C 과제 예산 관련 후속 조치로 윤책임이 기존 단가표와 최근 공고 기준을 비교하고, 김대리가 외부 자문비 산정 근거를 정리하기로 했다.",
+  "action_items": [
+    {
+      "owner": "윤책임",
+      "task": "기존 단가표와 최근 공고 기준 비교",
+      "due": "2026-08-20"
+    },
+    {
+      "owner": "김대리",
+      "task": "외부 자문비 산정 근거 정리",
+      "due": "2026-08-21"
+    }
+  ]
+}

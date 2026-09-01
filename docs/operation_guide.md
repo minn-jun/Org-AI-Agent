@@ -133,15 +133,22 @@ flowchart LR
 - 지원 필터: `project`, `source_type`, `status`, `document_types`
 - 점수 보정:
   - 제목과 과제명에 query 토큰이 있으면 가산
-  - `오늘`, `아까`, `최근` 계열 질문은 최신 문서 가산
-  - `공식`, `최종`, `기준` 계열 질문은 LTM 문서 가산
+  - `오늘`, `아까`, `최근` 계열 질문은 문서 날짜 기준 최신 문서 가산
+  - 계층 자체에 주는 보정은 없다. 계층 선호는 prefetch의 prior에서만 적용한다
 - 반환 형태: evidence card
 
-evidence card에는 `tier`, `title`, `date`, `project`, `summary`, `quote`, `content_excerpt`, `source_ref`, `confidence`, `retrieval_score`가 포함된다.
+evidence card에는 `evidence_id`, `tier`, `title`, `date`, `project`, `summary`, `quote`,
+`content_excerpt`, `source_ref`, `retrieval_score`가 포함된다.
+prefetch를 거치면 `normalized_score`, `tier_prior`, `final_score`가 추가된다.
+
+`confidence`는 제거했다. 캘리브레이션 근거가 없는 임의 상수에서 나온 값이라
+모델이 신뢰도로 오해할 소지가 있었다.
 
 ## Prefetch와 Tool Call
 
-모든 메모리 질문은 먼저 prefetch를 수행한다. `PREFETCH_TOP_K` 값만큼 후보를 뽑고, 질문 분석에서 계산한 tier 비율에 따라 STM, MTM, LTM별 검색 개수를 배분한다.
+모든 메모리 질문은 먼저 prefetch를 수행한다. 계층별로 `PREFETCH_POOL_PER_TIER`만큼 넓게 모은 뒤,
+정규화한 관련성 점수에 계층 prior를 곱해 한 번에 순위를 매기고 상대 임계값으로 자른다.
+최종 건수는 `PREFETCH_TOP_K` 이하에서 가변이다.
 
 LLM에는 prefetch 결과가 먼저 들어간다. 모델이 이 근거만으로 부족하다고 판단하면 `retrieve_memory` tool을 호출한다.
 

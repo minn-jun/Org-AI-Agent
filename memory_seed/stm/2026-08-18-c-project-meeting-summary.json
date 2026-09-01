@@ -1,0 +1,13 @@
+{
+  "memory_tier": "stm",
+  "source_type": "meeting_summary",
+  "project": "C 과제",
+  "title": "2026-08-18 C 과제 회의 요약",
+  "date": "2026-08-18",
+  "permission_scope": "project_team",
+  "summary": "오늘 회의에서 C 과제 제안서 초안 검토 기한을 2026-08-21로 정했다. 오연구원이 제안서 초안 수정, 윤책임이 예산 산정 근거 확인을 맡기로 했다.",
+  "decisions": [
+    "제안서 초안 검토 기한 2026-08-21",
+    "담당자 오연구원, 윤책임"
+  ]
+}

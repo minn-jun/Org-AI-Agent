@@ -22,12 +22,15 @@ class OpenRouterClient:
         model: str | None = None,
         temperature: float = 0.2,
         response_format: dict[str, Any] | None = None,
+        max_tokens: int | None = None,
     ) -> dict[str, Any]:
         payload = {
             "model": model or self.config.agent_model,
             "messages": messages,
             "temperature": temperature,
         }
+        if max_tokens:
+            payload["max_tokens"] = int(max_tokens)
         if tools:
             payload["tools"] = tools
             payload["tool_choice"] = "auto"
@@ -64,5 +67,14 @@ class OpenRouterClient:
         if not isinstance(message, dict):
             preview = json.dumps(choices[0], ensure_ascii=False)[:1000]
             raise RuntimeError(f"OpenRouter response missing message: {preview}")
-        return message
+        usage = data.get("usage") if isinstance(data.get("usage"), dict) else {}
+        return {
+            "message": message,
+            "usage": {
+                "prompt_tokens": int(usage.get("prompt_tokens") or 0),
+                "completion_tokens": int(usage.get("completion_tokens") or 0),
+                "total_tokens": int(usage.get("total_tokens") or 0),
+                "estimated": False,
+            },
+        }
 

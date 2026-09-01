@@ -42,18 +42,39 @@ class OpenRouterClientTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "missing choices"):
                 client.chat([{"role": "user", "content": "hello"}], [])
 
-    def test_returns_message_from_valid_response(self) -> None:
+    def test_returns_message_and_usage_from_valid_response(self) -> None:
         config = replace(AppConfig.load(), api_key="test-key")
         client = OpenRouterClient(config)
         body = (
-            b'{"choices":[{"message":{"role":"assistant","content":"ok"}}]}'
+            b'{"choices":[{"message":{"role":"assistant","content":"ok"}}],'
+            b'"usage":{"prompt_tokens":120,"completion_tokens":30,"total_tokens":150}}'
         )
 
         with patch("urllib.request.urlopen", return_value=FakeResponse(body)):
             self.assertEqual(
                 client.chat([{"role": "user", "content": "hello"}], []),
-                {"role": "assistant", "content": "ok"},
+                {
+                    "message": {"role": "assistant", "content": "ok"},
+                    "usage": {
+                        "prompt_tokens": 120,
+                        "completion_tokens": 30,
+                        "total_tokens": 150,
+                        "estimated": False,
+                    },
+                },
             )
+
+    def test_usage_defaults_to_zero_when_missing(self) -> None:
+        config = replace(AppConfig.load(), api_key="test-key")
+        client = OpenRouterClient(config)
+        body = b'{"choices":[{"message":{"role":"assistant","content":"ok"}}]}'
+
+        with patch("urllib.request.urlopen", return_value=FakeResponse(body)):
+            response = client.chat([{"role": "user", "content": "hello"}], [])
+
+        self.assertEqual(response["message"]["content"], "ok")
+        self.assertEqual(response["usage"]["total_tokens"], 0)
+        self.assertFalse(response["usage"]["estimated"])
 
 
 if __name__ == "__main__":

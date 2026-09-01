@@ -106,7 +106,11 @@ class RuleBasedQueryAnalyzer:
         if is_session_summary:
             can_answer_directly = True
         elif not memory_needed and not can_answer_directly:
-            can_answer_directly = True
+            # 신호가 하나도 없으면 검색 쪽으로 기운다.
+            # 불필요한 검색은 토큰을 더 쓸 뿐이지만, 필요한 검색을 건너뛰면
+            # 근거 없이 답하게 되어 실패 방향이 훨씬 나쁘다.
+            # 일반 개념 질문은 위의 DIRECT_MARKERS에서 이미 걸러진다.
+            memory_needed = True
 
         previous_query = str(recent_turns[-1].get("user_query", "")) if recent_turns else ""
         should_inherit_project = bool(recent_turns) and memory_needed
@@ -151,16 +155,14 @@ class RuleBasedQueryAnalyzer:
             reason = "조직 메모리 검색 없이 답변 가능한 일반 질문"
             answer_source = "direct_answer"
 
+        # query_rewrites에는 tier 선호 신호를 넣지 않는다.
+        # "공식 최종 승인" 같은 단어를 검색 쿼리에 주입하면 제목에 그 단어가 있는 문서가
+        # 주제 관련성과 무관하게 상위로 올라온다. tier 선호는 memory_weights(prior)
+        # 한 곳에서만 적용한다.
         rewrites = [text]
         if refers_to_session and previous_query:
             project_context = f" 프로젝트: {filters['project']}" if "project" in filters else ""
             rewrites.append(f"이전 질문: {previous_query}{project_context} 후속 질문: {text}")
-        if is_recent:
-            rewrites.append(f"{text} 최신 결정 일정 담당자")
-        if is_comparison:
-            rewrites.append(f"{text} 최근 변경 공식 승인 기준")
-        if is_ltm:
-            rewrites.append(f"{text} 공식 최종 승인 문서")
 
         return QueryPlan(
             intent=intent,
@@ -267,18 +269,26 @@ class LLMQueryAnalyzer:
         client: Any,
         model: str,
         fallback: RuleBasedQueryAnalyzer | None = None,
+        max_tokens: int = 4096,
     ):
         self.client = client
         self.model = model
         self.fallback = fallback or RuleBasedQueryAnalyzer()
+        self.max_tokens = max_tokens
+        self.last_usage: dict[str, Any] = {}
+        self.last_fallback_used: bool = False
 
     def analyze(self, query: str, recent_turns: list[dict[str, Any]] | None = None) -> QueryPlan:
         recent_turns = recent_turns or []
+        self.last_usage = {}
+        self.last_fallback_used = False
         fallback_plan = self.fallback.analyze(query, recent_turns)
         try:
-            raw_plan = self._call_llm(query, recent_turns, fallback_plan)
+            raw_plan = self._call_llm(query, recent_turns)
             return self._normalize_plan(raw_plan, query, fallback_plan)
         except Exception as exc:
+            # 평가할 때 이 턴은 LLM analyzer 결과가 아니므로 분리해서 봐야 한다.
+            self.last_fallback_used = True
             return QueryPlan(
                 **{
                     **fallback_plan.to_dict(),
@@ -290,7 +300,6 @@ class LLMQueryAnalyzer:
         self,
         query: str,
         recent_turns: list[dict[str, Any]],
-        fallback_plan: QueryPlan,
     ) -> dict[str, Any]:
         compact_turns = [
             {
@@ -332,21 +341,30 @@ class LLMQueryAnalyzer:
                             "공식/최종/기준/정책 질문이면 LTM 비중을 높임",
                             "비교/충돌/차이 질문이면 관련 tier를 함께 검색",
                             "query_rewrites에는 원 질문을 첫 항목으로 포함",
+                            "query_rewrites에 공식/최종/최신 같은 tier 신호어를 덧붙이지 않는다",
                             "filters.project가 있으면 표준 띄어쓰기 형태로 포함",
                         ],
-                        "fallback_reference": fallback_plan.to_dict(),
+                        # 규칙 기반 결과를 프롬프트에 넣지 않는다.
+                        # 완성된 정답을 참고자료로 주면 작은 모델은 그대로 복사하고,
+                        # analyzer는 비용만 쓰는 메아리가 된다.
+                        # fallback은 _normalize_plan의 안전망으로만 쓴다.
                     },
                     ensure_ascii=False,
                 ),
             },
         ]
-        message = self.client.chat(
+        response = self.client.chat(
             messages,
             [],
             model=self.model,
             temperature=0.0,
             response_format=self.RESPONSE_FORMAT,
+            # 상한이 없으면 작은 모델이 상한까지 토큰을 뱉는 경우가 있다.
+            # 잘려서 JSON 파싱이 실패하면 규칙 기반 fallback으로 안전하게 넘어간다.
+            max_tokens=self.max_tokens,
         )
+        message = response.get("message") or {}
+        self.last_usage = response.get("usage") or {}
         content = str(message.get("content") or "").strip()
         return self._loads_json_object(content)
 
@@ -386,6 +404,14 @@ class LLMQueryAnalyzer:
             can_answer_directly = True
         elif answer_source == "memory_prefetch":
             memory_needed = True
+        # LLM 오판 방어.
+        # 규칙 기반은 검색이 필요하다고 보는데 LLM만 불필요라고 하면 검색을 유지한다.
+        # 불필요한 검색은 토큰을 더 쓸 뿐이지만, 필요한 검색을 건너뛰면
+        # 근거 없이 "정보가 없다"고 답하게 되어 실패 방향이 훨씬 나쁘다.
+        if fallback_plan.memory_needed and not memory_needed:
+            memory_needed = True
+            answer_source = "memory_prefetch"
+            can_answer_directly = False
         use_session_context = self._as_bool(
             raw.get("use_session_context"),
             fallback_plan.use_session_context,
@@ -401,11 +427,7 @@ class LLMQueryAnalyzer:
         for rewrite in fallback_plan.query_rewrites:
             if rewrite not in rewrites:
                 rewrites.append(rewrite)
-        filters = dict(raw.get("filters") or fallback_plan.filters or {})
-        if filters.get("project"):
-            filters["project"] = normalize_project_name(str(filters["project"]))
-        elif fallback_plan.filters.get("project"):
-            filters["project"] = fallback_plan.filters["project"]
+        filters = self._safe_filters(raw.get("filters"), fallback_plan)
 
         return QueryPlan(
             intent=intent,
@@ -418,6 +440,36 @@ class LLMQueryAnalyzer:
             filters=filters,
             reason=str(raw.get("reason") or fallback_plan.reason),
         )
+
+    #: MemoryStore._matches_filters가 실제로 해석하는 키만 통과시킨다.
+    ALLOWED_FILTER_KEYS = {
+        "project",
+        "source_type",
+        "status",
+        "document_types",
+        "date_range",
+    }
+
+    def _safe_filters(
+        self,
+        raw_filters: Any,
+        fallback_plan: QueryPlan,
+    ) -> dict[str, Any]:
+        source = raw_filters if isinstance(raw_filters, dict) else {}
+        filters = {
+            key: value
+            for key, value in source.items()
+            if key in self.ALLOWED_FILTER_KEYS and value
+        }
+        fallback_project = fallback_plan.filters.get("project")
+        if fallback_project:
+            # 규칙 기반 추출은 정규식과 표기 정규화라 결정적이다.
+            # 작은 모델이 과제명을 영어로 번역하거나 임의로 바꾸는 경우가 있는데,
+            # project는 하드 필터라 값이 틀어지면 후보가 0건이 된다.
+            filters["project"] = fallback_project
+        elif filters.get("project"):
+            filters["project"] = normalize_project_name(str(filters["project"]))
+        return filters
 
     def _as_bool(self, value: Any, default: bool) -> bool:
         if isinstance(value, bool):

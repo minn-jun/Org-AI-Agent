@@ -7,7 +7,37 @@ from typing import Any
 class MockLLMClient:
     """Deterministic local model stub for testing the ReAct loop without an API key."""
 
+    #: 한국어 혼합 텍스트 기준 대략치. 실제 토크나이저 값이 아니므로 비교 실험에는 쓰지 않는다.
+    CHARS_PER_TOKEN = 2
+
     def chat(
+        self,
+        messages: list[dict[str, Any]],
+        tools: list[dict[str, Any]] | None = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        message = self._respond(messages, tools, **kwargs)
+        return {"message": message, "usage": self._estimate_usage(messages, message)}
+
+    def _estimate_usage(
+        self,
+        messages: list[dict[str, Any]],
+        message: dict[str, Any],
+    ) -> dict[str, Any]:
+        prompt_chars = sum(len(str(item.get("content") or "")) for item in messages)
+        completion_chars = len(str(message.get("content") or ""))
+        for tool_call in message.get("tool_calls") or []:
+            completion_chars += len(json.dumps(tool_call, ensure_ascii=False))
+        prompt_tokens = prompt_chars // self.CHARS_PER_TOKEN
+        completion_tokens = completion_chars // self.CHARS_PER_TOKEN
+        return {
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": prompt_tokens + completion_tokens,
+            "estimated": True,
+        }
+
+    def _respond(
         self,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]] | None = None,
@@ -19,6 +49,25 @@ class MockLLMClient:
         prefetch_cards = runtime_context.get("prefetched_evidence", [])
         query_plan = runtime_context.get("query_plan", {})
         tried_tiers = {result.get("tier", "").lower() for result in tool_results}
+
+        # B방식 경로. 요약만 받은 근거가 있으면 상위 2건의 원문을 요청한다.
+        already_expanded = any("expanded" in result for result in tool_results)
+        if already_expanded:
+            return {
+                "role": "assistant",
+                "content": self._final_answer(user_query, tool_results, prefetch_cards),
+            }
+        if not tool_results:
+            pending = [
+                str(card.get("evidence_id"))
+                for card in prefetch_cards
+                if card.get("body_available") and card.get("evidence_id")
+            ]
+            if pending:
+                return self._expand_call(
+                    pending[:2],
+                    f"요약만 제공된 근거 {len(pending)}건 중 상위 2건의 원문 확인",
+                )
 
         if not tool_results:
             if query_plan.get("answer_source") == "session_only":
@@ -157,6 +206,23 @@ class MockLLMClient:
                     "type": "function",
                     "function": {
                         "name": "retrieve_memory",
+                        "arguments": json.dumps(arguments, ensure_ascii=False),
+                    },
+                }
+            ],
+        }
+
+    def _expand_call(self, evidence_ids: list[str], reason: str) -> dict[str, Any]:
+        arguments = {"evidence_ids": evidence_ids, "reason": reason}
+        return {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [
+                {
+                    "id": "mock_call_expand",
+                    "type": "function",
+                    "function": {
+                        "name": "expand_evidence",
                         "arguments": json.dumps(arguments, ensure_ascii=False),
                     },
                 }

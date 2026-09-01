@@ -1,8 +1,13 @@
 # 코드 기준 동작 흐름
 
-갱신일: 2026-08-27
+갱신일: 2026-09-01
 
-이 문서는 현재 `org_agent_mvp` 코드가 어떤 책임 분리로 동작하는지 설명한다. 함수 내부의 모든 분기보다, 나중에 수정할 때 어느 파일을 보면 되는지에 초점을 둔다.
+이 문서는 `org_agent_mvp` 코드가 어떤 책임 분리로 동작하는지 설명한다.
+함수 내부의 모든 분기보다, 나중에 수정할 때 어느 파일을 보면 되는지에 초점을 둔다.
+
+수치의 값과 근거는 [`parameters-and-rationale.md`](parameters-and-rationale.md)에 따로 있다.
+
+---
 
 ## 호출 흐름 요약
 
@@ -10,211 +15,254 @@
 org_agent_mvp/__main__.py
 │
 ├─ main()
-│  ├─ CLI 인자 파싱
+│  ├─ CLI 인자 파싱 (--mock, --context-mode, --session-id, --save-log)
 │  ├─ AppConfig.load()
 │  ├─ build_runtime()
 │  └─ ask_once() 또는 interactive()
 │
 └─ AgentRuntime.run()
-   ├─ SessionStore.load_or_create()
-   ├─ LLMQueryAnalyzer.analyze() 또는 RuleBasedQueryAnalyzer.analyze()
+   ├─ SessionStore.load_or_create()   전체 기록 로드
+   ├─ SessionStore.recent()           컨텍스트용으로 최근 N턴만 잘라냄
+   ├─ QueryAnalyzer.analyze()
    ├─ MemoryPrefetcher.prefetch()
    ├─ ContextBuilder.build()
-   ├─ LLM client.chat()
-   ├─ _execute_tool_call() 반복
+   ├─ [반복] client.chat()
+   │     ├─ _execute_tool_call()        retrieve_memory
+   │     └─ _execute_expand_evidence()  expand_evidence
    ├─ _save_session_turn()
    └─ _write_turn_log()
 ```
+
+---
 
 ## 주요 파일 역할
 
 | 파일 | 핵심 역할 |
 |---|---|
-| `org_agent_mvp/__main__.py` | CLI 진입점, 대화형 모드, verbose 출력 |
-| `org_agent_mvp/config.py` | `.env`와 기본 설정 로드 |
-| `org_agent_mvp/agent_runtime.py` | 한 턴의 전체 실행 흐름 제어 |
-| `org_agent_mvp/query_analyzer.py` | LLM 기반 질문 의도 분석, tier 비율, 검색 필터 결정, fallback |
-| `org_agent_mvp/prefetch.py` | LLM 호출 전 메모리 후보 사전 검색 |
-| `org_agent_mvp/context_builder.py` | 세션 요약과 근거를 `[RUNTIME_CONTEXT]`로 압축 |
-| `org_agent_mvp/memory_store.py` | seed memory 로드, 필터링, 점수 계산, evidence card 생성 |
-| `org_agent_mvp/normalization.py` | 과제명 표기 정규화 |
-| `org_agent_mvp/session_store.py` | 세션 파일 생성, 로드, 최근 턴 저장 |
-| `org_agent_mvp/openrouter_client.py` | OpenRouter API 호출과 오류 처리 |
-| `org_agent_mvp/mock_llm.py` | API 없이 흐름을 재현하는 mock LLM |
-| `org_agent_mvp/schemas.py` | `retrieve_memory` tool schema |
-| `org_agent_mvp/prompts.py` | 시스템 프롬프트 |
+| `__main__.py` | CLI 진입점, 대화형 모드, verbose 출력 |
+| `config.py` | `.env`와 기본 설정 로드 |
+| `agent_runtime.py` | 한 턴의 전체 실행 흐름, 도구 실행, 토큰 집계 |
+| `query_analyzer.py` | 질문 의도 분석, 계층 가중치, 필터 추출, LLM 방어 |
+| `prefetch.py` | 근거 선별 (수집, 정규화, 계층 prior, 상대 컷) |
+| `context_builder.py` | `[RUNTIME_CONTEXT]` 조립, 컨텍스트 모드 3종 |
+| `memory_store.py` | seed 로드, 필터링, 점수 계산, 근거 카드 생성 |
+| `session_store.py` | 세션 파일 생성, 로드, 턴 누적 |
+| `normalization.py` | 과제명 표기 정규화 |
+| `openrouter_client.py` | OpenRouter API 호출, `usage` 수집, 오류 처리 |
+| `mock_llm.py` | API 없이 흐름을 재현하는 mock |
+| `schemas.py` | `retrieve_memory`, `expand_evidence` 도구 스키마 |
+| `prompts.py` | 시스템 프롬프트 |
 
-## 한 턴 실행 상세
+---
 
-### 1. CLI 진입
+## 1. CLI 진입
 
-`__main__.py`의 `main()`이 실행 시작점이다.
+`__main__.py`의 `main()`이 시작점이다.
 
-- `--question`이 있으면 한 번만 질문
-- `--question`이 없으면 대화형 세션 시작
-- `--mock`이면 `MockLLMClient` 사용
-- `--mock`이 없으면 `OpenRouterClient` 사용
-- `--verbose`면 실행 이벤트를 터미널에 출력
-- `--save-log`면 상세 턴 로그 저장
-
-`build_runtime()`은 config, LLM client, memory store를 묶어 `AgentRuntime`을 만든다.
-
-### 2. 세션 로드
-
-`AgentRuntime.run()`은 먼저 `SessionStore.load_or_create()`를 호출한다.
-
-기존 `--session-id`가 있으면 해당 세션을 읽고, 없으면 새 세션을 만든다. 세션에는 최근 질문과 답변 요약만 저장되며 전체 문서 원문은 누적하지 않는다.
-
-### 3. 질문 분석
-
-실제 OpenRouter 실행에서는 `LLMQueryAnalyzer.analyze()`가 사용자 질문과 최근 세션 턴을 받아 작은 모델에 분석을 요청한다. `--mock` 실행에서는 API 없이 재현할 수 있도록 `RuleBasedQueryAnalyzer.analyze()`를 사용한다.
-
-`QueryPlan`에는 다음 값이 들어간다.
-
-- `intent`
-- `can_answer_directly`
-- `memory_needed`
-- `answer_source`
-- `use_session_context`
-- `memory_weights`
-- `query_rewrites`
-- `filters`
-- `reason`
-
-LLM 분석기는 JSON schema 기반 응답을 요청하고, 응답을 `QueryPlan`으로 정규화한다. 모델 호출 실패나 JSON 파싱 실패가 생기면 규칙 기반 분석 결과로 fallback한다.
-
-`answer_source`는 이번 질문의 첫 처리 방향을 나타낸다.
-
-| 값 | 의미 |
+| 인자 | 동작 |
 |---|---|
-| `direct_answer` | 조직 문서 검색 없이 일반 답변 가능 |
-| `session_only` | 최근 세션 대화 요약만으로 답변 가능 |
-| `memory_prefetch` | 조직 메모리 검색 필요 |
+| `--question` | 한 번만 질문. 없으면 대화형 세션 |
+| `--mock` | `MockLLMClient` + `RuleBasedQueryAnalyzer` |
+| (없음) | `OpenRouterClient` + `LLMQueryAnalyzer` |
+| `--context-mode` | `full` / `summary` / `hybrid` (기본은 `.env`) |
+| `--verbose` | 실행 이벤트 출력 |
+| `--save-log` | 턴 로그 저장 |
 
-예를 들어 “아까 말한거 요약해줘”는 `session_context_answer`, `answer_source=session_only`, `memory_needed=false`로 처리된다. 반면 “아까 말한 일정의 담당자는?”처럼 실제 업무 사실이나 근거가 필요한 질문은 세션을 참고하되 `memory_prefetch`로 이동한다.
+`build_runtime()`이 config, 클라이언트, memory store를 묶어 `AgentRuntime`을 만든다.
+이때 **컨텍스트 모드에 따라 도구 목록이 달라진다.**
 
-여기서 `filters.project`는 `normalize_project_name()`을 거친다. 그래서 `A과제`, `A 과제`, `A-과제`를 같은 프로젝트로 다룰 수 있다.
-
-### 4. Prefetch
-
-`MemoryPrefetcher.prefetch()`는 `QueryPlan.memory_weights`를 보고 전체 top-k를 STM, MTM, LTM에 나눠 배분한다.
-
-`memory_needed=false`인 `direct_answer` 또는 `session_only` 흐름에서는 prefetch가 실행되지 않고 빈 결과를 반환한다. 이때 런타임은 최근 세션 턴만 `[RUNTIME_CONTEXT]`에 포함한다.
-
-각 tier별 검색은 `MemoryStore.retrieve()`로 실행된다. 검색 결과에는 `retrieval_score`가 있고, prefetch 단계에서 `tier_weight`를 더해 `rerank_score`를 만든다.
-
-중복 evidence는 `evidence_id` 기준으로 정리하고, 최종 top-k만 LLM 컨텍스트로 넘긴다.
-
-배분된 top-k는 “최대 검색 슬롯”이다. 해당 tier에서 점수가 0보다 큰 문서가 부족하거나 중복 evidence가 있으면 실제 컨텍스트 후보 수는 배분 합계보다 적을 수 있다.
-
-### 5. Runtime Context 구성
-
-`ContextBuilder.build()`는 다음 정보를 하나의 system message로 만든다.
-
-- query plan
-- 최근 세션 턴 최대 4개
-- prefetch evidence
-
-결과는 `[RUNTIME_CONTEXT] ... [/RUNTIME_CONTEXT]` 형태다. 이 컨텍스트는 이번 LLM 호출을 위한 선별 자료이며, 이전 턴의 모든 원문을 계속 쌓는 구조가 아니다.
-
-### 6. LLM 호출과 ReAct 루프
-
-`AgentRuntime.run()`은 다음 message 묶음으로 LLM을 호출한다.
-
-```text
-system: SYSTEM_PROMPT
-system: RUNTIME_CONTEXT
-user: 사용자 질문
+```python
+self.tools = [RETRIEVE_MEMORY_TOOL]
+if config.context_mode != "full":
+    self.tools.append(EXPAND_EVIDENCE_TOOL)
 ```
 
-LLM 응답에 `tool_calls`가 없으면 최종 답변으로 종료한다.
+`full`은 원문이 이미 전부 들어가므로 확장할 것이 없다.
 
-`tool_calls`가 있으면 `_execute_tool_call()`이 실행된다. 현재 지원하는 도구는 `retrieve_memory` 하나다.
+---
+
+## 2. 세션 로드
+
+```python
+session = self.session_store.load_or_create(session_id)
+recent_turns = self.session_store.recent(session)   # 최근 N턴만
+```
+
+**저장과 주입이 분리되어 있다.**
+
+| | 동작 |
+|---|---|
+| 세션 파일 | **전체 턴 누적.** 오래된 턴을 지우지 않는다 |
+| `recent()` | 컨텍스트 경로에 넘길 최근 구간만 잘라 반환 |
+
+이전에는 `append_turn()`이 최근 N턴만 남기고 잘라내서, 그 이전 대화가
+복구 불가능하게 사라졌다. 지금은 저장본이 온전하다.
+
+---
+
+## 3. 질문 분석
+
+`QueryAnalyzer.analyze()`가 `QueryPlan`을 만든다.
+
+```python
+QueryPlan(
+    intent, can_answer_directly, memory_needed, answer_source,
+    use_session_context, memory_weights, query_rewrites, filters, reason,
+)
+```
+
+### 두 구현
+
+| 구현 | 사용 시점 | 특징 |
+|---|---|---|
+| `RuleBasedQueryAnalyzer` | `--mock`, 그리고 항상 fallback으로 | 정규식과 키워드. 결정적, 무료 |
+| `LLMQueryAnalyzer` | 실모델 | 규칙 결과를 방어 기준으로 삼아 LLM 출력을 정규화 |
+
+`LLMQueryAnalyzer`는 항상 규칙 기반을 먼저 돌린 뒤 LLM을 호출하고,
+`_normalize_plan()`에서 다음을 방어한다.
+
+| 방어 | 조건 | 처리 |
+|---|---|---|
+| 검색 생략 오판 | 규칙은 검색 필요, LLM만 불필요 | `memory_prefetch`로 복원 |
+| 과제명 오염 | 규칙이 과제명을 추출함 | 규칙 값 우선 |
+| 스키마 밖 필터 | 허용 키 5개 외 | 제거 |
+| 가중치 합 0 | `memory_needed=True`인데 전부 0 | fallback 가중치 |
+| 예외 / API 오류 | 파싱 실패, 429 등 | 규칙 기반 전체 사용 + `fallback_used=True` |
+
+### query_rewrites에 계층 신호를 넣지 않는다
+
+이전에는 rewrite에 "공식 최종 승인 문서" 같은 단어를 덧붙였다.
+그러면 제목에 그 단어가 있는 문서가 **주제 관련성과 무관하게** 상위로 올라온다.
+계층 선호는 `memory_weights`(prior) 한 곳에서만 적용한다.
+
+---
+
+## 4. 근거 선별 (`prefetch.py`)
+
+```python
+priors = plan.memory_weights
+
+# 1. 계층별로 자르지 않고 넓게 수집
+for tier in ("stm", "mtm", "ltm"):
+    retrieve(tier, query, filters, top_k=POOL_PER_TIER)
+
+# 2. evidence_id 기준 중복 제거
+
+# 3. 전역 정규화 (계층마다 점수 스케일이 다르다)
+norm = raw / max_raw
+
+# 4. 계층 prior를 곱한다 (더하지 않는다)
+final = norm * (1 + alpha * tier_prior)
+
+# 5. 상대 임계값으로 자른다
+cut = CUT_RATIO * top_score
+kept = [c for c in ranked if c.final >= cut]
+
+# 6. 계층별 최소 보장 후 상한 적용
+cards = _apply_tier_floor(kept, priors)
+```
+
+### 설계 판단
+
+| 항목 | 선택 | 이유 |
+|---|---|---|
+| 정규화 | 최고점 나누기 | 계층 간 점수 스케일 차이를 없앤다 |
+| 결합 | 승산 | 관련성 0인 문서는 계층과 무관하게 0으로 남는다 |
+| 임계값 | 상대값 | 절대값은 코퍼스가 바뀌면 의미가 달라진다 |
+| 계층 보장 | 컷 통과분 중에서만 | 옛 쿼터처럼 무관한 문서를 끌어오지 않는다 |
+
+`_apply_tier_floor()`에서 **예약분을 앞에 두고 자른 뒤에 정렬**한다.
+자르기 전에 전역 정렬하면 예약이 무효가 된다.
+
+---
+
+## 5. 컨텍스트 조립 (`context_builder.py`)
 
 ```json
 {
-  "tier": "stm | mtm | ltm | all",
-  "query": "검색 문장",
-  "filters": {
-    "project": "A 과제"
-  },
-  "top_k": 5,
-  "reason": "검색 이유"
+  "query_plan":            { ... },
+  "context_mode":          "full",
+  "recent_session_turns":  [ ... ],
+  "prefetched_evidence":   [ ... ]
 }
 ```
 
-tool 결과는 다시 message에 추가되고 LLM을 재호출한다. 한 턴에서 tool call은 `MAX_TOOL_CALLS` 설정값까지만 허용된다.
+`includes_body(index)`가 근거별로 원문 포함 여부를 정한다.
 
-Query Analyzer LLM은 `QUERY_ANALYZER_MODEL`, ReAct 본체 LLM은 `AGENT_MODEL`을 사용한다.
+| 모드 | 판정 |
+|---|---|
+| `full` | 항상 포함 |
+| `hybrid` | 상위 `HYBRID_FULL_CARDS`건만 |
+| `summary` | 포함하지 않고 `body_available: true` 표시 |
 
-### 7. 결과 저장
+모드에 따라 guidance 문구도 달라진다. `summary`/`hybrid`에서는
+"요약으로 판단 가능하면 그대로 답하고, 필요한 근거만 `expand_evidence`로 요청하라"고 지시한다.
 
-최종 답변이 나오면 `_save_session_turn()`이 세션 파일에 이번 턴 요약을 저장한다.
+---
 
-`--save-log`가 켜져 있으면 `_write_turn_log()`가 상세 JSON 로그를 저장한다.
+## 6. LLM 호출 루프
 
-## MemoryStore 검색 구조
+```python
+for _ in range(max_tool_calls + 1):     # 최대 4회
+    chat_response = client.chat(messages, tools, ...)
+    assistant_message = chat_response["message"]
+    trace.tokens.add("agent", chat_response["usage"])
 
-`MemoryStore`는 초기화 시 `memory_seed/stm`, `memory_seed/mtm`, `memory_seed/ltm` 바로 아래의 `.md`, `.json`, `.txt` 파일을 읽는다.
+    if not tool_calls:
+        return 최종 답변
 
-검색 흐름은 다음과 같다.
-
-```text
-retrieve()
-├─ tier 선택
-├─ project/source_type/status/document_types 필터 적용
-├─ query 확장
-├─ 키워드 점수 계산
-├─ 최신성/공식성 보정
-└─ evidence card 반환
+    for tool_call in tool_calls:
+        _execute_tool_call(...)          # retrieve_memory 또는 expand_evidence
 ```
 
-evidence card는 LLM과 로그가 공통으로 사용하는 근거 단위다.
+`chat()`은 `{"message": ..., "usage": ...}`를 돌려준다.
+`usage`에는 `prompt_tokens`, `completion_tokens`, `total_tokens`, `estimated`가 있다.
+mock은 문자 수 기반 근사값이라 `estimated: true`로 표시한다.
 
-## OpenRouter 오류 처리
+### 두 도구의 차이
 
-`OpenRouterClient.chat()`은 OpenRouter Chat Completions API를 호출한다.
+| | `retrieve_memory` | `expand_evidence` |
+|---|---|---|
+| 하는 일 | 새로 검색 | 턴 안의 카드 조회 |
+| 비용 | 있음 | 없음 (dict 조회) |
+| 노출 조건 | 항상 | `context_mode != "full"` |
 
-다음 상황은 `RuntimeError`로 정리해서 CLI에 보여준다.
+`evidence_index`는 프리페치 카드를 `{evidence_id: card}`로 턴 동안 들고 있는 것이다.
+확장은 이 색인만 본다. 알 수 없는 id는 `unknown_evidence_ids`로 보고한다.
 
-- HTTP 429 같은 OpenRouter HTTP 오류
-- 네트워크 연결 오류
-- API 응답 안의 `error`
-- `choices`가 없는 비정상 응답
-- message가 없는 비정상 응답
+---
 
-그래서 실제 모델 호출이 실패해도 터미널에서 원인을 비교적 바로 확인할 수 있다.
+## 7. 토큰 집계
 
-## 로그 구조
-
-verbose 출력과 저장 로그는 모두 `AgentRuntime._emit()`을 통해 같은 이벤트 흐름을 따른다.
-
-대표 이벤트는 다음과 같다.
-
-- `turn_start`
-- `query_analysis`
-- `prefetch_start`
-- `prefetch_end`
-- `context_built`
-- `llm_call_start`
-- `llm_decision`
-- `llm_call_end`
-- `tool_call_start`
-- `tool_call_end`
-- `final_answer`
-
-`reasoning_steps`는 숨겨진 사고 과정이 아니라 “이번 LLM 응답이 final인지 tool_call인지”를 관찰 가능한 형태로 요약한 기록이다.
-
-세션 전용 질문에서는 verbose 출력에 `answer_source=session_only`와 `메모리 검색 생략`이 표시된다. 문서 근거가 필요한 질문에서는 기존처럼 prefetch 후보와 tool call 흐름이 이어진다.
-
-## RAG로 교체할 위치
-
-나중에 실제 RAG를 붙일 때 가장 먼저 바꿀 곳은 `MemoryStore.retrieve()` 내부다.
-
-현재 런타임은 다음 반환 계약만 맞으면 그대로 동작할 수 있다.
-
-```text
-retrieve(tier, query, filters, top_k) -> evidence cards
+```python
+@dataclass
+class TokenUsage:
+    analyzer: dict      # prompt / completion / total
+    agent: dict
+    analyzer_calls: int
+    agent_calls: int
+    estimated: bool
 ```
 
-따라서 `query_analyzer.py`, `prefetch.py`, `context_builder.py`, `agent_runtime.py`는 유지하고, `memory_store.py` 내부 검색만 BM25, vector DB, graph RAG, hybrid RAG로 바꾸는 방향이 가장 작게 시작할 수 있는 경로다.
+analyzer와 agent를 나눠 센다. `llm_calls`는 둘의 합이다.
+규칙 기반 analyzer는 LLM을 호출하지 않으므로 `analyzer_calls = 0`이 된다.
+
+---
+
+## 8. 저장
+
+| 대상 | 내용 |
+|---|---|
+| `logs/sessions/*.json` | 전체 턴 누적. `turn_count` 포함 |
+| `logs/turns/*.json` | `--save-log` 시. 이벤트, 추론 단계, 도구 실행, 전체 대화 |
+
+---
+
+## 성능 주의점
+
+`MemoryStore.retrieve()`는 쿼리 확장과 토큰화를 **한 번만** 수행한 뒤
+문서 루프에 넘긴다(`_prepare_query`).
+
+이전에는 `_score()` 안에서 문서마다 다시 계산해, 후보 수만큼 낭비했다.
+문서 115건에서 `_expand_query` 호출이 43회였고 지금은 3회(계층 수)다.
+실코퍼스로 가면 이 차이가 그대로 비례한다.

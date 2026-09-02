@@ -41,6 +41,8 @@ class AppConfig:
     prefetch_cut_ratio: float = 0.3
     prefetch_min_cards: int = 1
     prefetch_tier_floor: int = 1
+    # 필터가 어긋난 문서에 곱하는 감점. 0이면 하드 필터, 1이면 필터 무시
+    filter_penalty: float = 0.3
     query_analyzer_max_tokens: int = 4096
     # B방식: 1차 컨텍스트에 원문을 얼마나 넣을지 (full | summary | hybrid)
     context_mode: str = "full"
@@ -76,6 +78,7 @@ class AppConfig:
             prefetch_cut_ratio=float(os.environ.get("PREFETCH_CUT_RATIO", "0.3")),
             prefetch_min_cards=int(os.environ.get("PREFETCH_MIN_CARDS", "1")),
             prefetch_tier_floor=int(os.environ.get("PREFETCH_TIER_FLOOR", "1")),
+            filter_penalty=float(os.environ.get("FILTER_PENALTY", "0.3")),
             query_analyzer_max_tokens=int(
                 os.environ.get("QUERY_ANALYZER_MAX_TOKENS", "4096")
             ),

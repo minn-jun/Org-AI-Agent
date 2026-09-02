@@ -33,6 +33,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def build_runtime(config: AppConfig, use_mock: bool) -> AgentRuntime:
     client = MockLLMClient() if use_mock else OpenRouterClient(config)
+    memory_store = MemoryStore(config.memory_root, filter_penalty=config.filter_penalty)
     query_analyzer = (
         RuleBasedQueryAnalyzer()
         if use_mock
@@ -40,9 +41,10 @@ def build_runtime(config: AppConfig, use_mock: bool) -> AgentRuntime:
             client,
             model=config.query_analyzer_model,
             max_tokens=config.query_analyzer_max_tokens,
+            # 코퍼스에 실제로 있는 값만 enum으로 열어 준다.
+            vocabulary=memory_store.filter_vocabulary(),
         )
     )
-    memory_store = MemoryStore(config.memory_root)
     return AgentRuntime(
         config=config,
         client=client,

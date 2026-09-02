@@ -44,6 +44,7 @@ MODES = ("full", "summary", "hybrid")
 
 def build_runtime(config: AppConfig, use_mock: bool) -> AgentRuntime:
     client = MockLLMClient() if use_mock else OpenRouterClient(config)
+    memory_store = MemoryStore(config.memory_root, filter_penalty=config.filter_penalty)
     analyzer = (
         RuleBasedQueryAnalyzer()
         if use_mock
@@ -51,12 +52,13 @@ def build_runtime(config: AppConfig, use_mock: bool) -> AgentRuntime:
             client,
             model=config.query_analyzer_model,
             max_tokens=config.query_analyzer_max_tokens,
+            vocabulary=memory_store.filter_vocabulary(),
         )
     )
     return AgentRuntime(
         config=config,
         client=client,
-        memory_store=MemoryStore(config.memory_root),
+        memory_store=memory_store,
         query_analyzer=analyzer,
     )
 
@@ -187,6 +189,11 @@ def print_report(results: list[dict[str, Any]]) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description="컨텍스트 주입 방식 비교")
     parser.add_argument("--cases", type=Path, default=DEFAULT_CASES)
+    parser.add_argument(
+        "--core",
+        action="store_true",
+        help="core로 태깅된 20건만 실행한다. 유료 측정에서 비용을 줄일 때 쓴다.",
+    )
     parser.add_argument("--mock", action="store_true", help="LLM 없이 흐름만 확인")
     parser.add_argument("--limit", type=int, help="앞에서 N건만 실행")
     parser.add_argument("--sleep", type=float, default=0.0, help="호출 사이 대기 초")
@@ -199,6 +206,8 @@ def main() -> int:
         for line in args.cases.read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
+    if args.core:
+        cases = [c for c in cases if c.get("core")]
     if args.limit:
         cases = cases[: args.limit]
 

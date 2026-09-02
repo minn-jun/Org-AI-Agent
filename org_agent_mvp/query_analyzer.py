@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 import re
 from dataclasses import asdict, dataclass
@@ -252,11 +253,25 @@ class LLMQueryAnalyzer:
                     "query_rewrites": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "minItems": 1,
                     },
+                    # strict json_schema는 모든 object에 additionalProperties: false와
+                    # 전체 속성의 required 명시를 요구한다. 선택 항목은 null을 허용해 표현한다.
+                    # 자유형 object로 두면 provider가 400을 돌려준다.
+                    #
+                    # 값 목록은 build_response_format()이 코퍼스에서 enum으로 채운다.
+                    # enum이 없으면 LLM이 "공식 계획서" 같은 자연어를 넣고,
+                    # 하드 필터에 걸려 검색 결과가 0건이 된다.
                     "filters": {
                         "type": "object",
-                        "additionalProperties": True,
+                        "additionalProperties": False,
+                        "required": ["project", "document_types"],
+                        "properties": {
+                            "project": {"type": ["string", "null"]},
+                            "document_types": {
+                                "type": ["array", "null"],
+                                "items": {"type": "string"},
+                            },
+                        },
                     },
                     "reason": {"type": "string"},
                 },
@@ -270,13 +285,38 @@ class LLMQueryAnalyzer:
         model: str,
         fallback: RuleBasedQueryAnalyzer | None = None,
         max_tokens: int = 4096,
+        vocabulary: dict[str, list[str]] | None = None,
     ):
         self.client = client
         self.model = model
         self.fallback = fallback or RuleBasedQueryAnalyzer()
         self.max_tokens = max_tokens
+        self.vocabulary = vocabulary or {}
+        self.response_format = self.build_response_format(self.vocabulary)
         self.last_usage: dict[str, Any] = {}
         self.last_fallback_used: bool = False
+
+    @classmethod
+    def build_response_format(
+        cls,
+        vocabulary: dict[str, list[str]] | None = None,
+    ) -> dict[str, Any]:
+        """코퍼스 어휘를 enum으로 박아 넣은 response_format을 만든다.
+
+        vocabulary가 없으면 기본 스키마를 그대로 쓴다.
+        enum에는 null을 함께 넣어야 nullable과 함께 쓸 수 있다.
+        """
+        schema = copy.deepcopy(cls.RESPONSE_FORMAT)
+        if not vocabulary:
+            return schema
+        filters = schema["json_schema"]["schema"]["properties"]["filters"]["properties"]
+        projects = list(vocabulary.get("project") or [])
+        if projects:
+            filters["project"]["enum"] = [*projects, None]
+        source_types = list(vocabulary.get("source_type") or [])
+        if source_types:
+            filters["document_types"]["items"]["enum"] = source_types
+        return schema
 
     def analyze(self, query: str, recent_turns: list[dict[str, Any]] | None = None) -> QueryPlan:
         recent_turns = recent_turns or []
@@ -358,7 +398,7 @@ class LLMQueryAnalyzer:
             [],
             model=self.model,
             temperature=0.0,
-            response_format=self.RESPONSE_FORMAT,
+            response_format=self.response_format,
             # 상한이 없으면 작은 모델이 상한까지 토큰을 뱉는 경우가 있다.
             # 잘려서 JSON 파싱이 실패하면 규칙 기반 fallback으로 안전하게 넘어간다.
             max_tokens=self.max_tokens,
@@ -441,7 +481,7 @@ class LLMQueryAnalyzer:
             reason=str(raw.get("reason") or fallback_plan.reason),
         )
 
-    #: MemoryStore._matches_filters가 실제로 해석하는 키만 통과시킨다.
+    #: MemoryStore._filter_weight가 실제로 해석하는 키만 통과시킨다.
     ALLOWED_FILTER_KEYS = {
         "project",
         "source_type",

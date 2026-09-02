@@ -75,7 +75,10 @@ class MemoryPrefetcher:
                 cut_threshold=0.0,
             )
 
-        query = plan.query_rewrites[-1]
+        # rewrite 중 하나만 고르면 정보가 빠진다. LLM이 여러 개를 만들 때
+        # 마지막이 가장 짧고 정보가 적은 경우가 실제로 있었다.
+        # 원 질문이 항상 포함되도록 전부 이어 붙인다.
+        query = " ".join(dict.fromkeys(plan.query_rewrites))
         collected: list[dict[str, Any]] = []
         tier_result_counts = {tier: 0 for tier in TIERS}
 

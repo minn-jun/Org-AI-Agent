@@ -3,3 +3,6 @@ logs/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+
+# 실측 결과 (유료 호출 기록, 로컬 전용)
+runs/

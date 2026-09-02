@@ -124,9 +124,15 @@ def _load_document(path: Path, tier: str) -> MemoryDocument:
     return MemoryDocument(tier=tier, path=path, metadata=metadata, text=body)
 
 
+#: 필터가 어긋난 문서에 곱하는 감점 계수.
+#: 0.0이면 이전의 하드 필터와 같고, 1.0이면 필터를 무시한다.
+DEFAULT_FILTER_PENALTY = 0.3
+
+
 class MemoryStore:
-    def __init__(self, root: Path):
+    def __init__(self, root: Path, filter_penalty: float = DEFAULT_FILTER_PENALTY):
         self.root = root
+        self.filter_penalty = filter_penalty
         self.documents = self._load_all()
         document_dates = [
             parsed
@@ -156,18 +162,21 @@ class MemoryStore:
     ) -> dict[str, Any]:
         filters = filters or {}
         target_tiers = {"stm", "mtm", "ltm"} if tier == "all" else {tier}
-        candidates = [
-            doc
-            for doc in self.documents
-            if doc.tier in target_tiers and self._matches_filters(doc, filters)
-        ]
-
         prepared = self._prepare_query(query)
-        scored = [
-            (score, doc)
-            for doc in candidates
-            if (score := self._score(query, doc, prepared)) > 0
-        ]
+
+        # 필터를 하드 컷이 아니라 점수 배수로 적용한다.
+        # 하드 필터는 값이 하나만 어긋나도 후보가 0건이 되어, analyzer가 만든
+        # 값 하나 때문에 검색 전체가 실패하는 일이 실제로 있었다.
+        scored: list[tuple[float, MemoryDocument]] = []
+        for doc in self.documents:
+            if doc.tier not in target_tiers:
+                continue
+            weight = self._filter_weight(doc, filters)
+            if weight <= 0:
+                continue
+            score = self._score(query, doc, prepared) * weight
+            if score > 0:
+                scored.append((score, doc))
         scored.sort(key=lambda item: item[0], reverse=True)
         results = [
             self._evidence_card(doc, score)
@@ -180,25 +189,55 @@ class MemoryStore:
             "results": results,
         }
 
-    def _matches_filters(self, doc: MemoryDocument, filters: dict[str, Any]) -> bool:
+    def filter_vocabulary(self) -> dict[str, list[str]]:
+        """필터에 실제로 쓸 수 있는 값 목록.
+
+        analyzer 스키마의 enum을 여기서 만든다. 코퍼스에 없는 값을 LLM이 지어내면
+        하드 필터에 걸려 후보가 0건이 되므로, 애초에 만들 수 없게 막는 편이 낫다.
+        코퍼스가 바뀌면 목록도 따라 바뀐다.
+        """
+        projects = {
+            str(doc.metadata.get("project", "")).strip()
+            for doc in self.documents
+        }
+        source_types = {
+            str(doc.metadata.get("source_type", "")).strip()
+            for doc in self.documents
+        }
+        return {
+            "project": sorted(value for value in projects if value),
+            "source_type": sorted(value for value in source_types if value),
+        }
+
+    def _filter_weight(self, doc: MemoryDocument, filters: dict[str, Any]) -> float:
+        """필터 일치도를 점수 배수로 돌려준다.
+
+        일치하면 1.0, 어긋나면 `filter_penalty`를 곱한다.
+        여러 필터가 동시에 어긋나면 계속 곱해져 더 강하게 밀린다.
+        `filter_penalty = 0.0`이면 이전의 하드 필터와 동작이 같다.
+
+        `공통` 문서는 조직 전체에 적용되는 기준이므로 어느 과제 질문에서든
+        감점하지 않는다.
+        """
+        weight = 1.0
         if project := filters.get("project"):
             document_project = normalized_project_key(str(doc.metadata.get("project", "")))
             filter_project = normalized_project_key(str(project))
             if document_project not in {filter_project, normalized_project_key("공통")}:
-                return False
+                weight *= self.filter_penalty
         if source_type := filters.get("source_type"):
             if str(doc.metadata.get("source_type", "")).lower() != str(source_type).lower():
-                return False
+                weight *= self.filter_penalty
         if status := filters.get("status"):
             if str(doc.metadata.get("status", "")).lower() != str(status).lower():
-                return False
+                weight *= self.filter_penalty
         document_types = filters.get("document_types")
         if document_types:
             source = str(doc.metadata.get("source_type", "")).lower()
             allowed = {str(item).lower() for item in document_types}
             if source not in allowed:
-                return False
-        return True
+                weight *= self.filter_penalty
+        return weight
 
     def _prepare_query(self, query: str) -> tuple[list[str], str]:
         """쿼리 확장과 토큰화를 한 번만 수행한다.

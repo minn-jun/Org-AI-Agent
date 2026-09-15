@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -37,9 +38,12 @@ from typing import Any
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
+# 기본 평가셋이 실코퍼스를 가리키므로 LTM 코퍼스를 붙인다. 끄려면 LTM_CORPUS= 로 비운다.
+os.environ.setdefault("LTM_CORPUS", "auto")
+
 from org_agent_mvp.config import AppConfig  # noqa: E402
-from org_agent_mvp.memory_store import MemoryStore  # noqa: E402
-from org_agent_mvp.prefetch import TIERS, MemoryPrefetcher  # noqa: E402
+from org_agent_mvp.memory_store import MemoryStore, build_memory_store  # noqa: E402
+from org_agent_mvp.prefetch import TIERS, MemoryPrefetcher, prefetch_query  # noqa: E402
 from org_agent_mvp.openrouter_client import OpenRouterClient  # noqa: E402
 from org_agent_mvp.query_analyzer import (  # noqa: E402
     LLMQueryAnalyzer,
@@ -48,7 +52,7 @@ from org_agent_mvp.query_analyzer import (  # noqa: E402
 )
 
 
-DEFAULT_CASES = PROJECT_ROOT / "tests" / "fixtures" / "eval_cases.jsonl"
+DEFAULT_CASES = PROJECT_ROOT / "tests" / "fixtures" / "eval_cases_20200504.jsonl"
 
 
 def route_of(plan: QueryPlan) -> str:
@@ -83,7 +87,9 @@ def quota_prefetch(
     if not plan.memory_needed:
         return []
     allocation = quota_allocate(plan.memory_weights, total_top_k)
-    query = plan.query_rewrites[-1]
+    # 검색 질의는 prior 방식과 같은 함수로 만든다. 여기서만 다르게 만들면
+    # 자리 배분이 아니라 질의 구성이 달라져서 비교가 성립하지 않는다.
+    query = prefetch_query(plan)
     collected: list[dict[str, Any]] = []
     for tier in TIERS:
         top_k = allocation[tier]
@@ -113,7 +119,7 @@ def evaluate(cases: list[dict[str, Any]], args: argparse.Namespace) -> dict[str,
     config = AppConfig.load()
     penalty = (args.filter_penalty if args.filter_penalty is not None
                else config.filter_penalty)
-    store = MemoryStore(config.memory_root, filter_penalty=penalty)
+    store = build_memory_store(config, filter_penalty=penalty)
     if args.analyzer == "llm":
         if not config.api_key:
             raise SystemExit("OPENROUTER_API_KEY가 비어 있다. --analyzer rule로 실행한다.")
@@ -124,7 +130,7 @@ def evaluate(cases: list[dict[str, Any]], args: argparse.Namespace) -> dict[str,
             vocabulary=store.filter_vocabulary(),
         )
     else:
-        analyzer = RuleBasedQueryAnalyzer()
+        analyzer = RuleBasedQueryAnalyzer(vocabulary=store.filter_vocabulary())
     top_k = args.top_k or config.prefetch_top_k
     prefetcher = MemoryPrefetcher(
         store,

@@ -6,7 +6,7 @@ import re
 from dataclasses import asdict, dataclass
 from typing import Any, Protocol
 
-from .normalization import normalize_project_name
+from .normalization import normalize_project_name, normalized_project_key
 
 
 PROJECT_RE = re.compile(r"([A-Za-z0-9가-힣]+\s*[-_]?\s*(?:과제|프로젝트|사업|과업))")
@@ -35,6 +35,25 @@ class QueryAnalyzer(Protocol):
 
 class RuleBasedQueryAnalyzer:
     """Transparent baseline that can later be replaced by a small LLM or encoder."""
+
+    def __init__(self, vocabulary: dict[str, list[str]] | None = None):
+        """`vocabulary`를 주면 코퍼스에 실제로 있는 과제명만 필터로 인정한다.
+
+        PROJECT_RE는 "한 단어 + 과제/사업/프로젝트"를 잡는데, 일반 명사도 걸린다.
+        실측으로 잡힌 오탐들이다.
+
+            "총사업비와 순현재가치가..."        -> "총 사업"
+            "이 과제의 전체 연구개발기간은..."   -> "이 과제"
+            "연구개발과제번호가 뭐야?"          -> "연구개발 과제"
+            "산업기술혁신사업 공통 운영요령..."  -> "산업기술혁신 사업"
+
+        이 값이 필터로 들어가면 모든 문서가 감점되어 검색이 통째로 망가진다.
+        실제로 평가셋에서 두 케이스가 이것 때문에 정답을 하나도 못 찾았다.
+
+        vocabulary가 없으면 예전대로 동작한다(기존 테스트 호환).
+        """
+        projects = (vocabulary or {}).get("project") or []
+        self._known_projects = {normalized_project_key(p) for p in projects if p}
 
     RECENT_MARKERS = ("아까", "방금", "오늘", "어제", "최근", "최근 대화", "이번 회의", "이전 턴")
     MTM_MARKERS = ("회의록", "초안", "보고서", "진행 중", "이번 달", "수정안", "일정표")
@@ -80,7 +99,9 @@ class RuleBasedQueryAnalyzer:
         project_match = PROJECT_RE.search(text)
         filters: dict[str, Any] = {}
         if project_match:
-            filters["project"] = normalize_project_name(project_match.group(1))
+            candidate = normalize_project_name(project_match.group(1))
+            if self._is_known_project(candidate):
+                filters["project"] = candidate
 
         is_comparison = self._contains(text, self.COMPARISON_MARKERS)
         is_recent = self._contains(text, self.RECENT_MARKERS)
@@ -176,6 +197,12 @@ class RuleBasedQueryAnalyzer:
             filters=filters,
             reason=reason,
         )
+
+    def _is_known_project(self, name: str) -> bool:
+        """코퍼스에 있는 과제명만 통과시킨다. 목록이 없으면 전부 통과(예전 동작)."""
+        if not self._known_projects:
+            return True
+        return normalized_project_key(name) in self._known_projects
 
     def _contains(self, text: str, markers: tuple[str, ...]) -> bool:
         lowered = text.lower()

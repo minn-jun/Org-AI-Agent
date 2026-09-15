@@ -10,7 +10,7 @@ from uuid import uuid4
 from .config import AppConfig
 from .context_builder import ContextBuilder
 from .memory_store import MemoryStore
-from .prefetch import MemoryPrefetcher
+from .prefetch import MemoryPrefetcher, prefetch_query
 from .prompts import SYSTEM_PROMPT
 from .query_analyzer import QueryAnalyzer, RuleBasedQueryAnalyzer
 from .schemas import EXPAND_EVIDENCE_TOOL, RETRIEVE_MEMORY_TOOL
@@ -238,7 +238,7 @@ class AgentRuntime:
             {
                 "tier_priors": prefetch.tier_priors,
                 "pool_per_tier": prefetch.pool_per_tier,
-                "query": plan.query_rewrites[-1],
+                "query": prefetch_query(plan),
             },
         )
         self._emit(

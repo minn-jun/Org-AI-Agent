@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import tempfile
 import time
@@ -30,7 +31,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 
 from org_agent_mvp.agent_runtime import AgentRuntime  # noqa: E402
 from org_agent_mvp.config import AppConfig  # noqa: E402
-from org_agent_mvp.memory_store import MemoryStore  # noqa: E402
+from org_agent_mvp.memory_store import build_memory_store  # noqa: E402
 from org_agent_mvp.mock_llm import MockLLMClient  # noqa: E402
 from org_agent_mvp.openrouter_client import OpenRouterClient  # noqa: E402
 from org_agent_mvp.query_analyzer import (  # noqa: E402
@@ -38,15 +39,18 @@ from org_agent_mvp.query_analyzer import (  # noqa: E402
     RuleBasedQueryAnalyzer,
 )
 
-DEFAULT_CASES = PROJECT_ROOT / "tests" / "fixtures" / "eval_cases.jsonl"
+DEFAULT_CASES = PROJECT_ROOT / "tests" / "fixtures" / "eval_cases_20200504.jsonl"
 MODES = ("full", "summary", "hybrid")
+
+# 기본 평가셋이 실코퍼스를 가리키므로 LTM 코퍼스를 붙인다. 끄려면 LTM_CORPUS= 로 비운다.
+os.environ.setdefault("LTM_CORPUS", "auto")
 
 
 def build_runtime(config: AppConfig, use_mock: bool) -> AgentRuntime:
     client = MockLLMClient() if use_mock else OpenRouterClient(config)
-    memory_store = MemoryStore(config.memory_root, filter_penalty=config.filter_penalty)
+    memory_store = build_memory_store(config)
     analyzer = (
-        RuleBasedQueryAnalyzer()
+        RuleBasedQueryAnalyzer(vocabulary=memory_store.filter_vocabulary())
         if use_mock
         else LLMQueryAnalyzer(
             client,

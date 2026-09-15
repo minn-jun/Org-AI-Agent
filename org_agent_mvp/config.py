@@ -25,6 +25,8 @@ def load_dotenv(path: Path) -> None:
 class AppConfig:
     project_root: Path
     memory_root: Path
+    #: 실코퍼스를 LTM으로 붙일 때의 chunks.jsonl 경로. None이면 `ltm/` 폴더만 쓴다.
+    ltm_corpus_path: Path | None
     api_key: str
     query_analyzer_model: str
     agent_model: str
@@ -57,9 +59,32 @@ class AppConfig:
                 "nvidia/nemotron-3-super-120b-a12b:free",
             ),
         ).strip()
+        # 시드 세트를 바꿔 끼울 수 있게 열어 둔다. 상대 경로면 프로젝트 루트 기준이다.
+        # 기본값 memory_seed_20200504는 실제 과제 기반 STM/MTM이라 저장소에 없다.
+        # 없는 폴더를 주면 문서 0건으로 뜬다. 테스트는 tests/fixtures/memory를 직접 쓴다.
+        memory_root = Path(os.environ.get("MEMORY_ROOT", "memory_seed_20200504"))
+        if not memory_root.is_absolute():
+            memory_root = PROJECT_ROOT / memory_root
+
+        # LTM_CORPUS를 주면 실제 과제 문서를 LTM으로 쓴다.
+        # "auto"면 저장소가 나란히 놓인 기본 배치에서 찾아본다.
+        raw_corpus = os.environ.get("LTM_CORPUS", "").strip()
+        ltm_corpus_path: Path | None = None
+        if raw_corpus:
+            if raw_corpus.lower() == "auto":
+                from .ltm_corpus import default_corpus_path
+
+                candidate = default_corpus_path(PROJECT_ROOT)
+            else:
+                candidate = Path(raw_corpus)
+                if not candidate.is_absolute():
+                    candidate = PROJECT_ROOT / candidate
+            ltm_corpus_path = candidate if candidate.exists() else None
+
         return cls(
             project_root=PROJECT_ROOT,
-            memory_root=PROJECT_ROOT / "memory_seed",
+            memory_root=memory_root,
+            ltm_corpus_path=ltm_corpus_path,
             api_key=os.environ.get("OPENROUTER_API_KEY", "").strip(),
             query_analyzer_model=os.environ.get(
                 "QUERY_ANALYZER_MODEL",

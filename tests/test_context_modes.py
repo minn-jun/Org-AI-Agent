@@ -16,11 +16,12 @@ from org_agent_mvp.query_analyzer import RuleBasedQueryAnalyzer
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+MEMORY_FIXTURE = PROJECT_ROOT / "tests" / "fixtures" / "memory"
 QUESTION = "A 과제 예산 산정 기준이 뭐야?"
 
 
 def build_cards() -> tuple[RuleBasedQueryAnalyzer, list[dict]]:
-    store = MemoryStore(PROJECT_ROOT / "memory_seed")
+    store = MemoryStore(MEMORY_FIXTURE)
     plan = RuleBasedQueryAnalyzer().analyze(QUESTION)
     cards = MemoryPrefetcher(store, total_top_k=8).prefetch(plan).cards
     return plan, cards
@@ -73,7 +74,7 @@ class ExpandEvidenceTests(unittest.TestCase):
         config = replace(
             AppConfig.load(),
             project_root=Path(temp_dir),
-            memory_root=PROJECT_ROOT / "memory_seed",
+            memory_root=MEMORY_FIXTURE,
             context_mode=context_mode,
         )
         return AgentRuntime(

@@ -1,13 +1,31 @@
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Any
 
 from .memory_store import MemoryStore
+from .scoring import RRF_K, ZSCORE_MIN_POOL, hybrid_weight, normalize_mode
 from .query_analyzer import QueryPlan
 
 
 TIERS = ("stm", "mtm", "ltm")
+
+
+def prefetch_query(plan: QueryPlan) -> str:
+    """계층 검색에 실제로 들어가는 질의 문자열.
+
+    rewrite 중 하나만 고르면 정보가 빠진다. LLM이 여러 개를 만들 때
+    마지막이 가장 짧고 정보가 적은 경우가 실제로 있었다.
+    원 질문이 항상 포함되도록 전부 이어 붙인다.
+
+    함수로 빼 둔 이유는, 이 문자열을 만드는 곳이 세 군데였고 서로 달랐기
+    때문이다 — prefetch는 전부 이어 붙였는데 run_eval의 quota baseline과
+    agent_runtime의 로그는 `query_rewrites[-1]`을 썼다. 앞의 것은 비교
+    실험에 질의 구성 차이를 섞었고, 뒤의 것은 로그에 실제로 검색하지 않은
+    질의를 남겼다. 한 곳에서만 만들면 다시 어긋나지 않는다.
+    """
+    return " ".join(dict.fromkeys(plan.query_rewrites))
 
 
 @dataclass(frozen=True)
@@ -75,10 +93,7 @@ class MemoryPrefetcher:
                 cut_threshold=0.0,
             )
 
-        # rewrite 중 하나만 고르면 정보가 빠진다. LLM이 여러 개를 만들 때
-        # 마지막이 가장 짧고 정보가 적은 경우가 실제로 있었다.
-        # 원 질문이 항상 포함되도록 전부 이어 붙인다.
-        query = " ".join(dict.fromkeys(plan.query_rewrites))
+        query = prefetch_query(plan)
         collected: list[dict[str, Any]] = []
         tier_result_counts = {tier: 0 for tier in TIERS}
 
@@ -105,10 +120,115 @@ class MemoryPrefetcher:
                 deduped[evidence_id] = card
         candidates = list(deduped.values())
 
-        # 3. 전역 정규화. tier마다 점수 스케일이 다르므로 비교 전에 맞춘다.
+        # 3. 정규화. 어느 기준으로 맞출지는 설정으로 고른다(PREFETCH_NORMALIZE).
+        #
+        #    global (기본)  전역 최고점 하나로 나눈다.
+        #                  계층 간 점수가 비교 가능하다는 전제가 필요하다.
+        #    tier          계층별 최고점으로 나눈다.
+        #                  각 계층 1등이 모두 1.0이 되므로 순위를 tier_prior가 정한다.
+        #
+        #    점수 함수가 BM25로 바뀌면 이 선택이 결과를 크게 흔든다.
+        #    BM25의 IDF는 `ln(1 + (N-df+0.5)/(df+0.5))`인데 N이 계층마다 다르다 —
+        #    STM/MTM은 문서 85건, LTM은 청크 26,031건이다.
+        #
+        #      freq   STM 8.9 / MTM 9.0 / LTM  9.6   비슷하다
+        #      bm25   STM 9.0 / MTM 8.9 / LTM 20.5   LTM이 2배 이상
+        #
+        #    global을 쓰면 BM25에서 STM 최고점이 0.44로 눌려 cut_ratio(0.3)에 걸린다.
+        #    반대로 tier를 쓰면 계층 1등끼리의 실제 점수 차이가 사라진다.
+        #    어느 쪽도 무조건 옳지 않아서 재고 고르도록 열어 뒀다.
+        mode = normalize_mode()
         max_raw = max((self._raw(card) for card in candidates), default=0.0)
-        denominator = max_raw or 1.0
+        if mode == "rrf":
+            # 점수 대신 **계층 안에서의 순위**로 맞춘다.
+            #
+            # 점수 눈금을 아예 안 쓰므로 계층마다 점수 함수가 달라도 섞인다.
+            # BM25처럼 코퍼스 크기에 따라 눈금이 변하는 함수를 쓸 때 필요하다.
+            #
+            #     normalized = (k + 1) / (k + rank)     rank는 1부터
+            #
+            # k가 클수록 순위 차이가 완만해진다. RRF 관례대로 60을 쓴다.
+            k = RRF_K
+            by_tier: dict[str, list[dict[str, Any]]] = {}
+            for card in candidates:
+                by_tier.setdefault(str(card.get("tier", "")), []).append(card)
+            ranks: dict[int, float] = {}
+            for tier_cards in by_tier.values():
+                tier_cards.sort(key=self._raw, reverse=True)
+                for rank, card in enumerate(tier_cards, start=1):
+                    ranks[id(card)] = (k + 1.0) / (k + rank)
+            for card in candidates:
+                card["normalized_score"] = round(ranks[id(card)], 4)
+                card["final_score"] = round(
+                    ranks[id(card)] * (1.0 + self.alpha * card["tier_prior"]), 4
+                )
+            return self._finish(candidates, priors, collected, deduped,
+                                tier_result_counts, max_raw)
+
+        if mode in {"zscore", "hybrid"}:
+            # 계층 최고점이 아니라 **계층 안에서 몇 σ 튀는지**로 맞춘다.
+            #
+            # tier 모드는 각 계층 1등을 무조건 1.0으로 만들어서, 볼 것이 없는
+            # 계층의 1등도 정답을 가진 계층의 1등과 같은 점수를 받는다.
+            # 그래서 LTM 단독 질문에서 STM/MTM이 자리를 뺏었다(LTM MRR 0.451 -> 0.176).
+            #
+            # 표준화는 그 구분을 남긴다. 정답이 있는 계층은 top이 자기 풀 평균에서
+            # 크게 벗어나고, 없는 계층은 조금밖에 안 벗어난다.
+            # 계층 안에서는 선형변환이라 순위가 바뀌지 않는다.
+            hybrid_w = hybrid_weight() if mode == "hybrid" else 1.0
+            by_tier: dict[str, list[dict[str, Any]]] = {}
+            for card in candidates:
+                by_tier.setdefault(str(card.get("tier", "")), []).append(card)
+            for tier_cards in by_tier.values():
+                raws = [self._raw(card) for card in tier_cards]
+                n = len(raws)
+                mean = sum(raws) / n
+                var = sum((r - mean) ** 2 for r in raws) / n
+                sd = math.sqrt(var)
+                for card in tier_cards:
+                    if n < ZSCORE_MIN_POOL or sd <= 0.0:
+                        # 표본이 적으면 평균·표준편차가 의미 없다.
+                        # 그 계층만 global로 처리한다 — 눈금은 못 맞추지만
+                        # 최소한 없는 근거를 지어내지 않는다.
+                        card["normalized_score"] = round(
+                            self._raw(card) / (max_raw or 1.0), 4
+                        )
+                    else:
+                        z = (self._raw(card) - mean) / sd
+                        norm = 1.0 / (1.0 + math.exp(-z))
+                        if mode == "hybrid":
+                            # zscore만 쓰면 **볼 것이 없는 계층도** 자기 풀 1등을
+                            # 띄워 준다. tier 모드가 실패한 것과 같은 이유다.
+                            # 풀이 top_k로 잘려 있어서 계층마다 분포 성격이 다른
+                            # 것도 겹친다 — LTM의 top 20은 26,031청크에서 걸러진
+                            # 정예라 자기들끼리 촘촘하고, STM의 top 20은 40문서 중
+                            # 절반이라 성긴다. 큰 코퍼스를 뒤진 계층이 손해를 본다.
+                            #
+                            # 그래서 절대 점수(global)와 기하평균을 낸다.
+                            # 두 신호가 **모두** 높아야 높아진다 —
+                            # global이 "이 계층에 실제로 쓸 만한 게 있는가"를 지키고,
+                            # z가 "계층 눈금 차이"를 걷어낸다.
+                            g = self._raw(card) / (max_raw or 1.0)
+                            norm = (g ** (1.0 - hybrid_w)) * (norm ** hybrid_w)
+                        card["normalized_score"] = round(norm, 4)
+                    card["final_score"] = round(
+                        card["normalized_score"] * (1.0 + self.alpha * card["tier_prior"]),
+                        4,
+                    )
+            return self._finish(candidates, priors, collected, deduped,
+                                tier_result_counts, max_raw)
+
+        if mode == "tier":
+            bases: dict[str, float] = {}
+            for card in candidates:
+                key = str(card.get("tier", ""))
+                bases[key] = max(bases.get(key, 0.0), self._raw(card))
+        else:
+            bases = {}
         for card in candidates:
+            denominator = (
+                bases.get(str(card.get("tier", ""))) if mode == "tier" else max_raw
+            ) or 1.0
             normalized = self._raw(card) / denominator
             card["normalized_score"] = round(normalized, 4)
             # 가산이 아니라 승산이다. 관련성 0인 문서는 tier와 무관하게 0으로 남는다.
@@ -116,6 +236,22 @@ class MemoryPrefetcher:
                 normalized * (1.0 + self.alpha * card["tier_prior"]), 4
             )
 
+        return self._finish(candidates, priors, collected, deduped,
+                            tier_result_counts, max_raw)
+
+    def _finish(
+        self,
+        candidates: list[dict[str, Any]],
+        priors: dict[str, float],
+        collected: list[dict[str, Any]],
+        deduped: dict[str, dict[str, Any]],
+        tier_result_counts: dict[str, int],
+        max_raw: float,
+    ) -> PrefetchResult:
+        """정규화가 끝난 카드로 컷과 계층 최소 자리를 적용한다.
+
+        정규화 방식(global / tier / rrf)이 갈라져서 뒷부분만 따로 뺐다.
+        """
         ranked = sorted(candidates, key=lambda card: card["final_score"], reverse=True)
 
         # 4. 상대 임계값으로 자른다. 절대값은 코퍼스가 바뀌면 흔들린다.

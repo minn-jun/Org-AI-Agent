@@ -1,17 +1,16 @@
 from __future__ import annotations
 
 import json
-import math
 import re
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 from typing import Any
 
+from .ltm_corpus import LtmCorpus
 from .normalization import normalize_project_name, normalized_project_key
-
-
-TOKEN_RE = re.compile(r"[0-9A-Za-z가-힣_]+")
+from .scoring import Bm25Params, freq_weight, scorer_name
+from .tokenizer import tokenize, tokenize_many
 
 # 키는 부분 문자열로 매칭한다. 한국어는 조사가 붙어 토큰이 달라지므로
 # ("예산이" != "예산") 정확 일치로 조회하면 확장이 거의 동작하지 않는다.
@@ -74,7 +73,12 @@ class MemoryDocument:
 
 
 def _tokenize(text: str) -> list[str]:
-    return [m.group(0).lower() for m in TOKEN_RE.finditer(text)]
+    """검색 토큰화. 방식은 tokenizer 모듈이 정한다(RETRIEVER_TOKENIZER).
+
+    질의와 문서가 같은 함수를 타야 매칭이 된다.
+    LTM(ltm_corpus)도 같은 모듈을 쓴다.
+    """
+    return tokenize(text)
 
 
 def _expand_query(query: str) -> str:
@@ -129,11 +133,41 @@ def _load_document(path: Path, tier: str) -> MemoryDocument:
 DEFAULT_FILTER_PENALTY = 0.3
 
 
+def build_memory_store(config, filter_penalty: float | None = None) -> "MemoryStore":
+    """설정대로 MemoryStore를 만든다.
+
+    `config.ltm_corpus_path`가 있으면 실제 과제 문서를 LTM으로 붙인다.
+    코퍼스 로드는 5초쯤 걸리므로(26,586청크 역색인) 실행마다 한 번만 한다.
+    """
+    corpus = LtmCorpus(config.ltm_corpus_path) if config.ltm_corpus_path else None
+    return MemoryStore(
+        config.memory_root,
+        filter_penalty=config.filter_penalty if filter_penalty is None else filter_penalty,
+        ltm_corpus=corpus,
+    )
+
+
 class MemoryStore:
-    def __init__(self, root: Path, filter_penalty: float = DEFAULT_FILTER_PENALTY):
+    def __init__(
+        self,
+        root: Path,
+        filter_penalty: float = DEFAULT_FILTER_PENALTY,
+        ltm_corpus: "LtmCorpus | None" = None,
+    ):
         self.root = root
         self.filter_penalty = filter_penalty
+        # 실제 과제 문서를 LTM으로 붙일 때만 들어온다. 없으면 기존처럼
+        # `ltm/` 폴더의 파일만 LTM으로 쓴다.
+        self.ltm_corpus = ltm_corpus
         self.documents = self._load_all()
+        self._doc_index = self._index_documents()
+        # BM25용 코퍼스 통계. LTM과 같은 식을 쓴다.
+        self._doc_freq: dict[str, int] = {}
+        for entry in self._doc_index.values():
+            for token in entry["counts"]:
+                self._doc_freq[token] = self._doc_freq.get(token, 0) + 1
+        lengths = [e["n_tokens"] for e in self._doc_index.values()] or [1]
+        self._bm25 = Bm25Params(n_docs=len(lengths), avg_len=sum(lengths) / len(lengths))
         document_dates = [
             parsed
             for doc in self.documents
@@ -152,6 +186,43 @@ class MemoryStore:
                     continue
                 docs.append(_load_document(path, tier))
         return docs
+
+    def _index_documents(self) -> dict[int, dict[str, Any]]:
+        """문서별 토큰 빈도를 미리 세 둔다.
+
+        `_score()`가 질의마다 문서를 다시 자르던 것을 로드 시점으로 옮긴 것이다.
+        형태소 분석기를 쓰면 자르는 비용이 커서 차이가 크다.
+
+        haystack에 제목·과제명·문서 유형을 같이 넣는 이유는 예전 그대로다 —
+        본문에 없어도 제목에 있으면 걸리게 하려는 것이다.
+        """
+        haystacks: list[str] = []
+        for doc in self.documents:
+            title = str(doc.metadata.get("title", ""))
+            project = str(doc.metadata.get("project", ""))
+            source_type = str(doc.metadata.get("source_type", ""))
+            parts = [
+                title,
+                project,
+                normalize_project_name(project),
+                normalized_project_key(project),
+                source_type,
+                doc.text,
+            ]
+            haystacks.append("\n".join(parts))
+
+        index: dict[int, dict[str, Any]] = {}
+        for doc, tokens in zip(self.documents, tokenize_many(haystacks)):
+            counts: dict[str, int] = {}
+            for token in tokens:
+                counts[token] = counts.get(token, 0) + 1
+            index[id(doc)] = {
+                "counts": counts,
+                "n_tokens": len(tokens),
+                "title_l": str(doc.metadata.get("title", "")).lower(),
+                "project_l": str(doc.metadata.get("project", "")).lower(),
+            }
+        return index
 
     def retrieve(
         self,
@@ -177,11 +248,29 @@ class MemoryStore:
             score = self._score(query, doc, prepared) * weight
             if score > 0:
                 scored.append((score, doc))
+        limit = max(1, min(top_k, MAX_RETRIEVE_TOP_K))
         scored.sort(key=lambda item: item[0], reverse=True)
-        results = [
-            self._evidence_card(doc, score)
-            for score, doc in scored[: max(1, min(top_k, MAX_RETRIEVE_TOP_K))]
+        cards: list[tuple[float, dict[str, Any]]] = [
+            (score, self._evidence_card(doc, score)) for score, doc in scored[:limit]
         ]
+
+        # 실코퍼스 LTM은 파일이 아니라 청크 역색인에서 온다. 점수 체계가 같아서
+        # 같은 목록에 넣고 다시 정렬하면 된다. (ltm_corpus.py 참고)
+        if self.ltm_corpus is not None and "ltm" in target_tiers:
+            cards.extend(
+                self.ltm_corpus.search(
+                    prepared[0],
+                    # 임베딩 검색은 토큰이 아니라 원문 문장이 필요하다.
+                    query_text=prepared[1],
+                    filters=filters,
+                    filter_penalty=self.filter_penalty,
+                    top_k=limit,
+                )
+            )
+            cards.sort(key=lambda item: item[0], reverse=True)
+            cards = cards[:limit]
+
+        results = [card for _, card in cards]
         return {
             "query": query,
             "tier": tier,
@@ -204,6 +293,9 @@ class MemoryStore:
             str(doc.metadata.get("source_type", "")).strip()
             for doc in self.documents
         }
+        if self.ltm_corpus is not None:
+            projects.add(self.ltm_corpus.project)
+            source_types.update(self.ltm_corpus.source_types())
         return {
             "project": sorted(value for value in projects if value),
             "source_type": sorted(value for value in source_types if value),
@@ -247,7 +339,17 @@ class MemoryStore:
         실코퍼스(수천 chunk)로 가면 그대로 비례해 늘어난다.
         """
         expanded = _expand_query(query)
-        return _tokenize(expanded), expanded.lower()
+        # 확장 결과에는 같은 토큰이 여러 번 들어온다. QUERY_EXPANSIONS의 값이
+        # 서로 겹치기 때문이다 — "예산 비용 단가"를 확장하면 세 항목이 모두
+        # "예산 단가 산정"을 덧붙여 각 토큰이 3번씩 나온다.
+        #
+        # 중복을 그대로 두면 그 토큰의 배점이 3배가 된다. 동의어 표가 어쩌다
+        # 그렇게 적혀 있다는 것 말고는 근거가 없는 가중치다. 게다가 LTM은
+        # set(query_tokens)로 훑어서 중복을 세지 않으므로, 같은 질의에
+        # 계층마다 다른 눈금이 적용되고 prefetch의 전역 정규화가 어긋난다.
+        #
+        # 순서는 유지하면서 중복만 없앤다(dict는 삽입 순서를 지킨다).
+        return list(dict.fromkeys(_tokenize(expanded))), expanded.lower()
 
     def _score(
         self,
@@ -258,29 +360,32 @@ class MemoryStore:
         query_tokens, expanded_query = prepared or self._prepare_query(query)
         if not query_tokens:
             return 0.0
-        title = str(doc.metadata.get("title", ""))
-        project = str(doc.metadata.get("project", ""))
-        source_type = str(doc.metadata.get("source_type", ""))
-        normalized_project = normalize_project_name(project)
-        project_key = normalized_project_key(project)
-        haystack = (
-            f"{title}\n{project}\n{normalized_project}\n"
-            f"{project_key}\n{source_type}\n{doc.text}"
-        )
-        hay_tokens = _tokenize(haystack)
-        if not hay_tokens:
+        # 문서 쪽 토큰은 로드할 때 미리 세 둔다(_index_documents).
+        # 질의마다 다시 자르면 형태소 분석기에서 비용이 폭발한다 —
+        # 실측으로 문서 85건에 질의당 247ms였다.
+        indexed = self._doc_index.get(id(doc))
+        if indexed is None:
             return 0.0
-        hay_counts: dict[str, int] = {}
-        for token in hay_tokens:
-            hay_counts[token] = hay_counts.get(token, 0) + 1
+        hay_counts = indexed["counts"]
+        if not hay_counts:
+            return 0.0
+        title_l = indexed["title_l"]
+        project_l = indexed["project_l"]
 
         score = 0.0
+        use_bm25 = scorer_name("seed") == "bm25"
+        # query_tokens는 _prepare_query에서 이미 중복이 제거돼 있다.
         for token in query_tokens:
             if token in hay_counts:
-                score += 1.0 + math.log1p(hay_counts[token])
-            if token in title.lower():
+                if use_bm25:
+                    score += self._bm25.weight(
+                        hay_counts[token], indexed["n_tokens"], self._doc_freq.get(token, 1)
+                    )
+                else:
+                    score += freq_weight(hay_counts[token])
+            if token in title_l:
                 score += 2.0
-            if token in project.lower():
+            if token in project_l:
                 score += 1.5
         # tier 자체에 주는 보정은 여기에 두지 않는다.
         # tier 선호는 prefetch의 prior에서 한 번만 적용한다. 여기서 또 더하면

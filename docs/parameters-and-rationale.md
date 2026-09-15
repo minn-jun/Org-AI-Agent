@@ -33,7 +33,10 @@
 | 과제 수 | 5개 + 공통 |
 | 평가 케이스 | 33건 (검색 31 / 세션 1 / 직접 1) |
 | gold 라벨 | 37개 |
-| 생성 방법 | `scripts/build_seed_memory.py` (재현 가능) |
+| 생성 방법 | `scripts/build_seed_memory.py` (2026-09-14 시드와 함께 삭제) |
+
+> 이 절의 합성 시드(`memory_seed/`)와 평가셋 33건은 2026-09-14에 삭제했다.
+> 아래 측정값은 당시 기록으로만 남긴다. 지금 기준선은 실코퍼스 평가셋 60건이다.
 
 문서 수를 28건에서 115건으로 늘린 이유는 **28건에서는 어떤 검색 전략을 써도
 차이가 나타나지 않았기 때문**이다. 실제로 28건 측정에서는 재현율이 모든 조건에서
@@ -396,7 +399,7 @@ Score = w1·관련성 + w2·최신성 + w3·참조빈도 + w4·피드백
 
 ```bash
 # 현재 기준선
-python eval/run_eval.py --json eval/results/baseline-prior.json
+python eval/run_eval.py --json runs/baseline-prior.json
 
 # 파라미터 비교 예시
 python eval/run_eval.py --alpha 0

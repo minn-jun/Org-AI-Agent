@@ -8,7 +8,7 @@ from pathlib import Path
 
 from .agent_runtime import AgentRuntime
 from .config import AppConfig
-from .memory_store import MemoryStore
+from .memory_store import build_memory_store
 from .mock_llm import MockLLMClient
 from .openrouter_client import OpenRouterClient
 from .query_analyzer import LLMQueryAnalyzer, RuleBasedQueryAnalyzer
@@ -33,9 +33,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 def build_runtime(config: AppConfig, use_mock: bool) -> AgentRuntime:
     client = MockLLMClient() if use_mock else OpenRouterClient(config)
-    memory_store = MemoryStore(config.memory_root, filter_penalty=config.filter_penalty)
+    memory_store = build_memory_store(config)
     query_analyzer = (
-        RuleBasedQueryAnalyzer()
+        RuleBasedQueryAnalyzer(vocabulary=memory_store.filter_vocabulary())
         if use_mock
         else LLMQueryAnalyzer(
             client,

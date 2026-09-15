@@ -21,7 +21,7 @@
   ├─ Prefetch                 근거 선별
   │    1. 계층별로 자르지 않고 넓게 수집 (각 20건)
   │    2. 하나의 풀로 통합 + evidence_id 중복 제거
-  │    3. 정규화       norm = raw / 후보최고점
+  │    3. 정규화       PREFETCH_NORMALIZE (기본 global = raw / 후보최고점)
   │    4. 계층 prior   final = norm x (1 + alpha x tier_weight)
   │    5. 상대 컷      final >= 0.3 x 최고점, 계층별 최소 보장, 최대 8건
   │
@@ -36,16 +36,18 @@
 ```
 
 **LLM 호출은 턴당 2~5회다.** analyzer 1회 + 에이전트 1~4회.
-실측 분포는 대부분 2~3회에서 끝난다.
 
 ---
 
 ## Quick Start
 
-```powershell
-cd C:\ine_project\중기청_조직지식AI플랫폼\org_agent_mvp
+저장소에는 실제 과제 자료가 없다. 흐름만 볼 때는 테스트용 가상 저장소를 쓴다.
 
-# API 없이 흐름만 확인
+```powershell
+cd org_agent_mvp
+
+# API 없이 흐름만 확인 (가상 과제 A/B)
+$env:MEMORY_ROOT = "tests/fixtures/memory"
 python -m org_agent_mvp --mock --verbose --question "A 과제 예산 검토에서 뭐가 지적됐어?"
 
 # 대화형 세션
@@ -64,25 +66,67 @@ AGENT_MODEL=openai/gpt-5.6-luna-pro
 
 ---
 
+## 메모리와 데이터
+
+| 계층 | 역할 | 예시 |
+|---|---|---|
+| STM | 최신 대화와 당일 업무 흐름 | 회의 요약, 통화 메모, action item |
+| MTM | 진행 중인 프로젝트 지식 | 회의록, 제안서 초안, 일정표, 검토 보고 |
+| LTM | 승인된 조직 기준 지식 | 최종 계획서, 규정, 작성 기준 |
+
+두 환경변수로 무엇을 읽을지 정한다.
+
+| 변수 | 의미 | 기본값 |
+|---|---|---|
+| `MEMORY_ROOT` | `stm/ mtm/ ltm/` 폴더를 가진 시드 폴더 | `memory_seed_20200504` (저장소 미포함) |
+| `LTM_CORPUS` | LTM으로 붙일 `chunks.jsonl`. `auto`면 `../datasets/20200504-doc_rag/export/...`에서 찾는다 | 없음 |
+
+`LTM_CORPUS`를 주면 청크 코퍼스를 역색인으로 읽어 LTM에 붙인다(`ltm_corpus.py`).
+검색은 청크 단위로 하고 근거 카드는 문서 단위로 접는다.
+
+실제 과제 기반 자료(`memory_seed_20200504/`, 평가셋, 코퍼스 프로파일)는
+연구실 문서라 `.gitignore` 대상이다. 없으면 해당 테스트는 건너뛴다.
+
+---
+
 ## 근거 선별 방식
 
 계층 가중치를 **검색 자리 수가 아니라 점수 배수로** 쓴다.
 
-| | 이전 | 현재 |
+| | 이전 (quota) | 현재 (prior) |
 |---|---|---|
-| 계층 가중치의 역할 | 자리 수 (STM 5 / MTM 2 / LTM 1) | **점수 배수** |
+| 계층 가중치의 역할 | 자리 수 | **점수 배수** |
 | 자르는 시점 | 계층별로 미리 자름 | 전역 순위 후 한 번 |
-| 점수 결합 | `점수 + 가중치 x 5.0` (가산) | `정규화점수 x (1 + a x 가중치)` (승산) |
+| 점수 결합 | 가산 | `정규화점수 x (1 + a x 가중치)` (승산) |
 | 근거 개수 | 항상 8건 고정 | **2~8건 가변** |
 
-**가산에서 승산으로 바꾼 이유**: 가산이면 관련성이 0인 문서도 계층 보너스만으로
-점수를 얻는다. 승산이면 `0 x 1.7 = 0`이라 걸러진다.
+**승산인 이유**: 가산이면 관련성이 0인 문서도 계층 보너스만으로 점수를 얻는다.
 
-**계층별 최소 보장(`PREFETCH_TIER_FLOOR`)이 있는 이유**: 문서가 늘면 한 계층이
-상위를 독점해 다른 계층의 정답이 밀려난다. 다만 **이미 컷을 통과한 문서 중에서만**
-자리를 보장하므로, 옛 쿼터처럼 무관한 문서를 끌어오지 않는다.
+### 계층 병합 정규화
 
-파라미터의 값과 근거는 [`docs/parameters-and-rationale.md`](docs/parameters-and-rationale.md)에 정리했다.
+계층마다 코퍼스 크기가 달라(BM25의 IDF가 N에 따라 달라짐) 점수 눈금이 어긋날 수 있다.
+
+| `PREFETCH_NORMALIZE` | 하는 일 | 비고 |
+|---|---|---|
+| `global` (기본) | 전역 최고점으로 나눔 | 눈금이 맞을 때 최선 |
+| `tier` / `rrf` / `zscore` | 계층 내부 정보만 씀 | 볼 것 없는 계층도 1등이 떠서 LTM이 무너진다 |
+| `hybrid` | `global^(1-w) x zscore^w` | 눈금이 어긋날 때(BM25) 재현율이 오른다. `PREFETCH_HYBRID_W`(기본 0.5) |
+
+---
+
+## 검색기 설정
+
+기본값은 전부 0단계(공백 분리 + 빈도 점수)다.
+
+| 변수 | 값 | 필요 패키지 |
+|---|---|---|
+| `RETRIEVER_TOKENIZER` | `whitespace` \| `morph` | `kiwipiepy` |
+| `RETRIEVER_SCORER` | `freq` \| `bm25` | — |
+| `RETRIEVER_SCORER_SEED` | STM/MTM만 따로 지정 | — |
+| `RETRIEVER_DENSE` | `0` \| `1` | `torch`, `sentence-transformers` |
+| `RETRIEVER_DENSE_WEIGHT` | RRF에서 dense 비중 (기본 0.5) | — |
+
+임베딩은 첫 실행에 청크를 인코딩해 `cache/dense/`에 저장하고 이후에는 읽기만 한다.
 
 ---
 
@@ -92,74 +136,41 @@ AGENT_MODEL=openai/gpt-5.6-luna-pro
 python -m org_agent_mvp --context-mode summary --question "..."
 ```
 
-| 모드 | 1차 컨텍스트 | 크기(실측) |
-|---|---|---|
-| `full` (기본) | 근거 원문 전량 | 5,770자 |
-| `hybrid` | 상위 2건 원문 + 나머지 요약 | 4,523자 |
-| `summary` | 요약만, 원문은 요청 시 | 3,836자 |
+| 모드 | 1차 컨텍스트 |
+|---|---|
+| `full` (기본) | 근거 원문 전량 |
+| `hybrid` | 상위 2건 원문 + 나머지 요약 |
+| `summary` | 요약만, 원문은 요청 시 |
 
 `summary`와 `hybrid`에서는 `expand_evidence` 도구가 노출된다.
-모델이 요약만으로 판단이 어려우면 특정 근거의 원문을 요청한다.
 이 도구는 **재검색이 아니라 턴 안에 이미 들고 있는 카드의 조회**라 비용이 없다.
-
-어느 모드가 나은지는 **원문 확장률**을 재서 정한다. 확장이 잦으면 LLM 호출이
-2회가 되어 절감이 사라지기 때문이다. 아직 측정 전이라 기본값은 `full`이다.
-
----
-
-## 메모리 계층
-
-| 계층 | 역할 | 예시 |
-|---|---|---|
-| STM | 최신 대화와 당일 업무 흐름 | 회의 요약, 통화 메모, action item |
-| MTM | 진행 중인 프로젝트 지식 | 회의록, 제안서 초안, 일정표, 검토 보고 |
-| LTM | 승인된 조직 기준 지식 | 최종 계획서, 규정, 작성 기준 |
-
-seed 코퍼스는 **문서 115건**(STM 31 / MTM 59 / LTM 25), 과제 5개와 공통 기준 20건이다.
-
-```powershell
-python scripts/build_seed_memory.py            # 코퍼스 재생성
-python scripts/build_seed_memory.py --dry-run  # 목록만 확인
-```
-
-코퍼스를 스크립트로 두는 이유는 **평가 수치가 코퍼스에 종속**되기 때문이다.
-어떻게 만들어졌는지 추적할 수 없으면 수치도 해석할 수 없다.
 
 ---
 
 ## 평가
 
-측정 축이 둘이고 비용이 다르다.
+실제 과제 자료가 있는 로컬 환경에서만 돈다.
 
 ```powershell
 # 근거 선별 품질 - LLM 호출 없음, 결정적, 무료
-python eval/run_eval.py                     # 현재 방식
+python eval/run_eval.py                     # 기본: 실코퍼스 평가셋 + LTM_CORPUS=auto
 python eval/run_eval.py --mode quota        # 이전 쿼터 방식 baseline
 python eval/run_eval.py --alpha 0           # 계층 무시 ablation
-python eval/run_eval.py --tier-floor 2      # 계층 보장 조정
 python eval/run_eval.py --analyzer llm      # 실제 analyzer 사용 (유료)
 
-# 컨텍스트 주입 방식 - 실제 LLM 필요
+# 검색기 단계 비교
+python scripts/bench_retriever.py --stage 0 1 2 3 3h
+python scripts/bench_ltm_only.py            # 계층 병합 제외, LTM 검색만
+
+# 컨텍스트 주입 방식
 python eval/run_context_eval.py --mock      # 흐름 확인
 python eval/run_context_eval.py --limit 5   # 실모델
 ```
 
-정답 라벨은 `tests/fixtures/eval_cases.jsonl`에 있다 (33건 / gold 37개).
+`--analyzer rule`(기본)은 analyzer를 고정한 **통제 비교**다. 실운영 수치가 아니다.
 
-`--analyzer rule`(기본)은 analyzer를 고정한 **통제 비교**다.
-prefetch 로직만 바꿔가며 볼 때 쓴다. 실운영 수치가 아니다.
-
-### 현재 측정값 (문서 115건 / 케이스 33건)
-
-| 설정 | 정밀도@8 | 재현율 | F1 |
-|---|---|---|---|
-| quota (이전 방식) | 17.0% | 74.2% | 27.7% |
-| prior alpha=0 | 16.8% | 72.6% | 27.3% |
-| prior alpha=1 (현재) | 17.1% | 71.0% | 27.6% |
-| prior alpha=1, floor=2 | 17.5% | 74.2% | 28.3% |
-
-**모든 조건이 1%p 안쪽으로 붙어 있다.** 이 규모에서는 prefetch 전략이 병목이 아니고,
-점수 함수(키워드 매칭)가 병목이라는 뜻이다.
+`bench_retriever.py` 단계 이름은 숫자가 검색기(0~3)이고 접미사가 변형이다 —
+`s` LTM만 BM25 / `h` hybrid 병합.
 
 ---
 
@@ -170,9 +181,7 @@ prefetch 로직만 바꿔가며 볼 때 쓴다. 실운영 수치가 아니다.
 | `logs/sessions/*.json` | **전체 턴 누적.** 오래된 턴을 지우지 않는다 |
 | `logs/turns/*.json` | `--save-log` 사용 시 한 턴의 분석, prefetch, LLM, 도구 실행 |
 
-컨텍스트에는 최근 4턴만 붙는다(`max_recent_turns`). 저장과 주입은 분리되어 있어서,
-20턴짜리 대화의 3번 턴은 파일에는 남아 있지만 컨텍스트로는 올라가지 않는다.
-관련 턴을 골라 넣는 캐시 구조는 아직 없다.
+컨텍스트에는 최근 4턴만 붙는다(`max_recent_turns`). 저장과 주입은 분리되어 있다.
 
 ---
 
@@ -206,28 +215,30 @@ org_agent_mvp/
 │  ├─ __main__.py           CLI, verbose 출력
 │  ├─ agent_runtime.py      한 턴 실행 제어, 도구 실행, 토큰 집계
 │  ├─ query_analyzer.py     의도 분석, 계층 가중치, 필터 추출, 방어 로직
-│  ├─ prefetch.py           근거 선별 (정규화, 계층 prior, 상대 컷)
+│  ├─ prefetch.py           근거 선별 (계층 병합 정규화, 계층 prior, 상대 컷)
 │  ├─ context_builder.py    [RUNTIME_CONTEXT] 조립 (full/summary/hybrid)
-│  ├─ memory_store.py       문서 로드, 점수 계산, 근거 카드
+│  ├─ memory_store.py       STM/MTM 파일 로드와 검색, LTM 코퍼스 병합
+│  ├─ ltm_corpus.py         청크 코퍼스 역색인, 버전 접기, 문서 단위 근거
+│  ├─ tokenizer.py          공백 분리 / 형태소 토큰화
+│  ├─ scoring.py            빈도 / BM25 점수, 병합 정규화 선택
+│  ├─ dense.py              임베딩 검색과 RRF 융합
 │  ├─ session_store.py      세션 기록 (전체 누적)
 │  ├─ openrouter_client.py  API 호출, usage 수집
 │  ├─ mock_llm.py           API 없이 흐름 재현
 │  ├─ schemas.py            retrieve_memory / expand_evidence 도구 정의
 │  ├─ prompts.py            시스템 프롬프트
 │  └─ normalization.py      과제명 표기 정규화
-├─ memory_seed/{stm,mtm,ltm}/
-├─ scripts/build_seed_memory.py
+├─ scripts/
+│  ├─ bench_retriever.py    검색기 단계 비교 (에이전트 경로)
+│  └─ bench_ltm_only.py     LTM 검색만 측정
 ├─ eval/
 │  ├─ run_eval.py           근거 선별 품질
-│  ├─ run_context_eval.py   컨텍스트 주입 방식
-│  └─ results/
+│  └─ run_context_eval.py   컨텍스트 주입 방식
 ├─ tests/
-│  └─ fixtures/eval_cases.jsonl
+│  └─ fixtures/memory/      가상 과제 A/B + 공통 기준 13건 (테스트 전용)
 └─ docs/
-   ├─ parameters-and-rationale.md   모든 수치의 값과 근거
-   ├─ code-flow.md
-   ├─ operation-flow.md
-   └─ operation_guide.md
+   ├─ parameters-and-rationale.md   수치의 값과 근거 (09-01 기준)
+   └─ code-flow.md                  코드 책임 분리 (09-01 기준)
 ```
 
 ---
@@ -238,8 +249,11 @@ org_agent_mvp/
 python -m unittest discover -s tests -v
 ```
 
-41개. 비교 질문의 계층 혼합, 후속 질문의 프로젝트 상속, 계층 prior 계산,
-상대 컷 동작, LLM 오판 방어, 컨텍스트 모드 3종, 원문 확장, 평가셋 유효성을 검증한다.
+113건. 계층 prior 계산, 상대 컷, 후속 질문의 프로젝트 상속, LLM 오판 방어,
+컨텍스트 모드 3종, 원문 확장, 토크나이저·점수 함수·임베딩·LTM 코퍼스 모듈,
+병합 정규화, **프로세스를 바꿔도 같은 결과가 나오는지(재현성)**를 검증한다.
+
+실제 과제 평가셋 검사(`test_eval_cases_20200504.py`)는 자료가 없으면 건너뛴다.
 
 ---
 
@@ -247,10 +261,9 @@ python -m unittest discover -s tests -v
 
 | 항목 | 내용 |
 |---|---|
-| 점수 함수 | 키워드 매칭. 한국어 조사 처리 안 됨(`예산이` != `예산`) |
 | 상수 | `_score()`의 제목 +2.0, 프로젝트 +1.5 등은 근거 없는 임의값 |
-| 프로젝트 필터 | 하드 필터라 불일치 시 후보에서 완전 제외 |
 | 세션 캐시 | 최근 N턴 고정 주입. 관련 턴 선택 없음 |
 | 대화 -> STM | 일일 요약 승격 경로가 구현되지 않음 |
-| LLM analyzer | 규칙 기반 대비 우위가 확인되지 않음 |
-| B방식 | 원문 확장률 미측정 |
+| LTM 적재 | 과제 폴더를 정제 없이 넣는다. 승격 규칙 미정 |
+| 과제 전용 규칙 | 버전 접기·최종본 폴더 판정이 한 과제 폴더 구조에 맞춰져 있다 |
+| 컨텍스트 주입 | LTM 근거가 청크 하나 600자라 summary와 차이가 작다. 원문 확장률 미측정 |

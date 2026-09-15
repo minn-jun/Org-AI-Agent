@@ -15,6 +15,8 @@ from org_agent_mvp.query_analyzer import LLMQueryAnalyzer, RuleBasedQueryAnalyze
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+# 가상 과제 A/B와 공통 기준으로 만든 작은 저장소. 흐름 검증용이지 성능 측정용이 아니다.
+MEMORY_FIXTURE = PROJECT_ROOT / "tests" / "fixtures" / "memory"
 
 
 class FakeAnalyzerClient:
@@ -210,7 +212,7 @@ class QueryAnalyzerTests(unittest.TestCase):
 
 class PrefetchTests(unittest.TestCase):
     def test_prefetch_respects_total_top_k(self) -> None:
-        store = MemoryStore(PROJECT_ROOT / "memory_seed")
+        store = MemoryStore(MEMORY_FIXTURE)
         plan = RuleBasedQueryAnalyzer().analyze("A 과제 공식 일정과 최근 결정 비교")
         result = MemoryPrefetcher(store, total_top_k=8).prefetch(plan)
         self.assertLessEqual(len(result.cards), 8)
@@ -218,7 +220,7 @@ class PrefetchTests(unittest.TestCase):
 
     def test_prefetch_uses_tier_prior_instead_of_quota(self) -> None:
         """tier 가중치는 자리 수가 아니라 점수 배수로만 작용해야 한다."""
-        store = MemoryStore(PROJECT_ROOT / "memory_seed")
+        store = MemoryStore(MEMORY_FIXTURE)
         plan = RuleBasedQueryAnalyzer().analyze("A 과제 공식 일정과 최근 결정 비교")
         result = MemoryPrefetcher(store, total_top_k=8, alpha=1.0).prefetch(plan)
 
@@ -233,7 +235,7 @@ class PrefetchTests(unittest.TestCase):
 
     def test_prefetch_cuts_by_relative_threshold(self) -> None:
         """최고점 대비 비율 아래는 버리고, 최소 건수는 보장한다."""
-        store = MemoryStore(PROJECT_ROOT / "memory_seed")
+        store = MemoryStore(MEMORY_FIXTURE)
         plan = RuleBasedQueryAnalyzer().analyze("A 과제 공식 일정과 최근 결정 비교")
         result = MemoryPrefetcher(
             store, total_top_k=8, cut_ratio=0.9, min_cards=2
@@ -245,7 +247,7 @@ class PrefetchTests(unittest.TestCase):
 
     def test_prefetch_alpha_zero_ignores_tier(self) -> None:
         """alpha=0이면 tier를 무시하고 관련성 순수 순위가 된다 (ablation arm)."""
-        store = MemoryStore(PROJECT_ROOT / "memory_seed")
+        store = MemoryStore(MEMORY_FIXTURE)
         plan = RuleBasedQueryAnalyzer().analyze("A 과제 공식 일정과 최근 결정 비교")
         result = MemoryPrefetcher(store, total_top_k=8, alpha=0.0).prefetch(plan)
 
@@ -255,7 +257,7 @@ class PrefetchTests(unittest.TestCase):
             )
 
     def test_prefetch_skips_search_when_memory_not_needed(self) -> None:
-        store = MemoryStore(PROJECT_ROOT / "memory_seed")
+        store = MemoryStore(MEMORY_FIXTURE)
         plan = RuleBasedQueryAnalyzer().analyze(
             "아까 말한거 요약해줘",
             [{"user_query": "A 과제 최근 회의 내용 알려줘"}],
@@ -267,7 +269,7 @@ class PrefetchTests(unittest.TestCase):
         self.assertEqual(result.pool_per_tier, 0)
 
     def test_prefetch_matches_normalized_project_name(self) -> None:
-        store = MemoryStore(PROJECT_ROOT / "memory_seed")
+        store = MemoryStore(MEMORY_FIXTURE)
         plan = RuleBasedQueryAnalyzer().analyze("A과제 최근 회의 내용 알려줘")
         result = MemoryPrefetcher(store, total_top_k=8).prefetch(plan)
 
@@ -279,7 +281,7 @@ class PrefetchTests(unittest.TestCase):
         self.assertTrue(projects <= {"A 과제", "공통"}, f"다른 과제가 섞였다: {projects}")
 
     def test_prefetch_follow_up_does_not_mix_other_project(self) -> None:
-        store = MemoryStore(PROJECT_ROOT / "memory_seed")
+        store = MemoryStore(MEMORY_FIXTURE)
         plan = RuleBasedQueryAnalyzer().analyze(
             "여기서 일정 관련 내용만 다시 정리해줘",
             [{"user_query": "A 과제 최근 회의 내용 알려줘"}],
@@ -324,7 +326,7 @@ class SessionRuntimeTests(unittest.TestCase):
             config = replace(
                 base,
                 project_root=Path(temp_dir),
-                memory_root=PROJECT_ROOT / "memory_seed",
+                memory_root=MEMORY_FIXTURE,
             )
             runtime = AgentRuntime(config, MockLLMClient(), MemoryStore(config.memory_root))
             first = runtime.run("A 과제 최근 일정이 공식 계획과 충돌해?")
@@ -341,7 +343,7 @@ class SessionRuntimeTests(unittest.TestCase):
             config = replace(
                 base,
                 project_root=Path(temp_dir),
-                memory_root=PROJECT_ROOT / "memory_seed",
+                memory_root=MEMORY_FIXTURE,
             )
             runtime = AgentRuntime(config, MockLLMClient(), MemoryStore(config.memory_root))
             result = runtime.run("A 과제 최근 회의 내용 알려줘")
@@ -361,7 +363,7 @@ class SessionRuntimeTests(unittest.TestCase):
             config = replace(
                 base,
                 project_root=Path(temp_dir),
-                memory_root=PROJECT_ROOT / "memory_seed",
+                memory_root=MEMORY_FIXTURE,
             )
             runtime = AgentRuntime(config, MockLLMClient(), MemoryStore(config.memory_root))
             first = runtime.run("A 과제 최근 일정이 공식 계획과 충돌해?")

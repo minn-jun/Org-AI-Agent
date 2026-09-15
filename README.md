@@ -84,7 +84,24 @@ AGENT_MODEL=openai/gpt-5.6-luna-pro
 `LTM_CORPUS`를 주면 청크 코퍼스를 역색인으로 읽어 LTM에 붙인다(`ltm_corpus.py`).
 검색은 청크 단위로 하고 근거 카드는 문서 단위로 접는다.
 
-실제 과제 기반 자료(`memory_seed_20200504/`, 평가셋, 코퍼스 프로파일)는
+### 코퍼스 메타데이터
+
+검색기는 특정 코퍼스의 폴더 이름이나 파일명 습관을 모른다. 문서 성격·버전 묶음·최종본·소속 과제는
+**코퍼스 전처리가 채운 필드**로만 읽고, 없으면 그 기능만 꺼진다.
+
+| 필드 | 쓰임 | 없을 때 |
+|---|---|---|
+| `doc_type` | 필터, analyzer enum | `document` |
+| `version_group` / `version_rank` | 같은 문서의 버전을 한 건으로 접고 최신본을 대표로 | 같은 제목끼리만 접힘 |
+| `is_final` | 묶음 대표를 고를 때 가장 먼저 봄 | `false` |
+| `project` | 과제 필터, 과제명 가산점 | 빈 문자열 |
+| `page_nos` (청크) | 청크가 걸친 페이지. 카드 `source_ref.page_nos` | `page_no` |
+
+문서 필드는 청크 `metadata`나 `chunks.jsonl` 옆 `document_meta.jsonl`에 둔다. `LTM_DOC_META=none`이면 옆 파일을 읽지 않는다.
+20200504 과제 폴더 전용 규칙(폴더 이름 → 문서 유형, 버전 꼬리표, 최종제출 폴더)은 2026-09-15에
+저장소 밖 전처리(`datasets/20200504-doc_rag/scripts/enrich_doc_meta.py`)로 옮겼다.
+
+실제 과제 기반 자료(`memory_seed_20200504/`, 평가셋)는
 연구실 문서라 `.gitignore` 대상이다. 없으면 해당 테스트는 건너뛴다.
 
 ---
@@ -121,12 +138,22 @@ AGENT_MODEL=openai/gpt-5.6-luna-pro
 | 변수 | 값 | 필요 패키지 |
 |---|---|---|
 | `RETRIEVER_TOKENIZER` | `whitespace` \| `morph` | `kiwipiepy` |
-| `RETRIEVER_SCORER` | `freq` \| `bm25` | — |
+| `RETRIEVER_SCORER` | `freq` \| `bm25` \| `bm25plus` (BM25+, δ=1.0) | — |
 | `RETRIEVER_SCORER_SEED` | STM/MTM만 따로 지정 | — |
+| `RETRIEVER_BM25_K1` | BM25 k1 (기본 2.0) | — |
+| `RETRIEVER_TITLE_BONUS` | `add` (토큰마다 +2.0, 기본) \| `none` \| `mult` (×최대 1.1) | — |
+| `QUERY_EXPANSIONS` | 동의어 사전 경로 \| `none` (기본 `config/query_expansions.json`) | — |
+| `LTM_DOC_META` | 문서 메타데이터 파일 경로 \| `none` (기본 `chunks.jsonl` 옆 `document_meta.jsonl`) | — |
 | `RETRIEVER_DENSE` | `0` \| `1` | `torch`, `sentence-transformers` |
 | `RETRIEVER_DENSE_WEIGHT` | RRF에서 dense 비중 (기본 0.5) | — |
+| `RETRIEVER_RERANK` | `none` (기본) \| cross-encoder 모델 이름. 상위 N개 청크의 **순서만** 다시 매긴다 (점수 값은 유지) | `sentence-transformers` |
+| `RETRIEVER_RERANK_TOP_N` | 재정렬할 후보 수 (기본 30) | — |
 
 임베딩은 첫 실행에 청크를 인코딩해 `cache/dense/`에 저장하고 이후에는 읽기만 한다.
+재정렬 점수는 `cache/rerank/`에 (모델, 질문, 청크) 단위로 쌓는다.
+
+공개 평가셋(Allganize RAG-Evaluation-Dataset-KO)으로 LTM 검색기만 재는 스크립트는 `scripts/bench_allganize.py`다.
+데이터는 저장소 밖 `../datasets/allganize-rag-eval-ko/ltm/`에 둔다.
 
 ---
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import dataclass
 from datetime import date
@@ -9,56 +10,32 @@ from typing import Any
 
 from .ltm_corpus import LtmCorpus
 from .normalization import normalize_project_name, normalized_project_key
-from .scoring import Bm25Params, freq_weight, scorer_name
+from .scoring import BM25_SCORERS, Bm25Params, bm25_params, freq_weight, scorer_name
 from .tokenizer import tokenize, tokenize_many
 
-# 키는 부분 문자열로 매칭한다. 한국어는 조사가 붙어 토큰이 달라지므로
-# ("예산이" != "예산") 정확 일치로 조회하면 확장이 거의 동작하지 않는다.
-QUERY_EXPANSIONS = {
-    # 시점
-    "아까": "오늘 최근 방금 회의 earlier",
-    "방금": "아까 오늘 최근 earlier",
-    "오늘": "금일 최근 today",
-    "어제": "전날 최근",
-    "최근": "오늘 최신 근래 recent",
-    # 회의와 대화
-    "회의": "회의록 미팅 대화 논의 meeting",
-    "대화": "회의 논의 conversation",
-    # 일정
-    "일정": "기한 마감 마일스톤 날짜 schedule",
-    "기한": "일정 마감 완료일 deadline",
-    "마감": "기한 일정 deadline",
-    "다음": "차기 후속 next",
-    # 담당과 실행
-    "담당": "담당자 책임 배정 owner",
-    "action": "action item 액션아이템 할일 담당자",
-    "액션": "action item 할일 담당자",
-    "할일": "action item 액션아이템 담당자",
-    # 예산
-    "예산": "사업비 비용 단가 산정 자문비 budget",
-    "비용": "예산 단가 산정 cost",
-    "단가": "예산 비용 산정 기준",
-    "산정": "예산 기준 근거 산출",
-    # 결정과 공식성
-    "결정": "결정사항 합의 확정 decision",
-    "공식": "최종 승인 확정 기준 official approved",
-    "최종": "공식 승인 확정 final",
-    "승인": "공식 최종 확정 approved",
-    "기준": "규정 지침 표준 standard",
-    "계획": "계획서 마일스톤 일정 plan",
-    # 문서
-    "제안서": "초안 제안 proposal",
-    "초안": "제안서 작성중 draft",
-    "보고서": "보고 리포트 report",
-    # 비교와 충돌
-    "충돌": "차이 비교 불일치 conflict",
-    "비교": "차이 충돌 대조 compare",
-    "차이": "비교 충돌 불일치",
-    # 리스크
-    "리스크": "위험 지연 쟁점 risk",
-    "지연": "리스크 위험 delay",
-    "쟁점": "이슈 논점 리스크 issue",
-}
+#: 질의 확장 동의어 사전. 조직마다 업무 용어가 달라 코드가 아니라 설정 파일에 둔다.
+#:
+#:   QUERY_EXPANSIONS=<경로>   다른 사전 파일을 쓴다
+#:   QUERY_EXPANSIONS=none     확장하지 않는다
+#:   (미지정)                  config/query_expansions.json. 파일이 없으면 확장하지 않는다
+#:
+#: 키는 부분 문자열로 매칭한다. 한국어는 조사가 붙어 토큰이 달라지므로
+#: ("예산이" != "예산") 정확 일치로 조회하면 확장이 거의 동작하지 않는다.
+DEFAULT_EXPANSIONS_PATH = Path(__file__).resolve().parents[1] / "config" / "query_expansions.json"
+_EXPANSIONS_CACHE: dict[str, dict[str, str]] = {}
+
+
+def query_expansions() -> dict[str, str]:
+    raw = os.environ.get("QUERY_EXPANSIONS", "").strip()
+    if raw not in _EXPANSIONS_CACHE:
+        if raw.lower() in {"none", "off", "0"}:
+            table: dict[str, str] = {}
+        else:
+            target = Path(raw) if raw else DEFAULT_EXPANSIONS_PATH
+            table = json.loads(target.read_text(encoding="utf-8")) if target.exists() else {}
+        _EXPANSIONS_CACHE[raw] = table
+    return _EXPANSIONS_CACHE[raw]
+
 
 #: retrieve()가 한 번에 돌려줄 수 있는 최대 건수. A방식의 넓은 후보 풀을 위해 상향했다.
 MAX_RETRIEVE_TOP_K = 50
@@ -83,7 +60,7 @@ def _tokenize(text: str) -> list[str]:
 
 def _expand_query(query: str) -> str:
     lowered = query.lower()
-    expansions = [value for key, value in QUERY_EXPANSIONS.items() if key in lowered]
+    expansions = [value for key, value in query_expansions().items() if key in lowered]
     return " ".join([query, *expansions])
 
 
@@ -294,7 +271,7 @@ class MemoryStore:
             for doc in self.documents
         }
         if self.ltm_corpus is not None:
-            projects.add(self.ltm_corpus.project)
+            projects.update(self.ltm_corpus.projects())
             source_types.update(self.ltm_corpus.source_types())
         return {
             "project": sorted(value for value in projects if value),
@@ -339,7 +316,7 @@ class MemoryStore:
         실코퍼스(수천 chunk)로 가면 그대로 비례해 늘어난다.
         """
         expanded = _expand_query(query)
-        # 확장 결과에는 같은 토큰이 여러 번 들어온다. QUERY_EXPANSIONS의 값이
+        # 확장 결과에는 같은 토큰이 여러 번 들어온다. 동의어 사전의 값이
         # 서로 겹치기 때문이다 — "예산 비용 단가"를 확장하면 세 항목이 모두
         # "예산 단가 산정"을 덧붙여 각 토큰이 3번씩 나온다.
         #
@@ -373,12 +350,13 @@ class MemoryStore:
         project_l = indexed["project_l"]
 
         score = 0.0
-        use_bm25 = scorer_name("seed") == "bm25"
+        use_bm25 = scorer_name("seed") in BM25_SCORERS
+        params = bm25_params(self._bm25.n_docs, self._bm25.avg_len, scope="seed") if use_bm25 else None
         # query_tokens는 _prepare_query에서 이미 중복이 제거돼 있다.
         for token in query_tokens:
             if token in hay_counts:
                 if use_bm25:
-                    score += self._bm25.weight(
+                    score += params.weight(
                         hay_counts[token], indexed["n_tokens"], self._doc_freq.get(token, 1)
                     )
                 else:

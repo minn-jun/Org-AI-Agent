@@ -1,7 +1,6 @@
-"""실제 과제 문서를 LTM으로 붙이는 어댑터.
+"""실제 문서를 LTM으로 붙이는 어댑터.
 
-`datasets/20200504-doc_rag/export/.../chunks.jsonl`(doc_rag가 파싱한 883문서 26,586청크)을 읽어
-MemoryStore와 같은 모양의 근거 카드를 돌려준다.
+doc_rag가 파싱한 `chunks.jsonl`을 읽어 MemoryStore와 같은 모양의 근거 카드를 돌려준다.
 
 ## 왜 파일로 떨구지 않는가
 
@@ -22,10 +21,44 @@ STM/MTM처럼 `ltm/` 폴더에 md 파일로 쓰면 세 가지가 깨진다.
 | 파일명 충돌 | 근거 id를 `ev_ltm_{doc_id}`로 쓴다. doc_id는 상대경로 sha1 앞 16자라 고유하다 |
 | 채점 비용 | 로드할 때 역색인을 한 번 만들고, 질의어가 있는 청크만 훑는다 |
 
-검색은 청크 단위, 근거는 문서 단위다.
+검색은 청크 단위, 근거는 문서 단위다(`search`).
 한 문서의 여러 청크가 걸리면 최고점 청크만 대표로 올리고,
 그 청크의 본문을 인용문으로 쓴다. 그래야 STM/MTM과 같은
 "문서 하나 = 근거 하나" 계약이 유지된다.
+페이지 단위 평가처럼 청크 순위 자체가 필요하면 `search_chunks`를 쓴다.
+
+## 코퍼스 메타데이터
+
+검색기는 특정 코퍼스의 폴더 이름이나 파일명 습관을 모른다.
+문서 성격·버전 계열·최종본 여부·소속 과제는 **코퍼스 전처리가 채워 넣은 필드**로만 읽는다.
+필드가 없으면 그 기능이 꺼질 뿐 검색은 그대로 돈다.
+
+| 필드 | 뜻 | 없을 때 |
+|---|---|---|
+| `doc_type` | 문서 성격. 필터와 analyzer enum에 쓴다 | `document` |
+| `version_group` | 같은 문서의 버전들이 공유하는 키. 같으면 검색 결과에서 한 건으로 접는다 | 제목 (같은 제목끼리만 접힘) |
+| `version_rank` | 계열 안 최신 순서 `[최종 여부, 주 번호, 부 번호]` | `[0, 0, 0]` |
+| `is_final` | 실제 제출·확정본인가. 묶음 대표를 고를 때 가장 먼저 본다 | `false` |
+| `project` | 문서가 속한 과제·프로젝트. 필터와 과제명 가산점에 쓴다 | 빈 문자열 |
+
+값은 청크 `metadata`에 넣거나, 문서 단위로 `chunks.jsonl` 옆 `document_meta.jsonl`
+(한 줄에 `{"doc_id": ..., 필드...}`)에 둔다. 둘 다 있으면 `document_meta.jsonl`이 이긴다.
+옆 파일로 두면 청크 파일을 다시 쓰지 않으므로 임베딩 캐시(파일 크기·수정시각 키)가 유지된다.
+`LTM_DOC_META=none`이면 옆 파일을 읽지 않고, 경로를 주면 그 파일을 읽는다.
+
+청크 `metadata`의 `page_nos`(없으면 `page_no`)는 청크가 걸친 페이지다. 카드의 `source_ref.page_nos`로 나간다.
+
+2026-09-15까지는 20200504 과제 폴더 전용 규칙(폴더 이름 → 문서 유형, 버전 꼬리표 정규식,
+최종제출 폴더, 과제명·기관명 프로파일)이 이 파일에 있었다. 지금은 코퍼스 전처리
+(`datasets/20200504-doc_rag/scripts/enrich_doc_meta.py`, 저장소 밖)로 옮겼다.
+
+## 제목 가산점 (`RETRIEVER_TITLE_BONUS`)
+
+| 값 | 방식 |
+|---|---|
+| `add` (기본) | 질의 토큰이 제목에 부분 문자열로 들어 있으면 토큰마다 +2.0. 첫 MVP부터의 값이고 근거는 없다 |
+| `none` | 가산점 없음. 제목은 이미 청크 색인(`제목 + 본문`)에 들어가 BM25로 반영된다 |
+| `mult` | `점수 × (1 + 0.1 × 제목 일치율)`. 일치율 = IDF가 질의 중앙값 이상인 토큰 중 제목 토큰에 정확히 있는 비율. 최대 10%라 동점에 가까운 후보의 순서만 바꾼다 |
 
 ## 최신성
 
@@ -39,240 +72,40 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import os
 import re
+import statistics
 from array import array
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from . import dense as dense_mod
-from .scoring import Bm25Params, freq_weight, scorer_name
+from .scoring import BM25_SCORERS, Bm25Params, bm25_params, freq_weight, scorer_name
 from .tokenizer import tokenize, tokenize_many
 
-# --------------------------------------------------------------- 코퍼스 프로파일
-#
-# 과제명과 참여 기관명은 코드가 아니라 **그 코퍼스의 사실**이다.
-# 실제 연구 자료를 다루면 저장소에 올릴 수 없는 값이 되므로 파일로 뺐다.
-#
-#   config/corpus_profile.json   (gitignore 대상)
-#     {
-#       "project": "○○ 과제",
-#       "organizations": ["기관명", "기관 약어", ...]
-#     }
-#
-# 파일이 없으면 기본값으로 돈다. 기관 목록이 비면 기관 표기 보호가 꺼질 뿐
-# 나머지 동작(버전 접기, 보일러플레이트 감쇠)은 그대로다.
+#: 문서 성격을 모를 때의 값. 파일 형식(pdf/hwp)은 쓰지 않는다 —
+#: analyzer enum이 형식 이름으로 오염되기 때문이다.
+DEFAULT_DOC_TYPE = "document"
 
-_PROFILE_PATH = Path(__file__).resolve().parents[1] / "config" / "corpus_profile.json"
-_DEFAULT_PROFILE = {"project": "프로젝트", "organizations": []}
+#: 문서 단위 메타데이터 필드. 청크 metadata나 document_meta.jsonl에서 읽는다.
+DOC_FIELDS = ("doc_type", "version_group", "version_rank", "is_final", "project")
 
+#: 청크 파일 옆에 두는 문서 메타데이터 파일 이름.
+DOC_META_FILE = "document_meta.jsonl"
 
-def load_profile(path: Path | None = None) -> dict:
-    target = Path(path) if path else _PROFILE_PATH
-    if not target.exists():
-        return dict(_DEFAULT_PROFILE)
-    return {**_DEFAULT_PROFILE, **json.loads(target.read_text(encoding="utf-8"))}
+#: 제목 가산점. `add` 방식에서 토큰마다 더하는 값 / `mult` 방식의 최대 비율.
+TITLE_BONUS = 2.0
+TITLE_BONUS_MULT_ALPHA = 0.1
+TITLE_BONUS_MODES = ("add", "none", "mult")
 
-
-_PROFILE = load_profile()
-
-#: 이 코퍼스가 통째로 속한 과제. STM/MTM의 project 값과 같아야 필터가 맞는다.
-CORPUS_PROJECT: str = _PROFILE["project"]
-
-#: 참여 기관 표기. 목록은 프로파일에서 온다.
-_ORGANIZATIONS: list[str] = list(_PROFILE["organizations"])
-
-
-def _org_pattern(suffix_only: bool) -> "re.Pattern[str]":
-    """기관 표기 정규식. 목록이 비면 아무것도 매칭하지 않는다."""
-    if not _ORGANIZATIONS:
-        return re.compile(r"(?!)")
-    body = "|".join(re.escape(o) for o in _ORGANIZATIONS)
-    if suffix_only:
-        return re.compile(r"(?i)[\s_\-]+(?:" + body + r")\s*$")
-    return re.compile(r"(?i)(?:" + body + r")")
-
-#: 폴더 이름에서 문서 성격을 뽑는다. 파일 형식(pdf/hwp)을 source_type으로 쓰면
-#: analyzer의 enum이 형식 이름으로 오염돼서, STM/MTM과 같은 의미 공간으로 옮긴다.
-#: 앞에 있는 규칙이 먼저 맞는다.
-_TYPE_RULES: list[tuple[str, str]] = [
-    ("협약변경", "agreement"),
-    ("협약", "agreement"),
-    ("최종보고서", "official_report"),
-    ("차년도 보고서", "official_report"),
-    ("단계 평가 결과", "evaluation_result"),
-    ("종합의견서", "evaluation_result"),
-    ("대면평가", "evaluation_result"),
-    ("계획서 작업", "plan_document"),
-    ("개발 계획", "plan_document"),
-    ("특허", "patent_document"),
-    ("학술대회", "publication"),
-    ("시험평가", "test_report"),
-    ("시범 서비스", "commercialization"),
-    ("MOU", "commercialization"),
-    ("정산", "budget_document"),
-    ("예산", "budget_document"),
-    ("연구비", "budget_document"),
-    ("현물부담", "budget_document"),
-    ("퇴직급여", "budget_document"),
-    ("외부연구원", "personnel_document"),
-    ("전문가활용", "personnel_document"),
-    ("화면 설계", "design_document"),
-    ("디자인 컨설팅", "design_document"),
-    ("HW 설계", "design_document"),
-    ("회의", "meeting_document"),
-    ("공고", "reference_material"),
-    ("사전 준비", "reference_material"),
-]
-
-
-# ------------------------------------------------------------------ 버전 접기
-#
-# 조직 문서에는 같은 문서의 작업본이 잔뜩 쌓인다. 이 코퍼스는 청크의 25%가
-# 글자까지 똑같은 중복이고, 현실 질의 12개의 상위 5건 중 31.7%가
-# 같은 계열의 반복이었다("차단계 사업계획서_v3 / _v4 / _v8 / _v9 / _v10").
-#
-# 인덱스에서 지우지는 않는다. 연구 단계에서는 버전 이력 자체가 자료다.
-# 검색 결과에서만 한 건으로 접고, 나머지는 몇 건인지만 알려준다.
-
-#: 계열 키가 이보다 짧아지면 더 깎지 않는다.
-#: 제목이 통째로 사라져 관련 없는 문서가 한 덩어리가 되는 것을 막는다
-#: (실측: 이 가드가 없을 때 Article... / BOM... / Scan... 10건이 빈 키로 합쳐졌다).
-_MIN_FAMILY_KEY = 8
-
-_VERSION_TAG = re.compile(
-    r"""(?ix)
-    [\s_\-]+(?:
-      # 작업자 이니셜은 버전 번호에 붙어 있을 때만 뗀다.
-      # 단독으로 떼면 기관 약어(_ABC)를 이니셜(_jic)로 오인한다 —
-      # 기관 표기는 버전이 아니라 별개 문서를 가리키므로 남겨야 한다.
-      [A-Za-z]{2,4}\d?[\s_\-]+v\d+(?:[._-]\d+)*       # _aej_v3
-    | v\d+(?:[._-]\d+)*[\s_\-]+[A-Za-z]{2,4}\d?       # _v16_jic
-    | v\d+(?:[._-]\d+)*                               # _v1 _v10 _v1.1
-    | \d+차(?:\s*수정)?
-    | fina?l | 최종본? | 완성본?
-    | 수정(?:본|안|판)? | 재수정
-    | 취합본? | 통합본? | 정리본?
-    | 원본 | 그림원본 | 그림작업
-    | 배포용 | 제출용 | 인쇄용
-    | copy | 사본
-    # 검토 상태 표기. 앞에 사람이 붙는다 — "_○○○ 검토", "_교수님 검토", "_검토전"
-    | [가-힣]{0,4}\s*검토(?:전|후|본|중)?
-    | [가-힣]{0,4}\s*(?:수정본|확인본|반영본|보완본|정리본)
-    | \d{1,2}                                          # _01 _02
-    )\s*$
-  | \s*\(\d+\)\s*$
-    """
-)
-
-
-#: 기관 표기. 버전 꼬리표처럼 생겼지만 **다른 문서**를 가리킨다.
-#:
-#: "확인서_A기관"와 "확인서_B기관"는 같은 서식을 두 기관이 각각 작성한 별개 서류다.
-#: 대표 서명도 내용도 달라서 접으면 한쪽 기관 서류가 통째로 숨는다.
-#: 실측으로 기관 표기가 붙은 문서가 91건, 그중 쌍을 이루는 계열이 8개다.
-_ORG_TAG = _org_pattern(suffix_only=False)
-
-#: 제목 끝에 붙은 기관 표기. 버전 번호가 있는 제목에서만 뗀다.
-_ORG_SUFFIX = _org_pattern(suffix_only=True)
-
-#: 사람 이름 프리픽스가 없는 엄격한 버전. 기관 표기를 지켜야 할 때 쓴다.
-_VERSION_TAG_STRICT = re.compile(
-    r"""(?ix)
-    [\s_\-]+(?:
-      [A-Za-z]{2,4}\d?[\s_\-]+v\d+(?:[._-]\d+)*
-    | v\d+(?:[._-]\d+)*[\s_\-]+[A-Za-z]{2,4}\d?
-    | v\d+(?:[._-]\d+)*
-    | \d+차(?:\s*수정)?
-    | fina?l | 최종본? | 완성본?
-    | 수정(?:본|안|판)? | 재수정
-    | 취합본? | 통합본? | 정리본?
-    | 원본 | 그림원본 | 그림작업
-    | 배포용 | 제출용 | 인쇄용
-    | copy | 사본
-    | 검토(?:전|후|본|중)?
-    | \d{1,2}
-    )\s*$
-  | \s*\(\d+\)\s*$
-    """
-)
-
-
-def family_key(title: str) -> str:
-    """버전 꼬리표를 떼어 같은 문서 계열을 하나의 키로 만든다.
-
-    `_○○○ 검토`처럼 사람 이름이 앞에 붙는 꼬리표가 있어서 한글 프리픽스를
-    허용하는데, 그대로 두면 `_A기관 정리본`의 기관명까지 먹는다.
-    그래서 떼어낼 구간에 기관 표기가 섞이면 프리픽스 없는 규칙으로 다시 잡는다.
-
-        보고서_A기관 정리본  ->  보고서_A기관     (기관은 남는다)
-        보고서_A기관 최종본  ->  보고서_A기관
-        보고서_v9_○○○ 검토 ->  보고서            (사람 이름은 떨어진다)
-    """
-    # 버전 번호가 붙은 제목에서는 기관 표기가 "누가 고쳤나"를 뜻한다.
-    #   발표자료_v7.2_A기관 수정본   -> A기관가 고친 v7.2. 기관은 문서 구분이 아니다
-    #   확인서_A기관               -> A기관의 확인서. 기관이 문서를 가른다
-    # 그래서 버전 번호가 없을 때만 기관 표기를 지킨다.
-    protect_org = not _VERSION_NUM.search(title)
-    for _ in range(8):
-        m = _VERSION_TAG.search(title)
-        if not m:
-            if protect_org:
-                break
-            m = _ORG_SUFFIX.search(title)   # 기관만 남았으면 그것도 뗀다
-            if not m:
-                break
-        elif protect_org and _ORG_TAG.search(title[m.start():]):
-            m = _VERSION_TAG_STRICT.search(title)
-            if m is None or _ORG_TAG.search(title[m.start():]):
-                break
-        candidate = title[: m.start()].strip(" _-")
-        if len(candidate) < _MIN_FAMILY_KEY:
-            break
-        title = candidate
-    return re.sub(r"\s+", " ", title).strip()
-
-
-_VERSION_NUM = re.compile(r"(?i)(?:^|[\s_\-])v(\d+)(?:[._-](\d+))?(?![\d])")
-_FINAL_TAG = re.compile(r"(?i)fina?l|최종")
-
-
-def version_rank(title: str) -> tuple[int, int, int]:
-    """계열 안에서 어느 문서가 최신인지 재는 값. 클수록 최신이다.
-
-    파일 수정일은 못 쓴다 — 이 코퍼스는 통째로 내려받은 사본이라
-    698건이 전부 같은 날짜(2026-08-26)로 찍혀 있다. 그래서 제목의 버전 표기를 본다.
-
-        _v17            -> (0, 17, 0)
-        _v7.2_A기관 수정본 -> (0, 7, 2)
-        _v01_jic        -> (0, 1, 0)
-        _Final_..._v2   -> (1, 2, 0)
-        _최종(그림원본)     -> (1, 0, 0)
-        (꼬리표 없음)      -> (0, 0, 0)
-
-    `최종`/`Final`을 버전 번호보다 앞에 두는 이유는, 한국어 문서 관행에서
-    `_최종`이 붙으면 번호가 매겨진 작업본을 대체한다고 보기 때문이다.
-    """
-    major = minor = 0
-    for m in _VERSION_NUM.finditer(title):
-        cand = (int(m.group(1)), int(m.group(2) or 0))
-        if cand > (major, minor):
-            major, minor = cand
-    return (1 if _FINAL_TAG.search(title) else 0, major, minor)
-
-
-#: 실제로 제출된 산출물이 놓인 폴더. 파일명 버전보다 강한 신호다.
-#:
-#: 실측: 계열 안에 이 폴더의 문서가 있을 때, 그게 버전 최고와 일치한 비율이 89%다.
-#: 게다가 버전 번호가 아예 없는 최종본을 잡아낸다 — 실제로
-#: "신청용 계획서(PART II)" 계열은 버전 최고가 `_v4`(작업 폴더)인데
-#: 진짜 제출본은 꼬리표 없이 `06_최종제출` 폴더에 있었다.
-_FINAL_DIR = re.compile(r"최종\s*제출|최종제출|제출\s*자료|최종\s*전달|업로드본|제출 서류")
+#: 과제명 가산점. 문서의 project 필드에 질의 토큰이 들어 있으면 토큰마다 더한다.
+PROJECT_BONUS = 1.5
 
 #: 이 수를 넘는 계열에 같은 본문이 나오면 서식으로 보고 감점한다.
-#: 표본 확인 결과 3계열까지는 작업 파일 사이에 복사된 진짜 내용이었고,
-#: 4계열부터 계약 문구·서식 지침 같은 것이 나왔다.
+#: 20200504 과제 폴더 표본에서 3계열까지는 작업 파일 사이에 복사된 진짜 내용이었고,
+#: 4계열부터 계약 문구·서식 지침 같은 것이 나왔다. 방식은 범용이고 기준값은 그 표본에서 왔다.
 _BOILERPLATE_MIN_FAMILIES = 3
 
 #: 토큰화를 몇 건씩 묶어 넘길지. 메모리와 속도의 절충이다.
@@ -291,11 +124,17 @@ def _tokenize(text: str) -> list[str]:
     return tokenize(text)
 
 
-def classify(rel_path: str) -> str:
-    for keyword, label in _TYPE_RULES:
-        if keyword in rel_path:
-            return label
-    return "official_document"
+def title_bonus_mode() -> str:
+    name = os.environ.get("RETRIEVER_TITLE_BONUS", "add").strip().lower()
+    return name if name in TITLE_BONUS_MODES else "add"
+
+
+def _chunk_pages(meta: dict[str, Any]) -> tuple[int, ...]:
+    pages = meta.get("page_nos")
+    if isinstance(pages, list) and pages:
+        return tuple(int(p) for p in pages)
+    page = meta.get("page_no")
+    return (int(page),) if page else ()
 
 
 @dataclass
@@ -307,18 +146,43 @@ class CorpusDocument:
     stage: str
     modified_at: str
     n_chunks: int
-    family: str = ""       # 버전 꼬리표를 뗀 계열 키
-    final_dir: int = 0     # 최종 제출 폴더에 있으면 1
+    family: str = ""                          # version_group. 비면 제목으로 묶는다
+    final_dir: int = 0                         # is_final이면 1
+    version: tuple[int, ...] = (0, 0, 0)       # version_rank
+    project: str = ""
     cells: int = 0         # 표 셀 수
     empty_cells: int = 0   # 그중 빈 셀
+
+
+def load_document_meta(path: Path | None) -> dict[str, dict[str, Any]]:
+    """`document_meta.jsonl`을 doc_id별 필드 사전으로 읽는다. 파일이 없으면 빈 사전이다."""
+    if path is None or not path.exists():
+        return {}
+    rows: dict[str, dict[str, Any]] = {}
+    with path.open(encoding="utf-8") as fh:
+        for line in fh:
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            rows[str(row["doc_id"])] = {k: row[k] for k in DOC_FIELDS if k in row}
+    return rows
+
+
+def _resolve_doc_meta_path(corpus_path: Path, explicit: Path | None) -> Path | None:
+    if explicit is not None:
+        return Path(explicit)
+    raw = os.environ.get("LTM_DOC_META", "").strip()
+    if raw.lower() in {"none", "off", "0"}:
+        return None
+    return Path(raw) if raw else corpus_path.with_name(DOC_META_FILE)
 
 
 class LtmCorpus:
     """청크 역색인 + 문서 단위 근거 집계."""
 
-    def __init__(self, path: Path, project: str = CORPUS_PROJECT):
+    def __init__(self, path: Path, doc_meta_path: Path | None = None):
         self.path = Path(path)
-        self.project = project
+        self.doc_meta_path = _resolve_doc_meta_path(self.path, doc_meta_path)
         self.documents: dict[str, CorpusDocument] = {}
 
         # 청크는 인덱스 정렬 배열로 들고 있는다. 청크마다 dict를 만들면
@@ -328,6 +192,7 @@ class LtmCorpus:
         self._chunk_title_l: list[str] = []
         self._chunk_hash: list[bytes] = []   # 본문 해시. 버전 간 동일 문단을 접는 데 쓴다
         self._chunk_len: list[int] = []      # 청크 토큰 수. BM25 길이 정규화에 쓴다
+        self._chunk_pages: list[tuple[int, ...]] = []   # 청크가 걸친 페이지
 
         # token -> array('i') [청크번호, 빈도, 청크번호, 빈도, ...]
         self._postings: dict[str, array] = {}
@@ -335,28 +200,36 @@ class LtmCorpus:
         # 청크 본문이 몇 개의 *계열*에 걸쳐 나오는지. 보일러플레이트 감쇠에 쓴다.
         self._chunk_weight: list[float] = []
 
+        # 제목 토큰 집합. `mult` 제목 가산점을 처음 쓸 때 만든다.
+        self._title_tokens: dict[str, frozenset[str]] | None = None
+
         self._load()
 
     # ------------------------------------------------------------------ load
 
     def _load(self) -> None:
         postings: dict[str, array] = {}
+        doc_meta = load_document_meta(self.doc_meta_path)
         with self.path.open(encoding="utf-8") as fh:
             for line in fh:
                 row = json.loads(line)
                 meta = row["metadata"]
                 doc_id = row["source_id"]
                 if doc_id not in self.documents:
+                    fields = {k: meta[k] for k in DOC_FIELDS if k in meta}
+                    fields.update(doc_meta.get(doc_id, {}))
                     self.documents[doc_id] = CorpusDocument(
                         doc_id=doc_id,
                         title=meta.get("title") or doc_id,
                         rel_path=meta.get("source_path", ""),
-                        source_type=classify(meta.get("source_path", "")),
+                        source_type=str(fields.get("doc_type") or DEFAULT_DOC_TYPE),
                         stage=meta.get("stage", ""),
                         modified_at=str(meta.get("modified_at", ""))[:10],
                         n_chunks=0,
-                        family=family_key(meta.get("title") or doc_id),
-                        final_dir=1 if _FINAL_DIR.search(meta.get("source_path", "")) else 0,
+                        family=str(fields.get("version_group") or ""),
+                        final_dir=1 if fields.get("is_final") else 0,
+                        version=tuple(int(v) for v in (fields.get("version_rank") or (0, 0, 0))),
+                        project=str(fields.get("project") or ""),
                     )
                 doc = self.documents[doc_id]
                 doc.n_chunks += 1
@@ -368,6 +241,7 @@ class LtmCorpus:
                 self._chunk_text.append(text)
                 self._chunk_title_l.append(doc.title.lower())
                 self._chunk_hash.append(_text_hash(text))
+                self._chunk_pages.append(_chunk_pages(meta))
 
         # 토큰화는 한 건씩 부르지 않고 묶어서 넘긴다.
         # 형태소 분석기는 호출 비용이 커서 차이가 크다 — 실측으로 26,031청크에
@@ -393,6 +267,7 @@ class LtmCorpus:
         self._postings = postings
         self._compute_boilerplate_weights()
         # BM25는 코퍼스 통계가 필요하다. 청크 수와 평균 길이를 여기서 굳힌다.
+        # k1과 BM25+ 여부는 검색할 때 설정을 읽어 정한다(scoring.bm25_params).
         n = len(self._chunk_len) or 1
         self._bm25 = Bm25Params(n_docs=n, avg_len=sum(self._chunk_len) / n)
         # 3단계. 켜져 있을 때만 임베딩 인덱스를 붙인다.
@@ -405,7 +280,7 @@ class LtmCorpus:
         """본문이 여러 계열에 걸쳐 나올수록 감점한다.
 
         서식 목차나 빈 표 헤더 같은 문구는 문서를 가리지 않고 나온다.
-        실측으로 청크의 9.4%가 4개 이상 계열에 걸쳐 있었고,
+        20200504 과제 폴더 실측으로 청크의 9.4%가 4개 이상 계열에 걸쳐 있었고,
         가장 널리 퍼진 것들은 전부 서식이었다.
 
             12계열 | 연구시설 ․ 장비명 | 규격 | 구입단가 (천원) | 구입연도 | ...
@@ -449,28 +324,14 @@ class LtmCorpus:
 
     # ----------------------------------------------------------------- score
 
-    def search(
-        self,
-        query_tokens: list[str],
-        *,
-        query_text: str = "",
-        filters: dict[str, Any] | None = None,
-        filter_penalty: float = 0.3,
-        top_k: int = 5,
-    ) -> list[tuple[float, dict[str, Any]]]:
-        """문서 단위 근거 카드를 점수 높은 순으로 돌려준다.
-
-        `query_text`는 임베딩 검색에만 쓴다. 토큰이 아니라 원문 문장이 필요하다.
-        """
-        if not query_tokens:
-            return []
-
+    def _score_chunks(self, query_tokens: list[str], query_text: str) -> dict[int, float]:
+        """청크별 점수 (본문 일치 × 서식 감쇠 → 임베딩 융합 → 제목·과제명 가산점)."""
         # 1) 질의어가 든 청크만 훑는다. 없는 토큰은 posting이 아예 없다.
         #    점수 함수는 scoring 모듈이 정한다(RETRIEVER_SCORER).
         #    BM25는 토큰마다 df가 필요한데, posting 길이가 곧 df라 공짜로 얻는다.
         chunk_score: dict[int, float] = defaultdict(float)
-        use_bm25 = scorer_name() == "bm25"
-        params = self._bm25 if use_bm25 else None
+        use_bm25 = scorer_name() in BM25_SCORERS
+        params = bm25_params(self._bm25.n_docs, self._bm25.avg_len) if use_bm25 else None
         # 중복만 없애고 **순서는 유지한다**. set으로 돌리면 안 된다.
         #
         # 파이썬은 프로세스마다 문자열 해시를 다르게 잡아서(PYTHONHASHSEED)
@@ -546,17 +407,86 @@ class LtmCorpus:
             )
 
         if not chunk_score:
-            return []
+            return chunk_score
 
-        # 2) 제목 가중치는 후보가 정해진 뒤에만 본다.
-        #    MemoryStore._score()의 +2.0(제목) / +1.5(과제명)과 같은 값을 쓴다.
+        # 2) 제목 가중치는 후보가 정해진 뒤에만 본다. 방식은 RETRIEVER_TITLE_BONUS.
+        #    과제명은 문서마다 다를 수 있어 문서의 project 필드로 계산한다.
+        mode = title_bonus_mode()
         lowered = list(dict.fromkeys(query_tokens))
-        project_l = self.project.lower()
-        project_bonus = 1.5 * sum(1 for t in lowered if t in project_l)
+        title_ratio = self._title_match_ratio(lowered) if mode == "mult" else None
+        project_bonus_of: dict[str, float] = {}
         for idx, base in list(chunk_score.items()):
-            title_l = self._chunk_title_l[idx]
-            bonus = 2.0 * sum(1 for t in lowered if t in title_l)
-            chunk_score[idx] = base + bonus + project_bonus
+            doc_id = self._chunk_doc[idx]
+            if mode == "add":
+                title_l = self._chunk_title_l[idx]
+                value = base + TITLE_BONUS * sum(1 for t in lowered if t in title_l)
+            elif mode == "mult":
+                value = base * (1.0 + TITLE_BONUS_MULT_ALPHA * title_ratio(doc_id))
+            else:
+                value = base
+            project = self.documents[doc_id].project
+            project_bonus = project_bonus_of.get(project)
+            if project_bonus is None:
+                project_l = project.lower()
+                project_bonus = project_bonus_of[project] = PROJECT_BONUS * sum(1 for t in lowered if t in project_l)
+            chunk_score[idx] = value + project_bonus
+
+        # 3) 재정렬기(RETRIEVER_RERANK)를 켰으면 상위 N개의 순서만 다시 매긴다.
+        #    점수 값은 그대로 두고 재정렬 순서대로 나눠 주므로 prefetch 병합의 눈금은 변하지 않는다.
+        from . import rerank as rerank_mod
+
+        scorer = rerank_mod.get_scorer()
+        if scorer is not None:
+            query = query_text or " ".join(lowered)
+            chunk_score = rerank_mod.reorder(
+                chunk_score, query,
+                lambda idx: f"{self.documents[self._chunk_doc[idx]].title}\n{self._chunk_text[idx]}",
+                scorer, rerank_mod.top_n(),
+            )
+        return chunk_score
+
+    def _title_match_ratio(self, query_tokens: list[str]) -> Callable[[str], float]:
+        """`mult` 제목 가산점의 일치율. 흔한 토큰(IDF가 질의 중앙값 미만)은 세지 않는다."""
+        present = [t for t in query_tokens if t in self._postings]
+        if not present:
+            return lambda doc_id: 0.0
+        idf = {t: self._bm25.idf(len(self._postings[t]) // 2) for t in present}
+        cut = statistics.median(idf.values())
+        keep = [t for t in present if idf[t] >= cut]
+        if self._title_tokens is None:
+            docs = list(self.documents.values())
+            self._title_tokens = {
+                doc.doc_id: frozenset(tokens)
+                for doc, tokens in zip(docs, tokenize_many([doc.title for doc in docs]))
+            }
+        titles = self._title_tokens
+        cache: dict[str, float] = {}
+
+        def ratio(doc_id: str) -> float:
+            if doc_id not in cache:
+                cache[doc_id] = sum(1 for t in keep if t in titles[doc_id]) / len(keep)
+            return cache[doc_id]
+
+        return ratio
+
+    def search(
+        self,
+        query_tokens: list[str],
+        *,
+        query_text: str = "",
+        filters: dict[str, Any] | None = None,
+        filter_penalty: float = 0.3,
+        top_k: int = 5,
+    ) -> list[tuple[float, dict[str, Any]]]:
+        """문서 단위 근거 카드를 점수 높은 순으로 돌려준다.
+
+        `query_text`는 임베딩 검색에만 쓴다. 토큰이 아니라 원문 문장이 필요하다.
+        """
+        if not query_tokens:
+            return []
+        chunk_score = self._score_chunks(query_tokens, query_text)
+        if not chunk_score:
+            return []
 
         # 3) 문서 단위로 접는다. 최고점 청크가 그 문서를 대표한다.
         best: dict[str, tuple[float, int]] = {}
@@ -618,14 +548,30 @@ class LtmCorpus:
         folded.sort(key=lambda item: -item[0])
         return folded[:top_k]
 
+    def search_chunks(
+        self,
+        query_tokens: list[str],
+        *,
+        query_text: str = "",
+        top_k: int = 10,
+    ) -> list[tuple[float, dict[str, Any]]]:
+        """청크 단위 순위. 문서로 접지 않고 필터도 걸지 않는다. 페이지 단위 평가용이다.
+
+        점수는 `search`와 같다(같은 `_score_chunks`). 동점은 청크가 점수에 들어간 순서를 따른다.
+        """
+        if not query_tokens:
+            return []
+        chunk_score = self._score_chunks(query_tokens, query_text)
+        ranked = sorted(chunk_score.items(), key=lambda item: -item[1])[:top_k]
+        return [(score, self._chunk_card(idx, score)) for idx, score in ranked]
+
     def _representative_key(self, member: tuple[str, int, float]) -> tuple:
         """계열 안에서 어느 문서를 화면에 세울지 정하는 값. 클수록 대표에 가깝다.
 
-        신호를 세 단계로 쌓는다.
+        신호를 세 단계로 쌓는다. 앞의 두 값은 코퍼스 전처리가 채운 메타데이터다.
 
-        1. **최종 제출 폴더** — 가장 강하다. 실제로 제출된 산출물이 놓인 자리이고,
-           파일명에 버전이 없어도 잡힌다.
-        2. **버전 번호** — 파일명의 `_v17`, `_Final`.
+        1. **확정본 여부** (`is_final`) — 가장 강하다. 실제로 제출된 산출물을 가리킨다.
+        2. **버전 순서** (`version_rank`) — 파일명의 `_v17`, `_Final` 같은 표기에서 온다.
         3. **채움 정도** — 표의 빈 셀이 적은 쪽. 같은 버전의 사본 중 더 작성된 것.
 
         분량(글자 수)은 쓰지 않는다. 실측에서 신호가 아니었다 —
@@ -635,7 +581,7 @@ class LtmCorpus:
         doc_id, _idx, score = member
         doc = self.documents[doc_id]
         fill = 1.0 - (doc.empty_cells / doc.cells) if doc.cells else 0.0
-        return (doc.final_dir, version_rank(doc.title), round(fill, 3), score, doc_id)
+        return (doc.final_dir, doc.version, round(fill, 3), score, doc_id)
 
     def _filter_weight(
         self, doc: CorpusDocument, filters: dict[str, Any], penalty: float
@@ -643,7 +589,7 @@ class LtmCorpus:
         weight = 1.0
         if project := filters.get("project"):
             key = re.sub(r"[\s_-]+", "", str(project).lower())
-            mine = re.sub(r"[\s_-]+", "", self.project.lower())
+            mine = re.sub(r"[\s_-]+", "", doc.project.lower())
             if key not in {mine, "공통"}:
                 weight *= penalty
         if source_type := filters.get("source_type"):
@@ -666,7 +612,7 @@ class LtmCorpus:
             "source_type": doc.source_type,
             "title": doc.title,
             "date": doc.modified_at,
-            "project": self.project,
+            "project": doc.project,
             "summary": quote[:220],
             "quote": quote[:220],
             "content_excerpt": quote[:600],
@@ -676,6 +622,7 @@ class LtmCorpus:
                 # 어느 청크가 걸렸는지 남긴다. 원문 대조에 필요하다.
                 "chunk_index": chunk_idx,
                 "chunk_count": doc.n_chunks,
+                "page_nos": list(self._chunk_pages[chunk_idx]),
                 # 이 카드로 접힌 다른 버전들. 평가에서 gold 라벨이 어느 버전을
                 # 가리키든 맞출 수 있도록 id를 그대로 남긴다.
                 "folded_document_ids": [],
@@ -686,10 +633,26 @@ class LtmCorpus:
             "permission_scope": "company_internal",
         }
 
+    def _chunk_card(self, chunk_idx: int, score: float) -> dict[str, Any]:
+        doc = self.documents[self._chunk_doc[chunk_idx]]
+        return {
+            "evidence_id": f"ev_ltm_{doc.doc_id}",
+            "document_id": doc.doc_id,
+            "title": doc.title,
+            "path": doc.rel_path,
+            "chunk_index": chunk_idx,
+            "page_nos": list(self._chunk_pages[chunk_idx]),
+            "retrieval_score": round(score, 3),
+            "quote": re.sub(r"\s+", " ", self._chunk_text[chunk_idx]).strip()[:220],
+        }
+
     # ------------------------------------------------------------------ misc
 
     def source_types(self) -> list[str]:
         return sorted({d.source_type for d in self.documents.values()})
+
+    def projects(self) -> list[str]:
+        return sorted({d.project for d in self.documents.values() if d.project})
 
     def stats(self) -> dict[str, Any]:
         return {

@@ -17,6 +17,8 @@ cache/
 # 나머지 테스트는 tests/fixtures/memory(가상 과제)로 돈다.
 # ---------------------------------------------------------------------------
 memory_seed_20200504/
+# 과제명·기관명 프로파일. 09-15에 datasets/20200504-doc_rag/로 옮겼고 검색기는 더 읽지 않는다.
+# 다시 생겨도 올라가지 않도록 남겨 둔다.
 config/corpus_profile.json
 scripts/build_lowvision_seed.py
 scripts/build_eval_cases_20200504.py

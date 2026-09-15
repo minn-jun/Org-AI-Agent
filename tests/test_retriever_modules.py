@@ -21,12 +21,7 @@ from pathlib import Path
 
 from org_agent_mvp import dense as dense_mod
 from org_agent_mvp import scoring, tokenizer
-from org_agent_mvp.ltm_corpus import (
-    LtmCorpus,
-    classify,
-    family_key,
-    version_rank,
-)
+from org_agent_mvp.ltm_corpus import DEFAULT_DOC_TYPE, LtmCorpus
 from org_agent_mvp.memory_store import MemoryStore
 from org_agent_mvp.prefetch import MemoryPrefetcher, prefetch_query
 from org_agent_mvp.query_analyzer import QueryPlan
@@ -216,57 +211,6 @@ class DenseTests(unittest.TestCase):
 # --------------------------------------------------------------- ltm_corpus 순수 함수
 
 
-class FamilyKeyTests(unittest.TestCase):
-    def test_version_tags_are_stripped(self) -> None:
-        self.assertEqual(family_key("차단계 사업계획서_v3"), "차단계 사업계획서")
-        self.assertEqual(family_key("차단계 사업계획서_v10"), "차단계 사업계획서")
-
-    def test_same_family_across_version_spellings(self) -> None:
-        titles = [
-            "지식서비스 사업계획서_v7",
-            "지식서비스 사업계획서_최종",
-            "지식서비스 사업계획서_v7.2_수정본",
-        ]
-        self.assertEqual(len({family_key(t) for t in titles}), 1)
-
-    def test_short_titles_are_not_stripped_to_nothing(self) -> None:
-        """꼬리표를 계속 깎아 제목이 사라지면 무관한 문서가 한 덩어리가 된다.
-
-        가드가 걸리면 꼬리표가 남는다. 접기를 놓치는 대신 오합침을 막는 쪽이다.
-        실코퍼스 698건 중 이 가드에 걸리는 것은 5건이다.
-        """
-        self.assertNotEqual(family_key("보고서_v3"), "")
-        self.assertNotEqual(family_key("보고서_v3"), family_key("계획서_v3"))
-
-    def test_empty_title_is_safe(self) -> None:
-        self.assertEqual(family_key(""), "")
-
-    def test_version_rank_orders_within_family(self) -> None:
-        self.assertLess(version_rank("계획서_v3"), version_rank("계획서_v10"))
-        self.assertLess(version_rank("계획서_v7"), version_rank("계획서_v7.2"))
-
-    def test_final_outranks_numbered_drafts(self) -> None:
-        """한국어 문서 관행에서 `_최종`은 번호가 매겨진 작업본을 대체한다."""
-        self.assertGreater(version_rank("계획서_최종"), version_rank("계획서_v17"))
-
-    def test_version_rank_takes_highest_number_present(self) -> None:
-        self.assertEqual(version_rank("계획서_v1_v9")[1], 9)
-
-    def test_classify_maps_folder_to_semantic_type(self) -> None:
-        self.assertEqual(classify("1단계/04_협약/협약서.hwp"), "agreement")
-        self.assertEqual(classify("2단계/07_특허/과업지시서.hwp"), "patent_document")
-
-    def test_classify_defaults_when_no_rule_matches(self) -> None:
-        self.assertEqual(classify(""), "official_document")
-        self.assertEqual(classify("알 수 없는 폴더/문서.pdf"), "official_document")
-
-    def test_classify_never_returns_a_file_format(self) -> None:
-        """source_type이 pdf/hwp가 되면 analyzer enum이 형식 이름으로 오염된다."""
-        for path in ("a/b.pdf", "a/b.hwp", "a/b.pptx"):
-            with self.subTest(path=path):
-                self.assertNotIn(classify(path), {"pdf", "hwp", "pptx"})
-
-
 # ------------------------------------------------------------- ltm_corpus 동작
 
 
@@ -277,7 +221,8 @@ def write_corpus(path: Path, rows: list[dict]) -> None:
 
 
 def chunk(source_id: str, title: str, text: str, index: int = 1,
-          source_path: str = "1단계/04_협약/문서.hwp") -> dict:
+          source_path: str = "1단계/04_협약/문서.hwp", **doc_meta) -> dict:
+    """청크 한 줄. `doc_meta`는 코퍼스 전처리가 채우는 문서 필드(doc_type, version_group ...)다."""
     return {
         "chunk_id": f"{source_id}-{index:04d}",
         "source_id": source_id,
@@ -288,6 +233,7 @@ def chunk(source_id: str, title: str, text: str, index: int = 1,
             "source_path": source_path,
             "modified_at": "2026-08-26T11:35:25",
             "stage": "1단계",
+            **doc_meta,
         },
         "text": text,
     }
@@ -338,8 +284,8 @@ class LtmCorpusTests(unittest.TestCase):
 
     def test_versions_are_folded_into_one_card(self) -> None:
         corpus = self.load([
-            chunk("v3", "차단계 사업계획서_v3", "총사업비 1,346,270천원"),
-            chunk("v9", "차단계 사업계획서_v9", "총사업비 1,346,270천원"),
+            chunk("v3", "차단계 사업계획서_v3", "총사업비 1,346,270천원", version_group="차단계 사업계획서"),
+            chunk("v9", "차단계 사업계획서_v9", "총사업비 1,346,270천원", version_group="차단계 사업계획서"),
         ])
         results = corpus.search(["총사업비"], top_k=5)
         self.assertEqual(len(results), 1)
@@ -349,8 +295,8 @@ class LtmCorpusTests(unittest.TestCase):
     def test_folded_ids_are_kept_for_gold_labels(self) -> None:
         """gold가 어느 버전을 가리키든 맞출 수 있어야 평가가 성립한다."""
         corpus = self.load([
-            chunk("v3", "차단계 사업계획서_v3", "총사업비 1,346,270천원"),
-            chunk("v9", "차단계 사업계획서_v9", "총사업비 1,346,270천원"),
+            chunk("v3", "차단계 사업계획서_v3", "총사업비 1,346,270천원", version_group="차단계 사업계획서"),
+            chunk("v9", "차단계 사업계획서_v9", "총사업비 1,346,270천원", version_group="차단계 사업계획서"),
         ])
         _, card = corpus.search(["총사업비"], top_k=5)[0]
         everything = {card["source_ref"]["document_id"], *card["source_ref"]["folded_document_ids"]}
@@ -359,8 +305,8 @@ class LtmCorpusTests(unittest.TestCase):
     def test_representative_is_the_newest_version(self) -> None:
         """묶음 대표는 점수 1등이 아니라 최신본이다. 사람이 읽어야 할 건 최신본이다."""
         corpus = self.load([
-            chunk("v3", "차단계 사업계획서_v3", "총사업비 총사업비 총사업비"),
-            chunk("v9", "차단계 사업계획서_v9", "총사업비 한 번"),
+            chunk("v3", "차단계 사업계획서_v3", "총사업비 총사업비 총사업비", version_group="차단계 사업계획서", version_rank=[0, 3, 0]),
+            chunk("v9", "차단계 사업계획서_v9", "총사업비 한 번", version_group="차단계 사업계획서", version_rank=[0, 9, 0]),
         ])
         _, card = corpus.search(["총사업비"], top_k=5)[0]
         self.assertEqual(card["source_ref"]["document_id"], "v9")
@@ -438,12 +384,61 @@ class LtmCorpusTests(unittest.TestCase):
         self.assertEqual(stats["chunks"], 3)
         self.assertGreater(stats["vocabulary"], 0)
 
-    def test_source_types_come_from_folders(self) -> None:
+    def test_source_types_come_from_document_meta(self) -> None:
         corpus = self.load([
-            chunk("a", "협약서", "본문", source_path="1단계/04_협약/협약서.hwp"),
-            chunk("b", "지시서", "본문", source_path="2단계/07_특허/지시서.hwp"),
+            chunk("a", "협약서", "본문", doc_type="agreement"),
+            chunk("b", "지시서", "본문", doc_type="patent_document"),
         ])
         self.assertEqual(corpus.source_types(), ["agreement", "patent_document"])
+
+    def test_retriever_knows_no_corpus_rules(self) -> None:
+        """메타데이터가 없으면 폴더 이름·파일명 꼬리표로 추정하지 않는다.
+
+        2026-09-15에 20200504 과제 폴더 전용 규칙을 코퍼스 전처리로 옮겼다.
+        폴더가 "04_협약"이어도 doc_type이 없으면 기본값이고, "_v3"/"_v9"도 접지 않는다.
+        """
+        corpus = self.load([
+            chunk("v3", "차단계 사업계획서_v3", "총사업비 1,346,270천원", source_path="1단계/04_협약/a.hwp"),
+            chunk("v9", "차단계 사업계획서_v9", "총사업비 1,346,270천원 변경", source_path="06_최종제출/b.hwp"),
+        ])
+        self.assertEqual(corpus.source_types(), [DEFAULT_DOC_TYPE])
+        self.assertEqual(corpus.projects(), [])
+        self.assertEqual(len(corpus.search(["총사업비"], top_k=5)), 2)
+
+    def test_source_type_is_never_a_file_format(self) -> None:
+        """source_type이 pdf/hwp가 되면 analyzer enum이 형식 이름으로 오염된다."""
+        corpus = self.load([chunk("a", "문서", "본문", source_path="a/b.pdf")])
+        self.assertNotIn(corpus.source_types()[0], {"pdf", "hwp", "pptx"})
+
+    def test_final_document_beats_higher_version_as_representative(self) -> None:
+        """is_final(실제 제출본)은 파일명 버전 번호보다 강한 신호다."""
+        corpus = self.load([
+            chunk("v4", "신청용 계획서_v4", "총사업비 내용", version_group="신청용 계획서", version_rank=[0, 4, 0]),
+            chunk("sub", "신청용 계획서", "총사업비 내용 제출", version_group="신청용 계획서", is_final=True),
+        ])
+        _, card = corpus.search(["총사업비"], top_k=5)[0]
+        self.assertEqual(card["source_ref"]["document_id"], "sub")
+
+    def test_document_meta_file_overrides_chunk_metadata(self) -> None:
+        """문서 필드는 chunks.jsonl 옆 document_meta.jsonl에 둘 수 있고, 청크 metadata보다 우선한다."""
+        write_corpus(self.path, [chunk("a", "협약서", "총사업비", doc_type="agreement", project="A 과제")])
+        (self.path.parent / "document_meta.jsonl").write_text(
+            json.dumps({"doc_id": "a", "doc_type": "official_report", "project": "B 과제"}, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        corpus = LtmCorpus(self.path)
+        self.assertEqual(corpus.source_types(), ["official_report"])
+        self.assertEqual(corpus.projects(), ["B 과제"])
+        _, card = corpus.search(["총사업비"], top_k=1)[0]
+        self.assertEqual(card["project"], "B 과제")
+
+    def test_project_filter_uses_each_documents_project(self) -> None:
+        corpus = self.load([
+            chunk("a", "계획서 가", "총사업비 내용", project="A 과제"),
+            chunk("b", "계획서 나", "총사업비 내용 추가", project="B 과제"),
+        ])
+        results = corpus.search(["총사업비"], filters={"project": "A 과제"}, filter_penalty=0.0, top_k=5)
+        self.assertEqual([card["source_ref"]["document_id"] for _, card in results], ["a"])
 
     def test_card_shape_matches_memory_store_contract(self) -> None:
         """prefetch가 두 계층을 한 목록에 섞으므로 카드 모양이 같아야 한다."""

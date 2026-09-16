@@ -11,7 +11,7 @@ from .config import AppConfig
 from .context_builder import ContextBuilder
 from .memory_store import MemoryStore
 from .prefetch import MemoryPrefetcher, prefetch_query
-from .prompts import SYSTEM_PROMPT
+from .prompts import system_prompt
 from .query_analyzer import QueryAnalyzer, RuleBasedQueryAnalyzer
 from .schemas import EXPAND_EVIDENCE_TOOL, RETRIEVE_MEMORY_TOOL
 from .session_store import SessionStore
@@ -188,7 +188,7 @@ class AgentRuntime:
         prefetch = self.prefetcher.prefetch(plan)
         runtime_context = self.context_builder.build(plan, prefetch.cards, recent_turns)
         messages: list[dict[str, Any]] = [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt()},
             {"role": "system", "content": runtime_context},
             {"role": "user", "content": user_query},
         ]

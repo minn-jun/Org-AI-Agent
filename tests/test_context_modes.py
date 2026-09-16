@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from dataclasses import replace
@@ -89,6 +90,32 @@ class ExpandEvidenceTests(unittest.TestCase):
             runtime = self._runtime("full", temp_dir)
             names = [tool["function"]["name"] for tool in runtime.tools]
             self.assertEqual(names, ["retrieve_memory"])
+
+    def test_prefetch_hint_is_off_by_default(self) -> None:
+        """기본 동작은 2026-09-16 이전과 같아야 한다."""
+        from org_agent_mvp.prompts import SYSTEM_PROMPT, system_prompt
+
+        previous = os.environ.pop("PROMPT_PREFETCH_HINT", None)
+        try:
+            self.assertEqual(system_prompt(), SYSTEM_PROMPT)
+        finally:
+            if previous is not None:
+                os.environ["PROMPT_PREFETCH_HINT"] = previous
+
+    def test_prefetch_hint_can_be_switched_on(self) -> None:
+        from org_agent_mvp.prompts import SYSTEM_PROMPT, system_prompt
+
+        previous = os.environ.get("PROMPT_PREFETCH_HINT")
+        os.environ["PROMPT_PREFETCH_HINT"] = "1"
+        try:
+            text = system_prompt()
+        finally:
+            if previous is None:
+                os.environ.pop("PROMPT_PREFETCH_HINT", None)
+            else:
+                os.environ["PROMPT_PREFETCH_HINT"] = previous
+        self.assertIn(SYSTEM_PROMPT.rstrip(), text)
+        self.assertIn("이미 STM·MTM·LTM을 모두 검색해 고른 결과", text)
 
     def test_summary_mode_exposes_expand_tool(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

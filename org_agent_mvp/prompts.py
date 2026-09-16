@@ -1,3 +1,33 @@
+import os
+
+#: prefetch를 "이미 끝난 검색"으로 알려 주는 추가 안내.
+#:
+#: 2026-09-16 실측: prefetch가 근거 8장을 채워 준 51턴 중 40턴(78%)이 그래도 retrieve_memory를
+#: 다시 불렀고, 다시 뒤진 계층은 prefetch가 이미 훑은 곳이었다(ltm 31·all 25·mtm 18).
+#: 재검색은 턴당 문서를 평균 6.8개 더 실어오고, 도구 호출 루프는 매 왕복마다 누적 대화를
+#: 통째로 다시 보내므로 프롬프트가 크게 불어난다.
+#:
+#: 원인은 근거 부족이 아니라 안내 문구로 보인다 — "반드시 retrieve_memory를 써야 하는 경우"에
+#: 보고서·공식 계획서·프로젝트 사실 확인이 들어 있는데, prefetch가 그 검색을 이미 했다는 말은 없다.
+#:
+#: PROMPT_PREFETCH_HINT=1로 켠다. 효과를 재기 전까지 기본은 끔이다.
+PREFETCH_HINT = """
+prefetch 근거에 대해:
+- [RUNTIME_CONTEXT]의 prefetch 근거는 **런타임이 이미 STM·MTM·LTM을 모두 검색해 고른 결과**다.
+  위의 "반드시 retrieve_memory를 사용해야 하는 경우"에 해당하더라도, 그 검색은 이미 끝나 있다.
+- 따라서 prefetch 근거로 답할 수 있으면 retrieve_memory를 부르지 않는다.
+- 같은 계층을 같은 주제로 다시 검색하지 않는다. prefetch가 훑지 않은 다른 주제가 필요할 때만 부른다.
+- 근거가 모자라면 더 검색하기보다, 무엇이 확인되지 않았는지 밝히고 답한다.
+"""
+
+
+def system_prompt() -> str:
+    """시스템 프롬프트. PROMPT_PREFETCH_HINT로 prefetch 안내를 덧붙일 수 있다."""
+    if os.environ.get("PROMPT_PREFETCH_HINT", "0").strip().lower() in {"1", "true", "yes", "on"}:
+        return SYSTEM_PROMPT.rstrip() + "\n" + PREFETCH_HINT
+    return SYSTEM_PROMPT
+
+
 SYSTEM_PROMPT = """너는 조직지식 에이전트 MVP다.
 
 너의 목표는 사용자의 질문에 대해 조직 메모리 근거를 확인하고 답하는 것이다.

@@ -133,16 +133,18 @@ AGENT_MODEL=openai/gpt-5.6-luna-pro
 
 ## 검색기 설정
 
-기본값은 전부 0단계(공백 분리 + 빈도 점수)다.
+기본값은 **형태소 + BM25(k1 1.2) + 가산점·동의어·임베딩 없음**이다.
+공개 평가셋(Allganize 299문항)과 과제 폴더 60건에서 고른 조합이다 — `llm_study/260904-0917/05`, `07` 문서.
+0단계(공백 분리 + 빈도)로 되돌리려면 `RETRIEVER_TOKENIZER=whitespace RETRIEVER_SCORER=freq`.
 
 | 변수 | 값 | 필요 패키지 |
 |---|---|---|
-| `RETRIEVER_TOKENIZER` | `whitespace` \| `morph` | `kiwipiepy` |
-| `RETRIEVER_SCORER` | `freq` \| `bm25` \| `bm25plus` (BM25+, δ=1.0) | — |
-| `RETRIEVER_SCORER_SEED` | STM/MTM만 따로 지정 | — |
-| `RETRIEVER_BM25_K1` | BM25 k1 (기본 2.0) | — |
-| `RETRIEVER_TITLE_BONUS` | `add` (토큰마다 +2.0, 기본) \| `none` \| `mult` (×최대 1.1) | — |
-| `QUERY_EXPANSIONS` | 동의어 사전 경로 \| `none` (기본 `config/query_expansions.json`) | — |
+| `RETRIEVER_TOKENIZER` | `morph` (기본) \| `whitespace`. `kiwipiepy`가 없으면 자동으로 `whitespace` | `kiwipiepy` |
+| `RETRIEVER_SCORER` | `bm25` (기본) \| `freq` \| `bm25plus` (BM25+, δ=1.0) | — |
+| `RETRIEVER_SCORER_SEED` | STM/MTM만 따로 지정 (기본은 위 값을 따름 — 다르게 주면 계층 병합이 무너진다) | — |
+| `RETRIEVER_BM25_K1` | BM25 k1 (기본 1.2) | — |
+| `RETRIEVER_TITLE_BONUS` | `none` (기본) \| `add` (토큰마다 +2.0) \| `mult` (×최대 1.1) | — |
+| `QUERY_EXPANSIONS` | 사전 경로 \| `default` (`config/query_expansions.json`) \| `none` (기본) | — |
 | `LTM_DOC_META` | 문서 메타데이터 파일 경로 \| `none` (기본 `chunks.jsonl` 옆 `document_meta.jsonl`) | — |
 | `RETRIEVER_DENSE` | `0` \| `1` | `torch`, `sentence-transformers` |
 | `RETRIEVER_DENSE_WEIGHT` | RRF에서 dense 비중 (기본 0.5) | — |
@@ -288,7 +290,7 @@ python -m unittest discover -s tests -v
 
 | 항목 | 내용 |
 |---|---|
-| 상수 | `_score()`의 제목 +2.0, 프로젝트 +1.5 등은 근거 없는 임의값 |
+| 상수 | `_score()`의 프로젝트 +1.5 등은 근거 없는 임의값 (제목 가산점은 2026-09-16부터 기본 꺼짐) |
 | 세션 캐시 | 최근 N턴 고정 주입. 관련 턴 선택 없음 |
 | 대화 -> STM | 일일 요약 승격 경로가 구현되지 않음 |
 | LTM 적재 | 과제 폴더를 정제 없이 넣는다. 승격 규칙 미정 |

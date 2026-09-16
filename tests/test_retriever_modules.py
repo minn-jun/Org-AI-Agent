@@ -48,13 +48,20 @@ def env(**values: str):
 
 
 class TokenizerTests(unittest.TestCase):
-    def test_default_is_whitespace(self) -> None:
+    def test_default_is_morph(self) -> None:
+        """2026-09-16 기본값이 형태소다. kiwipiepy가 없는 환경에서는 공백 분리로 물러난다."""
+        expected = "morph" if tokenizer.available()["morph"] else "whitespace"
         with env(RETRIEVER_TOKENIZER=""):
             os.environ.pop("RETRIEVER_TOKENIZER")
-            self.assertEqual(tokenizer.tokenizer_name(), "whitespace")
+            self.assertEqual(tokenizer.tokenizer_name(), expected)
 
     def test_unknown_name_falls_back_to_default(self) -> None:
+        expected = "morph" if tokenizer.available()["morph"] else "whitespace"
         with env(RETRIEVER_TOKENIZER="bogus"):
+            self.assertEqual(tokenizer.tokenizer_name(), expected)
+
+    def test_whitespace_can_still_be_selected(self) -> None:
+        with env(RETRIEVER_TOKENIZER="whitespace"):
             self.assertEqual(tokenizer.tokenizer_name(), "whitespace")
 
     def test_whitespace_splits_on_character_class(self) -> None:
@@ -105,12 +112,13 @@ class TokenizerTests(unittest.TestCase):
 
 
 class ScoringTests(unittest.TestCase):
-    def test_default_scorer_is_freq(self) -> None:
+    def test_default_scorer_is_bm25_for_both_scopes(self) -> None:
+        """2026-09-16 기본값이 BM25다. 계층마다 다르면 눈금이 벌어져 병합이 무너진다(07 문서)."""
         with env(RETRIEVER_SCORER="", RETRIEVER_SCORER_SEED=""):
             os.environ.pop("RETRIEVER_SCORER")
             os.environ.pop("RETRIEVER_SCORER_SEED")
-            self.assertEqual(scoring.scorer_name(), "freq")
-            self.assertEqual(scoring.scorer_name("seed"), "freq")
+            self.assertEqual(scoring.scorer_name(), "bm25")
+            self.assertEqual(scoring.scorer_name("seed"), "bm25")
 
     def test_seed_scope_can_differ_from_ltm(self) -> None:
         """코퍼스 크기가 100배 차이나서 계층별로 다른 점수 함수를 줄 수 있어야 한다."""
@@ -125,7 +133,7 @@ class ScoringTests(unittest.TestCase):
 
     def test_unknown_scorer_falls_back(self) -> None:
         with env(RETRIEVER_SCORER="bogus"):
-            self.assertEqual(scoring.scorer_name(), "freq")
+            self.assertEqual(scoring.scorer_name(), "bm25")
 
     def test_freq_weight_grows_with_frequency_and_saturates(self) -> None:
         self.assertLess(scoring.freq_weight(1), scoring.freq_weight(5))
@@ -246,6 +254,11 @@ class LtmCorpusTests(unittest.TestCase):
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.path = Path(self._tmp.name) / "chunks.jsonl"
+        # 질의를 미리 잘라 넣는 검사들이라 토큰화를 0단계로 고정한다.
+        # 기본값(형태소)은 `총사업비`를 `총`+`사업비`로 쪼개서 이 질의들이 안 맞는다.
+        pin = env(RETRIEVER_TOKENIZER="whitespace")
+        pin.__enter__()
+        self.addCleanup(pin.__exit__, None, None, None)
 
     def load(self, rows: list[dict]) -> LtmCorpus:
         write_corpus(self.path, rows)
@@ -348,13 +361,22 @@ class LtmCorpusTests(unittest.TestCase):
             [],
         )
 
-    def test_title_match_outranks_body_only_match(self) -> None:
+    def test_title_match_outranks_body_only_match_when_bonus_on(self) -> None:
+        """가산점은 2026-09-16부터 기본 꺼짐이다. 켠 경우의 동작만 여기서 고정한다."""
+        rows = [
+            chunk("titled", "이월 승인 요청서", "무관한 본문"),
+            chunk("body", "다른 문서", "이월"),
+        ]
+        with env(RETRIEVER_TITLE_BONUS="add"):
+            results = self.load(rows).search(["이월"], top_k=5)
+        self.assertEqual(results[0][1]["source_ref"]["document_id"], "titled")
+
+    def test_title_match_does_not_outrank_by_default(self) -> None:
         corpus = self.load([
             chunk("titled", "이월 승인 요청서", "무관한 본문"),
             chunk("body", "다른 문서", "이월"),
         ])
-        results = corpus.search(["이월"], top_k=5)
-        self.assertEqual(results[0][1]["source_ref"]["document_id"], "titled")
+        self.assertEqual(corpus.search(["이월"], top_k=5)[0][1]["source_ref"]["document_id"], "body")
 
     def test_boilerplate_across_many_families_is_damped(self) -> None:
         """4개 이상 계열에 같은 문단이 나오면 그건 내용이 아니라 서식이다."""
@@ -551,13 +573,21 @@ class QueryTokenConsistencyTests(unittest.TestCase):
         어쩌다 그렇게 적혀 있다는 것뿐이다. LTM은 set()으로 훑어 중복을 세지
         않으므로 계층마다 눈금이 달라지기도 한다.
         """
-        tokens, _ = self.store._prepare_query("예산 비용 단가 기준")
+        with env(QUERY_EXPANSIONS="default"):
+            tokens, _ = self.store._prepare_query("예산 비용 단가 기준")
         self.assertEqual(len(tokens), len(set(tokens)))
 
     def test_expansion_still_adds_synonyms(self) -> None:
-        """중복만 없앤다. 확장 자체가 사라지면 안 된다."""
-        tokens, _ = self.store._prepare_query("예산")
+        """중복만 없앤다. 확장 자체가 사라지면 안 된다. (사전은 2026-09-16부터 기본 꺼짐)"""
+        with env(QUERY_EXPANSIONS="default"):
+            tokens, _ = self.store._prepare_query("예산")
         self.assertIn("사업비", tokens)
+
+    def test_expansion_is_off_by_default(self) -> None:
+        with env(QUERY_EXPANSIONS=""):
+            os.environ.pop("QUERY_EXPANSIONS")
+            tokens, _ = self.store._prepare_query("예산")
+        self.assertNotIn("사업비", tokens)
 
 
 class PrefetchQueryTests(unittest.TestCase):

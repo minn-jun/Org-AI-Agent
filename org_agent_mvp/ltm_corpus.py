@@ -56,8 +56,8 @@ STM/MTM처럼 `ltm/` 폴더에 md 파일로 쓰면 세 가지가 깨진다.
 
 | 값 | 방식 |
 |---|---|
-| `add` (기본) | 질의 토큰이 제목에 부분 문자열로 들어 있으면 토큰마다 +2.0. 첫 MVP부터의 값이고 근거는 없다 |
-| `none` | 가산점 없음. 제목은 이미 청크 색인(`제목 + 본문`)에 들어가 BM25로 반영된다 |
+| `none` (기본) | 가산점 없음. 제목은 이미 청크 색인(`제목 + 본문`)에 들어가 BM25로 반영된다. 2026-09-16부터 기본값 |
+| `add` | 질의 토큰이 제목에 부분 문자열로 들어 있으면 토큰마다 +2.0. 첫 MVP부터 쓰던 값이고 근거는 없었다 |
 | `mult` | `점수 × (1 + 0.1 × 제목 일치율)`. 일치율 = IDF가 질의 중앙값 이상인 토큰 중 제목 토큰에 정확히 있는 비율. 최대 10%라 동점에 가까운 후보의 순서만 바꾼다 |
 
 ## 최신성
@@ -99,6 +99,7 @@ DOC_META_FILE = "document_meta.jsonl"
 TITLE_BONUS = 2.0
 TITLE_BONUS_MULT_ALPHA = 0.1
 TITLE_BONUS_MODES = ("add", "none", "mult")
+DEFAULT_TITLE_BONUS = "none"
 
 #: 과제명 가산점. 문서의 project 필드에 질의 토큰이 들어 있으면 토큰마다 더한다.
 PROJECT_BONUS = 1.5
@@ -125,8 +126,10 @@ def _tokenize(text: str) -> list[str]:
 
 
 def title_bonus_mode() -> str:
-    name = os.environ.get("RETRIEVER_TITLE_BONUS", "add").strip().lower()
-    return name if name in TITLE_BONUS_MODES else "add"
+    """기본은 가산점 없음. 2026-09-16 변경 — Allganize dev에서 `add`와 동률이었고,
+    에이전트 전체로 보면 LTM 점수만 부풀려 계층 병합을 무너뜨리는 주범이었다(07 문서 2-3절)."""
+    name = os.environ.get("RETRIEVER_TITLE_BONUS", DEFAULT_TITLE_BONUS).strip().lower()
+    return name if name in TITLE_BONUS_MODES else DEFAULT_TITLE_BONUS
 
 
 def _chunk_pages(meta: dict[str, Any]) -> tuple[int, ...]:

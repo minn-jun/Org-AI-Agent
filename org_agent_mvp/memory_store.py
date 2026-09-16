@@ -15,9 +15,12 @@ from .tokenizer import tokenize, tokenize_many
 
 #: 질의 확장 동의어 사전. 조직마다 업무 용어가 달라 코드가 아니라 설정 파일에 둔다.
 #:
-#:   QUERY_EXPANSIONS=<경로>   다른 사전 파일을 쓴다
-#:   QUERY_EXPANSIONS=none     확장하지 않는다
-#:   (미지정)                  config/query_expansions.json. 파일이 없으면 확장하지 않는다
+#:   QUERY_EXPANSIONS=<경로>   사전 파일을 쓴다
+#:   QUERY_EXPANSIONS=default  기본 사전(config/query_expansions.json)
+#:   (미지정 또는 none)         확장하지 않는다 — 2026-09-16 기본값 변경
+#:
+#: 사전은 20200504 과제 용어로 만든 것이라 다른 코퍼스에서는 효과가 없거나 해가 됐다.
+#: Allganize dev에서 끄는 쪽이 동률~약우세였고(05 문서), 조직 용어 사전이 준비되면 경로로 켠다.
 #:
 #: 키는 부분 문자열로 매칭한다. 한국어는 조사가 붙어 토큰이 달라지므로
 #: ("예산이" != "예산") 정확 일치로 조회하면 확장이 거의 동작하지 않는다.
@@ -28,10 +31,10 @@ _EXPANSIONS_CACHE: dict[str, dict[str, str]] = {}
 def query_expansions() -> dict[str, str]:
     raw = os.environ.get("QUERY_EXPANSIONS", "").strip()
     if raw not in _EXPANSIONS_CACHE:
-        if raw.lower() in {"none", "off", "0"}:
+        if raw.lower() in {"", "none", "off", "0"}:
             table: dict[str, str] = {}
         else:
-            target = Path(raw) if raw else DEFAULT_EXPANSIONS_PATH
+            target = DEFAULT_EXPANSIONS_PATH if raw.lower() == "default" else Path(raw)
             table = json.loads(target.read_text(encoding="utf-8")) if target.exists() else {}
         _EXPANSIONS_CACHE[raw] = table
     return _EXPANSIONS_CACHE[raw]

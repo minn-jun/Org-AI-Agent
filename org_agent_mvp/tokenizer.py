@@ -3,8 +3,8 @@
 질의와 문서가 **같은 방식으로** 잘려야 매칭이 된다. 그래서 STM/MTM(memory_store)과
 LTM(ltm_corpus)이 이 모듈 하나를 공유한다. 한쪽만 바꾸면 조용히 검색이 망가진다.
 
-    RETRIEVER_TOKENIZER=whitespace   공백·문자종류 분리 (기본, 0단계)
-    RETRIEVER_TOKENIZER=morph        형태소 분석 (1단계~)
+    RETRIEVER_TOKENIZER=morph        형태소 분석 (기본)
+    RETRIEVER_TOKENIZER=whitespace   공백·문자종류 분리 (0단계 기준선)
 
 ## 왜 형태소가 필요한가
 
@@ -119,12 +119,21 @@ TOKENIZERS: dict[str, Callable[[str], list[str]]] = {
     "morph": morph_tokenize,
 }
 
-DEFAULT_TOKENIZER = "whitespace"
+#: 기본 토큰화. 2026-09-16 형태소로 바꿨다 — Allganize 299문항 페이지 MRR 0.511 -> 0.718(05 문서),
+#: 20200504 60건 에이전트 전체에서도 같은 방향(07 문서 2절). kiwipiepy가 없으면 아래에서 공백 분리로 물러난다.
+DEFAULT_TOKENIZER = "morph"
+
+#: 형태소 분석기를 못 쓸 때 대신 쓸 방식. 검색이 조금 나빠질 뿐 동작은 한다.
+FALLBACK_TOKENIZER = "whitespace"
 
 
 def tokenizer_name() -> str:
     name = os.environ.get("RETRIEVER_TOKENIZER", DEFAULT_TOKENIZER).strip().lower()
-    return name if name in TOKENIZERS else DEFAULT_TOKENIZER
+    if name not in TOKENIZERS:
+        name = DEFAULT_TOKENIZER
+    if name == "morph" and not available()["morph"]:
+        return FALLBACK_TOKENIZER
+    return name
 
 
 def tokenize(text: str) -> list[str]:
@@ -139,12 +148,17 @@ def tokenize_many(texts: Iterable[str]) -> list[list[str]]:
     return [whitespace_tokenize(t) for t in texts]
 
 
-def available() -> dict[str, bool]:
-    """각 방식이 지금 환경에서 쓸 수 있는지."""
-    try:
-        import kiwipiepy  # noqa: F401
+_morph_ok: bool | None = None
 
-        morph_ok = True
-    except ImportError:
-        morph_ok = False
-    return {"whitespace": True, "morph": morph_ok}
+
+def available() -> dict[str, bool]:
+    """각 방식이 지금 환경에서 쓸 수 있는지. 기본값이 형태소라 질의마다 불리므로 한 번만 확인한다."""
+    global _morph_ok
+    if _morph_ok is None:
+        try:
+            import kiwipiepy  # noqa: F401
+
+            _morph_ok = True
+        except ImportError:
+            _morph_ok = False
+    return {"whitespace": True, "morph": _morph_ok}

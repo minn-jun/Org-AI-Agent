@@ -46,6 +46,11 @@ class CorpusCase(unittest.TestCase):
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
         self.path = Path(self._tmp.name) / "chunks.jsonl"
+        # 질의를 미리 잘라 넣는 검사들이라 토큰화를 0단계로 고정한다.
+        # 기본값(형태소)은 `총사업비`를 `총`+`사업비`로 쪼개서 이 질의들이 안 맞는다.
+        pin = env(RETRIEVER_TOKENIZER="whitespace")
+        pin.__enter__()
+        self.addCleanup(pin.__exit__, None, None, None)
 
     def load(self, rows: list[dict]) -> LtmCorpus:
         with self.path.open("w", encoding="utf-8") as fh:
@@ -87,9 +92,13 @@ class TitleBonusTests(CorpusCase):
         chunk("body", "다른 문서", "이월 이월 이월 이월"),
     ]
 
-    def test_mode_defaults_to_add_and_rejects_unknown(self) -> None:
+    def test_mode_defaults_to_none_and_rejects_unknown(self) -> None:
+        """2026-09-16 기본값이 `none`이다(07 문서 2-3절)."""
         with env(RETRIEVER_TITLE_BONUS="weird"):
-            self.assertEqual(title_bonus_mode(), "add")
+            self.assertEqual(title_bonus_mode(), "none")
+        with env(RETRIEVER_TITLE_BONUS=""):
+            os.environ.pop("RETRIEVER_TITLE_BONUS")
+            self.assertEqual(title_bonus_mode(), "none")
 
     def test_none_removes_the_title_boost(self) -> None:
         corpus = self.load(self.rows)

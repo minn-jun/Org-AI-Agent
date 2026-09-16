@@ -1,11 +1,34 @@
 from __future__ import annotations
 
+import http.client
 import json
+import os
+import time
 import urllib.error
 import urllib.request
 from typing import Any
 
 from .config import AppConfig
+
+#: 연결이 끊길 때 올라오는 예외들. 2026-09-16에 두 가지를 실제로 만났다.
+#:   urllib.error.URLError: SSL EOF          호출 중간에 TLS 연결이 끊긴다
+#:   http.client.RemoteDisconnected          서버가 응답 없이 연결을 닫는다
+#: 뒤의 것은 URLError가 아니라서 예전에는 감싸지지 않고 그대로 터져 나갔다.
+#: (URLError는 OSError의 하위라 OSError 하나로도 잡히지만, 무엇을 의도했는지 남긴다.)
+NETWORK_ERRORS = (urllib.error.URLError, http.client.HTTPException, OSError)
+
+#: 다시 걸어 볼 만한 HTTP 상태. 4xx는 다시 보내도 같은 답이 오므로 제외한다.
+RETRY_STATUS = frozenset({408, 429, 500, 502, 503, 504})
+
+DEFAULT_RETRIES = 2
+
+
+def _retries() -> int:
+    """재시도 횟수. OPENROUTER_RETRIES=0이면 한 번만 보낸다."""
+    try:
+        return max(0, int(os.environ.get("OPENROUTER_RETRIES", DEFAULT_RETRIES)))
+    except ValueError:
+        return DEFAULT_RETRIES
 
 
 class OpenRouterClient:
@@ -48,14 +71,26 @@ class OpenRouterClient:
                 "X-Title": self.config.app_name,
             },
         )
-        try:
-            with urllib.request.urlopen(request, timeout=90) as response:
-                data = json.loads(response.read().decode("utf-8"))
-        except urllib.error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")
-            raise RuntimeError(f"OpenRouter HTTP {exc.code}: {detail}") from exc
-        except urllib.error.URLError as exc:
-            raise RuntimeError(f"OpenRouter request failed: {exc}") from exc
+        retries = _retries()
+        for attempt in range(retries + 1):
+            try:
+                with urllib.request.urlopen(request, timeout=90) as response:
+                    data = json.loads(response.read().decode("utf-8"))
+                break
+            except urllib.error.HTTPError as exc:
+                # HTTPError는 URLError의 하위라 반드시 먼저 잡는다.
+                if exc.code in RETRY_STATUS and attempt < retries:
+                    time.sleep(2 ** attempt)
+                    continue
+                detail = exc.read().decode("utf-8", errors="replace")
+                raise RuntimeError(f"OpenRouter HTTP {exc.code}: {detail}") from exc
+            except NETWORK_ERRORS as exc:
+                if attempt < retries:
+                    time.sleep(2 ** attempt)
+                    continue
+                raise RuntimeError(
+                    f"OpenRouter request failed: {type(exc).__name__}: {exc}"
+                ) from exc
         if "error" in data:
             detail = json.dumps(data["error"], ensure_ascii=False)
             raise RuntimeError(f"OpenRouter API error: {detail}")

@@ -62,6 +62,7 @@ python -m org_agent_mvp --mock --verbose
 OPENROUTER_API_KEY=
 QUERY_ANALYZER_MODEL=openai/gpt-5.6-luna-pro
 AGENT_MODEL=openai/gpt-5.6-luna-pro
+OPENROUTER_RETRIES=2          # 연결 끊김·5xx·429 재시도 횟수 (0이면 한 번만 보낸다)
 ```
 
 ---

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import os
 from dataclasses import dataclass
 from typing import Any
 
@@ -111,13 +112,17 @@ class MemoryPrefetcher:
                 card["tier_prior"] = priors[tier]
                 collected.append(card)
 
-        # 2. evidence_id 기준 중복 제거. 원점수가 높은 쪽을 남긴다.
+        # 2. 중복 제거. 원점수가 높은 쪽을 남기고, 접힌 쪽은 카드에 기록한다.
         deduped: dict[str, dict[str, Any]] = {}
         for card in collected:
-            evidence_id = str(card["evidence_id"])
-            current = deduped.get(evidence_id)
-            if current is None or self._raw(card) > self._raw(current):
-                deduped[evidence_id] = card
+            key = _dedupe_key(card)
+            current = deduped.get(key)
+            if current is None:
+                deduped[key] = card
+            elif self._raw(card) > self._raw(current):
+                deduped[key] = _fold_into(card, current)
+            else:
+                deduped[key] = _fold_into(current, card)
         candidates = list(deduped.values())
 
         # 3. 정규화. 어느 기준으로 맞출지는 설정으로 고른다(PREFETCH_NORMALIZE).
@@ -318,3 +323,57 @@ class MemoryPrefetcher:
     @staticmethod
     def _raw(card: dict[str, Any]) -> float:
         return float(card.get("retrieval_score", 0.0))
+
+
+# ------------------------------------------------------- 계층 간 중복 제거
+#
+# 같은 내용이 계층마다 따로 올라오는 문제가 있다. 원본 문서(LTM)를 발췌·정리해
+# 노트(MTM)로 옮기면 id가 달라서 두 장이 각각 후보가 된다. 근거 카드는 8장뿐이라
+# 같은 내용이 두 자리를 먹고, 그 문서를 묻는 **다른 질문**에서는 노트가 원본을 밀어낸다
+# (2026-09-16 측정: 같은 문서의 다른 질문 156개에서 문서 MRR 0.904 -> 0.780).
+#
+# 그래서 카드가 가리키는 **출처**가 같으면 한 장으로 접는다. 판별은 문서가 스스로 밝힌
+# 출처(`source_document` 머리말)로 한다. 내용 비교나 임베딩은 쓰지 않는다 — 기준이 모호해진다.
+#
+# 접을 때 버리지 않는다. 점수가 높은 쪽을 세우고 접힌 쪽은 `merged_evidence_ids`에 남긴다.
+# (LTM 안의 버전 접기가 쓰는 `folded_*`와는 다른 키다. 그쪽은 같은 계층의 사본 묶음이다.)
+
+
+def merge_same_source() -> bool:
+    """PREFETCH_MERGE_SAME_SOURCE=0이면 예전처럼 evidence_id로만 중복을 본다."""
+    return os.environ.get("PREFETCH_MERGE_SAME_SOURCE", "1").strip().lower() not in {"0", "false", "no", "off"}
+
+
+def _dedupe_key(card: dict[str, Any]) -> str:
+    """중복 판별 키. 출처를 알 수 있으면 출처, 아니면 evidence_id다.
+
+    LTM 카드는 문서 단위라 `source_ref.document_id`가 곧 출처다.
+    시드 문서는 머리말에 `source_document`를 적었을 때만 출처가 생긴다 — 안 적으면 예전과 같다.
+    """
+    ref = card.get("source_ref") or {}
+    if merge_same_source():
+        origin = ref.get("derived_from") or {}
+        source_id = origin.get("document_id")
+        if not source_id and str(card.get("tier", "")).upper() == "LTM":
+            source_id = ref.get("document_id")
+        if source_id:
+            return f"src:{source_id}"
+    return str(card.get("evidence_id", ""))
+
+
+def _fold_into(keep: dict[str, Any], dropped: dict[str, Any]) -> dict[str, Any]:
+    """`dropped`를 `keep`에 접어 넣은 새 카드를 돌려준다. 원본 두 장은 건드리지 않는다."""
+    card = dict(keep)
+    ref = dict(card.get("source_ref") or {})
+    dropped_ref = dropped.get("source_ref") or {}
+    ids = [*ref.get("merged_evidence_ids", []), str(dropped.get("evidence_id", "")),
+           *dropped_ref.get("merged_evidence_ids", [])]
+    titles = [*ref.get("merged_titles", []), str(dropped.get("title", "")),
+              *dropped_ref.get("merged_titles", [])]
+    tiers = [*ref.get("merged_tiers", []), str(dropped.get("tier", "")), *dropped_ref.get("merged_tiers", [])]
+    ref["merged_evidence_ids"] = ids
+    ref["merged_titles"] = titles
+    ref["merged_tiers"] = tiers
+    ref["merged_count"] = len(ids)
+    card["source_ref"] = ref
+    return card

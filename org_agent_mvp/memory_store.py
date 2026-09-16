@@ -176,23 +176,30 @@ class MemoryStore:
         haystack에 제목·과제명·문서 유형을 같이 넣는 이유는 예전 그대로다 —
         본문에 없어도 제목에 있으면 걸리게 하려는 것이다.
         """
-        haystacks: list[str] = []
+        # 항목을 **따로** 자른 뒤 합친다. 이어 붙여 한 번에 자르면 형태소 분석기가
+        # 경계에서 문맥을 잘못 읽는다 — 2026-09-16 실측:
+        #   "이월 신청 내용"          -> ['이월', '신청', '내용']
+        #   "발췌 메모 이월 신청 내용"   -> ['발췌', '메모', '월', '신청', '내용']
+        # 앞 항목 때문에 '이'가 지시어로 붙어 본문 첫 단어가 조용히 다른 토큰이 되고,
+        # 그 문서는 '이월'로 검색해도 걸리지 않는다. 항목끼리는 원래 이어진 글이 아니다.
+        fields: list[list[str]] = [[] for _ in range(6)]
         for doc in self.documents:
-            title = str(doc.metadata.get("title", ""))
             project = str(doc.metadata.get("project", ""))
-            source_type = str(doc.metadata.get("source_type", ""))
-            parts = [
-                title,
+            values = (
+                str(doc.metadata.get("title", "")),
                 project,
                 normalize_project_name(project),
                 normalized_project_key(project),
-                source_type,
+                str(doc.metadata.get("source_type", "")),
                 doc.text,
-            ]
-            haystacks.append("\n".join(parts))
+            )
+            for slot, value in enumerate(values):
+                fields[slot].append(value)
+        per_field = [tokenize_many(values) for values in fields]
 
         index: dict[int, dict[str, Any]] = {}
-        for doc, tokens in zip(self.documents, tokenize_many(haystacks)):
+        for position, doc in enumerate(self.documents):
+            tokens = [token for field in per_field for token in field[position]]
             counts: dict[str, int] = {}
             for token in tokens:
                 counts[token] = counts.get(token, 0) + 1
@@ -406,6 +413,12 @@ class MemoryStore:
             "source_ref": {
                 "document_id": doc.path.name,
                 "path": str(doc.path.relative_to(self.root)),
+                # 이 문서가 다른 문서에서 옮겨 온 것이면 출처를 남긴다.
+                # prefetch가 같은 출처의 카드를 한 장으로 접는 데 쓴다(계층 간 중복 제거).
+                **({"derived_from": {
+                    "document_id": str(doc.metadata["source_document"]),
+                    "page": doc.metadata.get("source_page", ""),
+                }} if doc.metadata.get("source_document") else {}),
             },
             "retrieval_score": round(score, 3),
             "permission_scope": doc.metadata.get("permission_scope", "internal"),

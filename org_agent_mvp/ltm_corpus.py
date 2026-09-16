@@ -56,8 +56,8 @@ STM/MTM처럼 `ltm/` 폴더에 md 파일로 쓰면 세 가지가 깨진다.
 
 | 값 | 방식 |
 |---|---|
-| `none` (기본) | 가산점 없음. 제목은 이미 청크 색인(`제목 + 본문`)에 들어가 BM25로 반영된다. 2026-09-16부터 기본값 |
-| `add` | 질의 토큰이 제목에 부분 문자열로 들어 있으면 토큰마다 +2.0. 첫 MVP부터 쓰던 값이고 근거는 없었다 |
+| `add` (기본) | 질의 토큰이 제목에 부분 문자열로 들어 있으면 토큰마다 +2.0. 첫 MVP부터의 값이고 근거는 없다 |
+| `none` | 가산점 없음. 제목은 이미 청크 색인(`제목 + 본문`)에 들어가 BM25로 반영된다 |
 | `mult` | `점수 × (1 + 0.1 × 제목 일치율)`. 일치율 = IDF가 질의 중앙값 이상인 토큰 중 제목 토큰에 정확히 있는 비율. 최대 10%라 동점에 가까운 후보의 순서만 바꾼다 |
 
 ## 최신성
@@ -251,11 +251,16 @@ class LtmCorpus:
         # 개별 호출 158초, 배치 호출 14초였다(11.5배).
         for start in range(0, len(self._chunk_text), _TOKENIZE_BATCH):
             stop = start + _TOKENIZE_BATCH
-            batch = [
-                f"{self.documents[self._chunk_doc[i]].title}\n{self._chunk_text[i]}"
-                for i in range(start, min(stop, len(self._chunk_text)))
-            ]
-            for offset, tokens in enumerate(tokenize_many(batch)):
+            # 제목과 본문을 **따로** 자른 뒤 합친다. 이어 붙여서 한 번에 자르면
+            # 형태소 분석기가 경계에서 문맥을 잘못 읽는다 — 2026-09-16 실측:
+            #   "이월 신청 내용"        -> ['이월', '신청', '내용']
+            #   "발췌 메모 이월 신청 내용" -> ['발췌', '메모', '월', '신청', '내용']   ('이'가 지시어로 붙는다)
+            # 본문 첫 단어가 조용히 다른 토큰이 되어 질의와 만나지 못한다.
+            span = range(start, min(stop, len(self._chunk_text)))
+            titles = [self.documents[self._chunk_doc[i]].title for i in span]
+            bodies = [self._chunk_text[i] for i in span]
+            merged = [t + b for t, b in zip(tokenize_many(titles), tokenize_many(bodies))]
+            for offset, tokens in enumerate(merged):
                 idx = start + offset
                 counts: dict[str, int] = {}
                 for token in tokens:

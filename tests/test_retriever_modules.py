@@ -590,6 +590,63 @@ class QueryTokenConsistencyTests(unittest.TestCase):
         self.assertNotIn("사업비", tokens)
 
 
+class CrossTierMergeTests(unittest.TestCase):
+    """같은 출처에서 나온 카드는 계층이 달라도 한 장으로 접힌다 (2026-09-16)."""
+
+    @staticmethod
+    def ltm_card(doc_id: str, score: float = 10.0) -> dict:
+        return {"evidence_id": f"ev_ltm_{doc_id}", "tier": "LTM", "title": "원본 문서",
+                "retrieval_score": score, "source_ref": {"document_id": doc_id, "path": f"x/{doc_id}.pdf"}}
+
+    @staticmethod
+    def note_card(doc_id: str | None, stem: str = "note", score: float = 12.0) -> dict:
+        ref = {"document_id": f"{stem}.md", "path": f"mtm/{stem}.md"}
+        if doc_id:
+            ref["derived_from"] = {"document_id": doc_id, "page": 20}
+        return {"evidence_id": f"ev_mtm_{stem}", "tier": "MTM", "title": "정리 노트",
+                "retrieval_score": score, "source_ref": ref}
+
+    def test_note_shares_key_with_its_source_document(self) -> None:
+        from org_agent_mvp.prefetch import _dedupe_key
+        self.assertEqual(_dedupe_key(self.note_card("doc1")), _dedupe_key(self.ltm_card("doc1")))
+
+    def test_note_without_provenance_stays_separate(self) -> None:
+        from org_agent_mvp.prefetch import _dedupe_key
+        self.assertNotEqual(_dedupe_key(self.note_card(None)), _dedupe_key(self.ltm_card("doc1")))
+
+    def test_unrelated_documents_keep_separate_keys(self) -> None:
+        from org_agent_mvp.prefetch import _dedupe_key
+        self.assertNotEqual(_dedupe_key(self.ltm_card("doc1")), _dedupe_key(self.ltm_card("doc2")))
+
+    def test_merge_can_be_switched_off(self) -> None:
+        from org_agent_mvp.prefetch import _dedupe_key
+        with env(PREFETCH_MERGE_SAME_SOURCE="0"):
+            self.assertNotEqual(_dedupe_key(self.note_card("doc1")), _dedupe_key(self.ltm_card("doc1")))
+
+    def test_folding_records_the_other_card_without_losing_it(self) -> None:
+        from org_agent_mvp.prefetch import _fold_into
+        keep, dropped = self.note_card("doc1"), self.ltm_card("doc1")
+        card = _fold_into(keep, dropped)
+        ref = card["source_ref"]
+        self.assertEqual(ref["merged_evidence_ids"], ["ev_ltm_doc1"])
+        self.assertEqual(ref["merged_tiers"], ["LTM"])
+        self.assertEqual(ref["merged_count"], 1)
+        self.assertEqual(card["evidence_id"], keep["evidence_id"])   # 세우는 쪽은 그대로
+        self.assertNotIn("merged_evidence_ids", keep["source_ref"])  # 원본 카드는 안 건드린다
+
+    def test_seed_card_exposes_declared_source(self) -> None:
+        """머리말 source_document가 카드까지 실려야 접기 판별이 된다."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            (root / "mtm").mkdir()
+            (root / "mtm" / "note.md").write_text(
+                "---\ntitle: 발췌 메모\nsource_document: doc1\nsource_page: 20\n---\n예산 이월 신청 내용\n",
+                encoding="utf-8")
+            store = MemoryStore(root)
+            card = store.retrieve(tier="mtm", query="예산 신청", top_k=1)["results"][0]
+        self.assertEqual(card["source_ref"]["derived_from"]["document_id"], "doc1")
+
+
 class PrefetchQueryTests(unittest.TestCase):
     """검색 질의를 만드는 곳이 여러 군데라 서로 달랐다. 한 함수로 모았다."""
 

@@ -1,0 +1,27 @@
+{
+  "memory_tier": "stm",
+  "source_type": "action_items",
+  "project": "스마트글래스 과제",
+  "title": "2021-12-28 스마트글래스 과제 action item",
+  "date": "2021-12-28",
+  "permission_scope": "project_team",
+  "status": "active",
+  "summary": "세목 변경 요청서를 제출했고 이월 서류 준비와 보고서 출처 표기가 남았다.",
+  "action_items": [
+    {
+      "owner": "산학협력단 김주임",
+      "task": "세목 변경 요청서 제출 완료 확인",
+      "due": "2021-12-28"
+    },
+    {
+      "owner": "이연구원",
+      "task": "보고서 수치별 출처 문서 표기",
+      "due": "2021-12-29"
+    },
+    {
+      "owner": "이연구원",
+      "task": "이월 2차년도 사용 계획 작성",
+      "due": "2021-12-29"
+    }
+  ]
+}

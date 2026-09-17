@@ -1,0 +1,15 @@
+{
+  "memory_tier": "stm",
+  "source_type": "daily_conversation_summary",
+  "project": "스마트글래스 과제",
+  "title": "2021-12-21 스마트글래스 과제 대화 요약",
+  "date": "2021-12-21",
+  "permission_scope": "project_team",
+  "status": "active",
+  "summary": "오늘 대화는 디자인 컨설팅 대금 지급 기한, 세목 변경 처리 시점, 이월 사유 정리 순으로 진행됐다.",
+  "topics": [
+    "디자인 컨설팅 대금 지급 기한",
+    "세목 변경 처리 시점",
+    "이월 사유 정리"
+  ]
+}

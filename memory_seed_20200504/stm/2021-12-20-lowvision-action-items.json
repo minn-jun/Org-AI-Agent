@@ -1,0 +1,27 @@
+{
+  "memory_tier": "stm",
+  "source_type": "action_items",
+  "project": "스마트글래스 과제",
+  "title": "2021-12-20 스마트글래스 과제 action item",
+  "date": "2021-12-20",
+  "permission_scope": "project_team",
+  "status": "active",
+  "summary": "세목 변경 준비와 디자인 컨설팅 보고서 수령에 대한 조치다.",
+  "action_items": [
+    {
+      "owner": "산학협력단 김주임",
+      "task": "세목 변경 가능 범위 확인",
+      "due": "2021-12-22"
+    },
+    {
+      "owner": "박연구원",
+      "task": "디자인 컨설팅 보고서 수령 확인",
+      "due": "2021-12-21"
+    },
+    {
+      "owner": "이연구원",
+      "task": "연차보고서 3장 초안",
+      "due": "2021-12-24"
+    }
+  ]
+}

@@ -672,9 +672,9 @@ class LtmCorpus:
 
 
 def default_corpus_path(project_root: Path) -> Path:
-    """org_agent_mvp 옆 datasets/ 폴더에 20200504 파싱 결과를 둔 기본 배치를 가정한 경로."""
+    """org_agent_mvp/datasets/ 폴더의 20200504 파싱 결과 기본 경로."""
     return (
-        project_root.parent
+        project_root
         / "datasets"
         / "20200504-doc_rag"
         / "export"

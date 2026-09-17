@@ -1,0 +1,27 @@
+{
+  "memory_tier": "stm",
+  "source_type": "action_items",
+  "project": "스마트글래스 과제",
+  "title": "2021-12-24 스마트글래스 과제 action item",
+  "date": "2021-12-24",
+  "permission_scope": "project_team",
+  "status": "active",
+  "summary": "연차보고서 3장 작성과 성능지표 측정 근거 확보에 대한 후속 조치다.",
+  "action_items": [
+    {
+      "owner": "이연구원",
+      "task": "연차보고서 3장 작성",
+      "due": "2021-12-27"
+    },
+    {
+      "owner": "박연구원",
+      "task": "성능지표 측정 원본 정리",
+      "due": "2021-12-27"
+    },
+    {
+      "owner": "산학협력단 김주임",
+      "task": "세목 변경 절차 확인",
+      "due": "2021-12-27"
+    }
+  ]
+}

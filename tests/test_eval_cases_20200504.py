@@ -22,7 +22,7 @@ class Eval20200504CaseTests(unittest.TestCase):
 
       STM/MTM  `memory_seed_20200504/` — gitignore 대상. 생성 스크립트로 만든다.
                `python scripts/build_lowvision_seed.py`
-      LTM      `datasets/20200504-doc_rag/export/.../chunks.jsonl` — 저장소 밖에 있다.
+      LTM      `datasets/20200504-doc_rag/export/.../chunks.jsonl`.
     """
 
     @classmethod

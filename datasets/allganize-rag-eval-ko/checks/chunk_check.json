@@ -1,0 +1,5912 @@
+{
+ "summary": {
+  "documents": 64,
+  "status": {
+   "ok": 64
+  },
+  "chunks": 2960,
+  "chunk_chars": {
+   "mean": 529,
+   "max": 2715,
+   "over_1300": 55
+  },
+  "chunks_without_page": 0,
+  "page_coverage_mean": 0.99,
+  "empty_pages": 155,
+  "empty_pages_covered_by_ocr": 134,
+  "doc_recall_mean": 0.986,
+  "page_recall_mean": 0.964,
+  "questions": 299,
+  "questions_excluded": [
+   "q_184"
+  ],
+  "verdict": {
+   "ok": 278,
+   "unreachable": 6,
+   "recovered": 15
+  },
+  "verdict_by_context_type": {
+   "image": {
+    "ok": 47,
+    "unreachable": 3,
+    "recovered": 7
+   },
+   "paragraph": {
+    "ok": 138,
+    "recovered": 7,
+    "unreachable": 2
+   },
+   "table": {
+    "ok": 50
+   },
+   "text": {
+    "recovered": 1,
+    "ok": 43,
+    "unreachable": 1
+   }
+  },
+  "verdict_by_domain": {
+   "commerce": {
+    "ok": 54,
+    "recovered": 4,
+    "unreachable": 2
+   },
+   "finance": {
+    "ok": 52,
+    "unreachable": 2,
+    "recovered": 6
+   },
+   "law": {
+    "unreachable": 1,
+    "recovered": 2,
+    "ok": 56
+   },
+   "medical": {
+    "ok": 58,
+    "recovered": 1,
+    "unreachable": 1
+   },
+   "public": {
+    "ok": 58,
+    "recovered": 2
+   }
+  },
+  "cov_pdf_mean": 0.57,
+  "cov_chunk_mean": 0.604
+ },
+ "documents": [
+  {
+   "file_name": "2024년 3월_2. 통화신용정책 운영.pdf",
+   "domain": "finance",
+   "status": "ok",
+   "n_chunks": 34,
+   "note": "backend:docling-parse+easyocr;ocr_pages:2",
+   "pages": 13,
+   "text_pages": 12,
+   "empty_pages": 1,
+   "page_coverage": 0.923,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.997,
+   "page_recall": 0.989,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "2024년 3월_3. 향후 통화신용정책 방향.pdf",
+   "domain": "finance",
+   "status": "ok",
+   "n_chunks": 51,
+   "note": "backend:docling-parse+easyocr;ocr_pages:2",
+   "pages": 21,
+   "text_pages": 20,
+   "empty_pages": 1,
+   "page_coverage": 0.952,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.983,
+   "page_recall": 0.955,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "★2019 제1회 증시콘서트 자료집_최종★.pdf",
+   "domain": "finance",
+   "status": "ok",
+   "n_chunks": 138,
+   "note": "backend:docling-parse+easyocr;ocr_pages:4,17,30,42,43,55,56,57,58",
+   "pages": 58,
+   "text_pages": 49,
+   "empty_pages": 9,
+   "page_coverage": 0.948,
+   "empty_pages_covered": 6,
+   "doc_recall": 0.985,
+   "page_recall": 0.933,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "한-호주 퇴직연금 포럼_책자(최종).pdf",
+   "domain": "finance",
+   "status": "ok",
+   "n_chunks": 83,
+   "note": "backend:docling-parse+easyocr;ocr_pages:8,10,12,14,16,18,20,21,22,23,24,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,42,43,44,45,46,48",
+   "pages": 50,
+   "text_pages": 18,
+   "empty_pages": 32,
+   "page_coverage": 0.86,
+   "empty_pages_covered": 25,
+   "doc_recall": 0.999,
+   "page_recall": 0.98,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "240409(보도자료) 금융위 핀테크 투자 생태계 활성화 나선다.pdf",
+   "domain": "finance",
+   "status": "ok",
+   "n_chunks": 12,
+   "note": "",
+   "pages": 6,
+   "text_pages": 6,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.998,
+   "page_recall": 0.994,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "240320(보도자료) 금융권의 상생금융 추진현황.pdf",
+   "domain": "finance",
+   "status": "ok",
+   "n_chunks": 17,
+   "note": "",
+   "pages": 7,
+   "text_pages": 7,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.998,
+   "page_recall": 0.997,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "240130(보도자료) 지방은행의 시중은행 전환시 인가방식 및 절차.pdf",
+   "domain": "finance",
+   "status": "ok",
+   "n_chunks": 8,
+   "note": "",
+   "pages": 7,
+   "text_pages": 7,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.999,
+   "page_recall": 0.999,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "[별첨] 지방은행의 시중은행 전환시 인가방식 및 절차.pdf",
+   "domain": "finance",
+   "status": "ok",
+   "n_chunks": 26,
+   "note": "",
+   "pages": 15,
+   "text_pages": 15,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.999,
+   "page_recall": 0.994,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "130292099630937500_KIFVIP2013-10.pdf",
+   "domain": "finance",
+   "status": "ok",
+   "n_chunks": 68,
+   "note": "backend:docling-parse+easyocr;ocr_pages:1,2,54,55;pageocr_filled:55",
+   "pages": 55,
+   "text_pages": 52,
+   "empty_pages": 3,
+   "page_coverage": 0.982,
+   "empty_pages_covered": 2,
+   "doc_recall": 1.0,
+   "page_recall": 0.985,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "133178946057443204_WP22-05.pdf",
+   "domain": "finance",
+   "status": "ok",
+   "n_chunks": 82,
+   "note": "backend:docling-parse+easyocr;ocr_pages:1,3;pageocr_filled:1",
+   "pages": 69,
+   "text_pages": 67,
+   "empty_pages": 2,
+   "page_coverage": 0.986,
+   "empty_pages_covered": 1,
+   "doc_recall": 0.998,
+   "page_recall": 0.968,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "(240411보도자료) 재정동향 4월호.pdf",
+   "domain": "public",
+   "status": "ok",
+   "n_chunks": 13,
+   "note": "",
+   "pages": 4,
+   "text_pages": 4,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.983,
+   "page_recall": 0.979,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "2023_2027 국가재정운용계획 주요내용.pdf",
+   "domain": "public",
+   "status": "ok",
+   "n_chunks": 55,
+   "note": "",
+   "pages": 38,
+   "text_pages": 38,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.994,
+   "page_recall": 0.967,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "(보도자료)2024년+교육부+주요정책+추진계획+발표_보도자료.pdf",
+   "domain": "public",
+   "status": "ok",
+   "n_chunks": 17,
+   "note": "",
+   "pages": 6,
+   "text_pages": 6,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.983,
+   "page_recall": 0.971,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "제4차(24_28)+학교도서관+진흥+기본계획.pdf",
+   "domain": "public",
+   "status": "ok",
+   "n_chunks": 90,
+   "note": "",
+   "pages": 30,
+   "text_pages": 30,
+   "empty_pages": 0,
+   "page_coverage": 0.967,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.993,
+   "page_recall": 0.976,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "국가안전시스템 개편 종합대책 대국민 보고(12.31. 기준).pdf",
+   "domain": "public",
+   "status": "ok",
+   "n_chunks": 61,
+   "note": "backend:docling-parse+easyocr;ocr_pages:21",
+   "pages": 21,
+   "text_pages": 20,
+   "empty_pages": 1,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 1,
+   "doc_recall": 0.998,
+   "page_recall": 0.965,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "2024년 행정안전부 업무계획.pdf",
+   "domain": "public",
+   "status": "ok",
+   "n_chunks": 60,
+   "note": "backend:docling-parse+easyocr;ocr_pages:5",
+   "pages": 21,
+   "text_pages": 20,
+   "empty_pages": 1,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 1,
+   "doc_recall": 0.997,
+   "page_recall": 0.984,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "2024년+국립대학+육성사업+기본계획.pdf",
+   "domain": "public",
+   "status": "ok",
+   "n_chunks": 57,
+   "note": "",
+   "pages": 25,
+   "text_pages": 25,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.992,
+   "page_recall": 0.969,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "2024년 주요업무 추진계획.pdf",
+   "domain": "public",
+   "status": "ok",
+   "n_chunks": 31,
+   "note": "",
+   "pages": 17,
+   "text_pages": 17,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.994,
+   "page_recall": 0.983,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "외교부-2024년 앙골라개황(저).pdf",
+   "domain": "public",
+   "status": "ok",
+   "n_chunks": 136,
+   "note": "",
+   "pages": 47,
+   "text_pages": 47,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.999,
+   "page_recall": 0.964,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "240418 도로터널 결로대책 가이드라인(최종).pdf",
+   "domain": "public",
+   "status": "ok",
+   "n_chunks": 16,
+   "note": "",
+   "pages": 9,
+   "text_pages": 9,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.989,
+   "page_recall": 0.978,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "전문교육기관ᆞ항공훈련기관 지정ᆞ인가 및 안전관리 현황__.pdf",
+   "domain": "public",
+   "status": "ok",
+   "n_chunks": 20,
+   "note": "",
+   "pages": 7,
+   "text_pages": 7,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.989,
+   "page_recall": 0.979,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "240319 알기쉬운 청년농신보 책자(최종본)★_배포용.pdf",
+   "domain": "public",
+   "status": "ok",
+   "n_chunks": 82,
+   "note": "backend:docling-parse+easyocr;ocr_pages:1,2,3,4,5,6,7,9,11,13,15,17,19,20,21,22,23,24,25,26,27,28,29,30,31,32",
+   "pages": 32,
+   "text_pages": 6,
+   "empty_pages": 26,
+   "page_coverage": 0.938,
+   "empty_pages_covered": 24,
+   "doc_recall": 0.901,
+   "page_recall": 0.79,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "[3.22.목.석간]질병관리본부_-_대한안과학회,_눈건강_관리를_위한_9대_생활수칙_발표.pdf",
+   "domain": "medical",
+   "status": "ok",
+   "n_chunks": 34,
+   "note": "",
+   "pages": 12,
+   "text_pages": 12,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.997,
+   "page_recall": 0.983,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "Kafm015-11-15.pdf",
+   "domain": "medical",
+   "status": "ok",
+   "n_chunks": 11,
+   "note": "backend:easyocr;ocr_pages:1,2,3,4,5,6",
+   "pages": 6,
+   "text_pages": 0,
+   "empty_pages": 6,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 6,
+   "doc_recall": null,
+   "page_recall": null,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "2014_08.pdf",
+   "domain": "medical",
+   "status": "ok",
+   "n_chunks": 11,
+   "note": "",
+   "pages": 2,
+   "text_pages": 2,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.983,
+   "page_recall": 0.983,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "2017년-안과감염병-관리지침.pdf",
+   "domain": "medical",
+   "status": "ok",
+   "n_chunks": 69,
+   "note": "backend:docling-parse+easyocr;ocr_pages:6,13,14,22,33,38,39;pageocr_filled:33",
+   "pages": 43,
+   "text_pages": 36,
+   "empty_pages": 7,
+   "page_coverage": 0.884,
+   "empty_pages_covered": 3,
+   "doc_recall": 0.997,
+   "page_recall": 0.973,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "9906002.pdf",
+   "domain": "medical",
+   "status": "ok",
+   "n_chunks": 22,
+   "note": "",
+   "pages": 5,
+   "text_pages": 5,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.986,
+   "page_recall": 0.959,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "20080813_E_2.pdf",
+   "domain": "medical",
+   "status": "ok",
+   "n_chunks": 34,
+   "note": "backend:docling-parse+easyocr;ocr_pages:29,30,31,32;pageocr_filled:29,30,31,32",
+   "pages": 36,
+   "text_pages": 36,
+   "empty_pages": 0,
+   "page_coverage": 0.972,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.987,
+   "page_recall": 0.67,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "2015_21v53xmj21xyn_e21e2ee23r3grrh3.pdf",
+   "domain": "medical",
+   "status": "ok",
+   "n_chunks": 16,
+   "note": "",
+   "pages": 11,
+   "text_pages": 11,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.989,
+   "page_recall": 0.968,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "소비자시대 12_20~21 겨울철 더욱 위험한 안과질환.pdf",
+   "domain": "medical",
+   "status": "ok",
+   "n_chunks": 5,
+   "note": "",
+   "pages": 2,
+   "text_pages": 2,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.978,
+   "page_recall": 0.975,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "질환별 약제정보_송영천_안구건조증(1).pdf",
+   "domain": "medical",
+   "status": "ok",
+   "n_chunks": 15,
+   "note": "",
+   "pages": 4,
+   "text_pages": 4,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 1.0,
+   "page_recall": 1.0,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "jkan-38-140.pdf",
+   "domain": "medical",
+   "status": "ok",
+   "n_chunks": 48,
+   "note": "",
+   "pages": 12,
+   "text_pages": 12,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.959,
+   "page_recall": 0.95,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "journal-31-3-308.pdf",
+   "domain": "medical",
+   "status": "ok",
+   "n_chunks": 55,
+   "note": "",
+   "pages": 33,
+   "text_pages": 33,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.985,
+   "page_recall": 0.953,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "08 알기 쉬운 대장암.pdf",
+   "domain": "medical",
+   "status": "ok",
+   "n_chunks": 29,
+   "note": "backend:docling-parse+easyocr;ocr_pages:1",
+   "pages": 20,
+   "text_pages": 19,
+   "empty_pages": 1,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 1,
+   "doc_recall": 0.993,
+   "page_recall": 0.983,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "KJFP003-01-08.pdf",
+   "domain": "medical",
+   "status": "ok",
+   "n_chunks": 27,
+   "note": "",
+   "pages": 7,
+   "text_pages": 7,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.996,
+   "page_recall": 0.972,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "kjg-74-4.pdf",
+   "domain": "medical",
+   "status": "ok",
+   "n_chunks": 30,
+   "note": "",
+   "pages": 7,
+   "text_pages": 7,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.997,
+   "page_recall": 0.983,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "jksc-25-356.pdf",
+   "domain": "medical",
+   "status": "ok",
+   "n_chunks": 28,
+   "note": "",
+   "pages": 7,
+   "text_pages": 7,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.986,
+   "page_recall": 0.964,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "enm-26-126.pdf",
+   "domain": "medical",
+   "status": "ok",
+   "n_chunks": 32,
+   "note": "",
+   "pages": 7,
+   "text_pages": 7,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.973,
+   "page_recall": 0.964,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "Colorectal-Screening-Korean-patient-guideline.pdf",
+   "domain": "medical",
+   "status": "ok",
+   "n_chunks": 154,
+   "note": "backend:docling-parse+easyocr;ocr_pages:2,6,40,47,49;pageocr_filled:6,40,47",
+   "pages": 50,
+   "text_pages": 48,
+   "empty_pages": 2,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 2,
+   "doc_recall": 0.911,
+   "page_recall": 0.852,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "14.cancer_info.pdf",
+   "domain": "medical",
+   "status": "ok",
+   "n_chunks": 30,
+   "note": "backend:easyocr;ocr_pages:1,2,3,4,5,6,7,8,9,10,11",
+   "pages": 11,
+   "text_pages": 0,
+   "empty_pages": 11,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 11,
+   "doc_recall": null,
+   "page_recall": null,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "4e304ca4ed0e0b678457e0cf26e372f42395.pdf",
+   "domain": "medical",
+   "status": "ok",
+   "n_chunks": 36,
+   "note": "",
+   "pages": 10,
+   "text_pages": 10,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.989,
+   "page_recall": 0.979,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "위식도역류성질환(Gastroesophageal Reflux Disease) (2).pdf",
+   "domain": "medical",
+   "status": "ok",
+   "n_chunks": 30,
+   "note": "",
+   "pages": 17,
+   "text_pages": 17,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 1.0,
+   "page_recall": 0.974,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "[민사] 스마트폰 성능조절기능이 탑재된 소프트웨어 업데이트로 인한 일부 성능제한 또는 앱 실행지연 등 불이익한 결과 초래 가능성에 대한 고지의무 불완전이행 여부가 문제된 사안.pdf",
+   "domain": "law",
+   "status": "ok",
+   "n_chunks": 59,
+   "note": "",
+   "pages": 35,
+   "text_pages": 35,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.999,
+   "page_recall": 0.992,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "[행정] 금품 등 약속이 공무원 재직 중에 이루어지고 수수가 퇴직 후에 이루어진 경우 공무원연금법에 해당하는 지가 문제된 사건.pdf",
+   "domain": "law",
+   "status": "ok",
+   "n_chunks": 50,
+   "note": "backend:docling-parse+easyocr;ocr_pages:22",
+   "pages": 27,
+   "text_pages": 27,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.998,
+   "page_recall": 0.99,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "[특허] 제1항 출원발명은 진보성이 부정된다고 판단한 사례(특허법원 2023허10705).pdf",
+   "domain": "law",
+   "status": "ok",
+   "n_chunks": 38,
+   "note": "",
+   "pages": 18,
+   "text_pages": 18,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.993,
+   "page_recall": 0.987,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "[형사] 피고인이 자신이 근무하는 시청 사무실에서 소속 팀장과 방문자 사이의 대화를 피고인의 휴대전화로 녹음하여 통신비밀보호법 위반으로 기소된 사건.pdf",
+   "domain": "law",
+   "status": "ok",
+   "n_chunks": 14,
+   "note": "",
+   "pages": 8,
+   "text_pages": 8,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.996,
+   "page_recall": 0.991,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "[행정][조세] 가상자산 거래소를 운영하는 원고가 2017년에 비거주자인 회원들에게 지급한 가상자산 거래로 인한 차익.pdf",
+   "domain": "law",
+   "status": "ok",
+   "n_chunks": 25,
+   "note": "backend:docling-parse+easyocr;ocr_pages:9;pageocr_filled:9",
+   "pages": 14,
+   "text_pages": 13,
+   "empty_pages": 1,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 1,
+   "doc_recall": 0.998,
+   "page_recall": 0.993,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "[행정] 원고가 담배브랜드의 상표 등 사용에 관하여 다국적기업에게 지급하는 로열티가 원고가 다른 계열사 등으로부터 수입하는 담배재료의 권리사용료라는 전제에서 관세가 부과되자 그 부과처분의 취소를 구하는 사건.pdf",
+   "domain": "law",
+   "status": "ok",
+   "n_chunks": 90,
+   "note": "backend:docling-parse+easyocr;ocr_pages:47;pageocr_filled:47",
+   "pages": 55,
+   "text_pages": 55,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.999,
+   "page_recall": 0.989,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "재해보상판례 당직 중 사적 행위의 공무수행성 여부.pdf",
+   "domain": "law",
+   "status": "ok",
+   "n_chunks": 11,
+   "note": "backend:easyocr;ocr_pages:1,2,3,4,5,6,7,8,9",
+   "pages": 9,
+   "text_pages": 0,
+   "empty_pages": 9,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 9,
+   "doc_recall": null,
+   "page_recall": null,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "2024 달라지는 세금제도.pdf",
+   "domain": "law",
+   "status": "ok",
+   "n_chunks": 115,
+   "note": "backend:docling-parse+easyocr;ocr_pages:1;pageocr_filled:1",
+   "pages": 32,
+   "text_pages": 31,
+   "empty_pages": 1,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 1,
+   "doc_recall": 0.999,
+   "page_recall": 0.984,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "[민사] 미성년자 성형외과 코필러 주입술 시 필러물질이 미성년자에 대한 사용금지 조치를 받은 상태였던 사안.pdf",
+   "domain": "law",
+   "status": "ok",
+   "n_chunks": 36,
+   "note": "backend:docling-parse+easyocr;ocr_pages:20",
+   "pages": 20,
+   "text_pages": 19,
+   "empty_pages": 1,
+   "page_coverage": 0.95,
+   "empty_pages_covered": 0,
+   "doc_recall": 1.0,
+   "page_recall": 0.996,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "[민사] 분양받은 상가 내에 설치된 기둥으로 인해 공간활용 제한 등 손해를 입었다고 주장하면서 수분양자들이 분양자를 상대로 고지의무위반을 이유로 손해배상을 구한 사건.pdf",
+   "domain": "law",
+   "status": "ok",
+   "n_chunks": 21,
+   "note": "backend:docling-parse+easyocr;ocr_pages:10,12,14,16",
+   "pages": 16,
+   "text_pages": 16,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.958,
+   "page_recall": 0.95,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "[행정] 타인자금(예금, 보험료 등 고객의 예탁자금)이 아닌 자기자금(자본금, 대출금 등 자신의 고유재산)을 운용하는 경우에도 공정거래법 제11조에 의한 의결권 제한이 적용되는지가 문제된 사건.pdf",
+   "domain": "law",
+   "status": "ok",
+   "n_chunks": 64,
+   "note": "",
+   "pages": 32,
+   "text_pages": 32,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.999,
+   "page_recall": 0.99,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "[특허] 원고 제품들의 실시가 피고의 제1, 3, 5항 발명을 침해하지 않는다고 판단한 사례(특허법원 2022나2213).pdf",
+   "domain": "law",
+   "status": "ok",
+   "n_chunks": 37,
+   "note": "backend:docling-parse+easyocr;ocr_pages:16,25;pageocr_filled:16,25",
+   "pages": 25,
+   "text_pages": 24,
+   "empty_pages": 1,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 1,
+   "doc_recall": 0.999,
+   "page_recall": 0.988,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "MezzoMedia 산업 보고서 e커머스.pdf",
+   "domain": "commerce",
+   "status": "ok",
+   "n_chunks": 39,
+   "note": "backend:docling-parse+easyocr;ocr_pages:2,9,22,27,32",
+   "pages": 32,
+   "text_pages": 28,
+   "empty_pages": 4,
+   "page_coverage": 0.969,
+   "empty_pages_covered": 4,
+   "doc_recall": 0.993,
+   "page_recall": 0.993,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "이커머스 솔루션 소개자료.pdf",
+   "domain": "commerce",
+   "status": "ok",
+   "n_chunks": 194,
+   "note": "",
+   "pages": 51,
+   "text_pages": 51,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.993,
+   "page_recall": 0.93,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "Dighty Data Insight Report 2023.pdf",
+   "domain": "commerce",
+   "status": "ok",
+   "n_chunks": 15,
+   "note": "backend:docling-parse+easyocr;ocr_pages:3,13,16,21;pageocr_filled:16",
+   "pages": 26,
+   "text_pages": 23,
+   "empty_pages": 3,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 3,
+   "doc_recall": 0.999,
+   "page_recall": 0.999,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "kr-im-new-luxury-business-trends-20220520.pdf",
+   "domain": "commerce",
+   "status": "ok",
+   "n_chunks": 77,
+   "note": "backend:easyocr;ocr_pages:1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32",
+   "pages": 32,
+   "text_pages": 0,
+   "empty_pages": 32,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 32,
+   "doc_recall": null,
+   "page_recall": null,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "이커머스의 진화와 소비자 후생.pdf",
+   "domain": "commerce",
+   "status": "ok",
+   "n_chunks": 15,
+   "note": "",
+   "pages": 8,
+   "text_pages": 8,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 1.0,
+   "page_recall": 0.99,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "쿠팡 상장과 이베이 인수  이후 국내 이커머스 시장은 어떻게 변할까.pdf",
+   "domain": "commerce",
+   "status": "ok",
+   "n_chunks": 77,
+   "note": "",
+   "pages": 25,
+   "text_pages": 25,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.991,
+   "page_recall": 0.963,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "PRP008.pdf",
+   "domain": "commerce",
+   "status": "ok",
+   "n_chunks": 12,
+   "note": "",
+   "pages": 6,
+   "text_pages": 6,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.97,
+   "page_recall": 0.946,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "B2BDigCommEra_Translation_KR_Offer_V1.pdf",
+   "domain": "commerce",
+   "status": "ok",
+   "n_chunks": 34,
+   "note": "",
+   "pages": 19,
+   "text_pages": 19,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.866,
+   "page_recall": 0.86,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "KCA Media Issue Trend Vol 50 Report.pdf",
+   "domain": "commerce",
+   "status": "ok",
+   "n_chunks": 11,
+   "note": "",
+   "pages": 9,
+   "text_pages": 9,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.954,
+   "page_recall": 0.942,
+   "low_recall_pages": []
+  },
+  {
+   "file_name": "중국21-18호 2021 라이브커머스 산업 보고.pdf",
+   "domain": "commerce",
+   "status": "ok",
+   "n_chunks": 53,
+   "note": "",
+   "pages": 34,
+   "text_pages": 34,
+   "empty_pages": 0,
+   "page_coverage": 1.0,
+   "empty_pages_covered": 0,
+   "doc_recall": 0.997,
+   "page_recall": 0.962,
+   "low_recall_pages": []
+  }
+ ],
+ "questions": [
+  {
+   "qid": "q_0",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "[별첨] 지방은행의 시중은행 전환시 인가방식 및 절차.pdf",
+   "gold_page": 4,
+   "gold_chunks": 2,
+   "cov_pdf": 0.39,
+   "cov_chunk": 0.39,
+   "cov_doc": 0.5,
+   "best_chunk_pages": [
+    4
+   ],
+   "best_chunk_cov": 0.38,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_1",
+   "domain": "finance",
+   "context_type": "table",
+   "file_name": "[별첨] 지방은행의 시중은행 전환시 인가방식 및 절차.pdf",
+   "gold_page": 7,
+   "gold_chunks": 1,
+   "cov_pdf": 0.52,
+   "cov_chunk": 0.52,
+   "cov_doc": 0.64,
+   "best_chunk_pages": [
+    7
+   ],
+   "best_chunk_cov": 0.52,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_2",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "[별첨] 지방은행의 시중은행 전환시 인가방식 및 절차.pdf",
+   "gold_page": 8,
+   "gold_chunks": 1,
+   "cov_pdf": 0.61,
+   "cov_chunk": 0.63,
+   "cov_doc": 0.75,
+   "best_chunk_pages": [
+    8
+   ],
+   "best_chunk_cov": 0.63,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_3",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "[별첨] 지방은행의 시중은행 전환시 인가방식 및 절차.pdf",
+   "gold_page": 10,
+   "gold_chunks": 2,
+   "cov_pdf": 0.82,
+   "cov_chunk": 0.82,
+   "cov_doc": 0.82,
+   "best_chunk_pages": [
+    10,
+    11
+   ],
+   "best_chunk_cov": 0.79,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_4",
+   "domain": "finance",
+   "context_type": "image",
+   "file_name": "★2019 제1회 증시콘서트 자료집_최종★.pdf",
+   "gold_page": 6,
+   "gold_chunks": 3,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.0,
+   "cov_doc": 0.17,
+   "best_chunk_pages": [
+    45
+   ],
+   "best_chunk_cov": 0.11,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_5",
+   "domain": "finance",
+   "context_type": "image",
+   "file_name": "★2019 제1회 증시콘서트 자료집_최종★.pdf",
+   "gold_page": 7,
+   "gold_chunks": 2,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.0,
+   "cov_doc": 0.1,
+   "best_chunk_pages": [
+    1
+   ],
+   "best_chunk_cov": 0.05,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_6",
+   "domain": "finance",
+   "context_type": "image",
+   "file_name": "★2019 제1회 증시콘서트 자료집_최종★.pdf",
+   "gold_page": 8,
+   "gold_chunks": 1,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.0,
+   "cov_doc": 0.07,
+   "best_chunk_pages": [
+    2,
+    3
+   ],
+   "best_chunk_cov": 0.07,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_7",
+   "domain": "finance",
+   "context_type": "image",
+   "file_name": "★2019 제1회 증시콘서트 자료집_최종★.pdf",
+   "gold_page": 9,
+   "gold_chunks": 4,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.0,
+   "cov_doc": 0.12,
+   "best_chunk_pages": [
+    50
+   ],
+   "best_chunk_cov": 0.04,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_8",
+   "domain": "finance",
+   "context_type": "image",
+   "file_name": "★2019 제1회 증시콘서트 자료집_최종★.pdf",
+   "gold_page": 12,
+   "gold_chunks": 4,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.0,
+   "cov_doc": 0.08,
+   "best_chunk_pages": [
+    48
+   ],
+   "best_chunk_cov": 0.08,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_9",
+   "domain": "finance",
+   "context_type": "image",
+   "file_name": "★2019 제1회 증시콘서트 자료집_최종★.pdf",
+   "gold_page": 14,
+   "gold_chunks": 2,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.0,
+   "cov_doc": 0.11,
+   "best_chunk_pages": [
+    1
+   ],
+   "best_chunk_cov": 0.11,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_10",
+   "domain": "finance",
+   "context_type": "image",
+   "file_name": "★2019 제1회 증시콘서트 자료집_최종★.pdf",
+   "gold_page": 27,
+   "gold_chunks": 3,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.0,
+   "cov_doc": 0.04,
+   "best_chunk_pages": [
+    1
+   ],
+   "best_chunk_cov": 0.04,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_11",
+   "domain": "finance",
+   "context_type": "image",
+   "file_name": "★2019 제1회 증시콘서트 자료집_최종★.pdf",
+   "gold_page": 52,
+   "gold_chunks": 5,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.0,
+   "cov_doc": 0.0,
+   "best_chunk_pages": null,
+   "best_chunk_cov": 0.0,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_12",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "130292099630937500_KIFVIP2013-10.pdf",
+   "gold_page": 6,
+   "gold_chunks": 2,
+   "cov_pdf": 0.39,
+   "cov_chunk": 0.42,
+   "cov_doc": 0.58,
+   "best_chunk_pages": [
+    5,
+    6
+   ],
+   "best_chunk_cov": 0.32,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_13",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "130292099630937500_KIFVIP2013-10.pdf",
+   "gold_page": 21,
+   "gold_chunks": 1,
+   "cov_pdf": 0.73,
+   "cov_chunk": 0.73,
+   "cov_doc": 0.84,
+   "best_chunk_pages": [
+    21,
+    22
+   ],
+   "best_chunk_cov": 0.73,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_14",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "130292099630937500_KIFVIP2013-10.pdf",
+   "gold_page": 27,
+   "gold_chunks": 2,
+   "cov_pdf": 0.79,
+   "cov_chunk": 0.8,
+   "cov_doc": 0.82,
+   "best_chunk_pages": [
+    27
+   ],
+   "best_chunk_cov": 0.79,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_15",
+   "domain": "finance",
+   "context_type": "table",
+   "file_name": "130292099630937500_KIFVIP2013-10.pdf",
+   "gold_page": 38,
+   "gold_chunks": 2,
+   "cov_pdf": 0.38,
+   "cov_chunk": 0.5,
+   "cov_doc": 0.75,
+   "best_chunk_pages": [
+    36,
+    37,
+    38
+   ],
+   "best_chunk_cov": 0.38,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_16",
+   "domain": "finance",
+   "context_type": "table",
+   "file_name": "130292099630937500_KIFVIP2013-10.pdf",
+   "gold_page": 45,
+   "gold_chunks": 2,
+   "cov_pdf": 0.7,
+   "cov_chunk": 0.7,
+   "cov_doc": 0.8,
+   "best_chunk_pages": [
+    45
+   ],
+   "best_chunk_cov": 0.7,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_17",
+   "domain": "finance",
+   "context_type": "table",
+   "file_name": "130292099630937500_KIFVIP2013-10.pdf",
+   "gold_page": 45,
+   "gold_chunks": 2,
+   "cov_pdf": 0.92,
+   "cov_chunk": 0.92,
+   "cov_doc": 0.95,
+   "best_chunk_pages": [
+    45
+   ],
+   "best_chunk_cov": 0.92,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_18",
+   "domain": "finance",
+   "context_type": "table",
+   "file_name": "130292099630937500_KIFVIP2013-10.pdf",
+   "gold_page": 46,
+   "gold_chunks": 2,
+   "cov_pdf": 0.68,
+   "cov_chunk": 0.68,
+   "cov_doc": 0.74,
+   "best_chunk_pages": [
+    46
+   ],
+   "best_chunk_cov": 0.68,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_19",
+   "domain": "finance",
+   "context_type": "table",
+   "file_name": "130292099630937500_KIFVIP2013-10.pdf",
+   "gold_page": 47,
+   "gold_chunks": 2,
+   "cov_pdf": 0.36,
+   "cov_chunk": 0.36,
+   "cov_doc": 0.72,
+   "best_chunk_pages": [
+    36,
+    37,
+    38
+   ],
+   "best_chunk_cov": 0.32,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_20",
+   "domain": "finance",
+   "context_type": "table",
+   "file_name": "130292099630937500_KIFVIP2013-10.pdf",
+   "gold_page": 48,
+   "gold_chunks": 2,
+   "cov_pdf": 0.39,
+   "cov_chunk": 0.39,
+   "cov_doc": 0.62,
+   "best_chunk_pages": [
+    48
+   ],
+   "best_chunk_cov": 0.39,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_21",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "133178946057443204_WP22-05.pdf",
+   "gold_page": 21,
+   "gold_chunks": 1,
+   "cov_pdf": 0.32,
+   "cov_chunk": 0.37,
+   "cov_doc": 0.7,
+   "best_chunk_pages": [
+    58
+   ],
+   "best_chunk_cov": 0.39,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_22",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "133178946057443204_WP22-05.pdf",
+   "gold_page": 23,
+   "gold_chunks": 1,
+   "cov_pdf": 0.79,
+   "cov_chunk": 0.79,
+   "cov_doc": 0.9,
+   "best_chunk_pages": [
+    23
+   ],
+   "best_chunk_cov": 0.79,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_23",
+   "domain": "finance",
+   "context_type": "image",
+   "file_name": "133178946057443204_WP22-05.pdf",
+   "gold_page": 28,
+   "gold_chunks": 1,
+   "cov_pdf": 0.07,
+   "cov_chunk": 0.1,
+   "cov_doc": 0.55,
+   "best_chunk_pages": [
+    56
+   ],
+   "best_chunk_cov": 0.19,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_24",
+   "domain": "finance",
+   "context_type": "table",
+   "file_name": "133178946057443204_WP22-05.pdf",
+   "gold_page": 30,
+   "gold_chunks": 2,
+   "cov_pdf": 0.68,
+   "cov_chunk": 0.68,
+   "cov_doc": 0.8,
+   "best_chunk_pages": [
+    30
+   ],
+   "best_chunk_cov": 0.65,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_25",
+   "domain": "finance",
+   "context_type": "image",
+   "file_name": "133178946057443204_WP22-05.pdf",
+   "gold_page": 40,
+   "gold_chunks": 2,
+   "cov_pdf": 0.08,
+   "cov_chunk": 0.18,
+   "cov_doc": 0.53,
+   "best_chunk_pages": [
+    14,
+    15
+   ],
+   "best_chunk_cov": 0.22,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_26",
+   "domain": "finance",
+   "context_type": "image",
+   "file_name": "133178946057443204_WP22-05.pdf",
+   "gold_page": 41,
+   "gold_chunks": 2,
+   "cov_pdf": 0.13,
+   "cov_chunk": 0.23,
+   "cov_doc": 0.51,
+   "best_chunk_pages": [
+    13
+   ],
+   "best_chunk_cov": 0.23,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_27",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "133178946057443204_WP22-05.pdf",
+   "gold_page": 47,
+   "gold_chunks": 2,
+   "cov_pdf": 0.85,
+   "cov_chunk": 0.85,
+   "cov_doc": 0.89,
+   "best_chunk_pages": [
+    47
+   ],
+   "best_chunk_cov": 0.85,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_28",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "133178946057443204_WP22-05.pdf",
+   "gold_page": 55,
+   "gold_chunks": 2,
+   "cov_pdf": 0.77,
+   "cov_chunk": 0.81,
+   "cov_doc": 0.86,
+   "best_chunk_pages": [
+    55,
+    56
+   ],
+   "best_chunk_cov": 0.77,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_29",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "133178946057443204_WP22-05.pdf",
+   "gold_page": 61,
+   "gold_chunks": 1,
+   "cov_pdf": 0.7,
+   "cov_chunk": 0.7,
+   "cov_doc": 0.76,
+   "best_chunk_pages": [
+    61
+   ],
+   "best_chunk_cov": 0.7,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_30",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "2024년 3월_2. 통화신용정책 운영.pdf",
+   "gold_page": 4,
+   "gold_chunks": 4,
+   "cov_pdf": 0.78,
+   "cov_chunk": 0.81,
+   "cov_doc": 0.83,
+   "best_chunk_pages": [
+    4,
+    5
+   ],
+   "best_chunk_cov": 0.78,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_31",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "2024년 3월_2. 통화신용정책 운영.pdf",
+   "gold_page": 7,
+   "gold_chunks": 4,
+   "cov_pdf": 0.7,
+   "cov_chunk": 0.7,
+   "cov_doc": 0.79,
+   "best_chunk_pages": [
+    7
+   ],
+   "best_chunk_cov": 0.44,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_32",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "2024년 3월_2. 통화신용정책 운영.pdf",
+   "gold_page": 11,
+   "gold_chunks": 4,
+   "cov_pdf": 0.68,
+   "cov_chunk": 0.68,
+   "cov_doc": 0.77,
+   "best_chunk_pages": [
+    11
+   ],
+   "best_chunk_cov": 0.68,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_33",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "2024년 3월_2. 통화신용정책 운영.pdf",
+   "gold_page": 12,
+   "gold_chunks": 4,
+   "cov_pdf": 0.45,
+   "cov_chunk": 0.47,
+   "cov_doc": 0.6,
+   "best_chunk_pages": [
+    12,
+    13
+   ],
+   "best_chunk_cov": 0.43,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_34",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "2024년 3월_3. 향후 통화신용정책 방향.pdf",
+   "gold_page": 3,
+   "gold_chunks": 3,
+   "cov_pdf": 0.87,
+   "cov_chunk": 0.87,
+   "cov_doc": 0.9,
+   "best_chunk_pages": [
+    3,
+    4
+   ],
+   "best_chunk_cov": 0.65,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_35",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "2024년 3월_3. 향후 통화신용정책 방향.pdf",
+   "gold_page": 5,
+   "gold_chunks": 2,
+   "cov_pdf": 0.68,
+   "cov_chunk": 0.68,
+   "cov_doc": 0.79,
+   "best_chunk_pages": [
+    5
+   ],
+   "best_chunk_cov": 0.58,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_36",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "2024년 3월_3. 향후 통화신용정책 방향.pdf",
+   "gold_page": 8,
+   "gold_chunks": 3,
+   "cov_pdf": 0.8,
+   "cov_chunk": 0.8,
+   "cov_doc": 0.87,
+   "best_chunk_pages": [
+    8
+   ],
+   "best_chunk_cov": 0.8,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_37",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "2024년 3월_3. 향후 통화신용정책 방향.pdf",
+   "gold_page": 10,
+   "gold_chunks": 2,
+   "cov_pdf": 0.75,
+   "cov_chunk": 0.75,
+   "cov_doc": 0.85,
+   "best_chunk_pages": [
+    10
+   ],
+   "best_chunk_cov": 0.69,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_38",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "2024년 3월_3. 향후 통화신용정책 방향.pdf",
+   "gold_page": 17,
+   "gold_chunks": 4,
+   "cov_pdf": 0.87,
+   "cov_chunk": 0.87,
+   "cov_doc": 0.89,
+   "best_chunk_pages": [
+    17
+   ],
+   "best_chunk_cov": 0.83,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_39",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "2024년 3월_3. 향후 통화신용정책 방향.pdf",
+   "gold_page": 19,
+   "gold_chunks": 4,
+   "cov_pdf": 0.68,
+   "cov_chunk": 0.68,
+   "cov_doc": 0.76,
+   "best_chunk_pages": [
+    19
+   ],
+   "best_chunk_cov": 0.63,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_40",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "240130(보도자료) 지방은행의 시중은행 전환시 인가방식 및 절차.pdf",
+   "gold_page": 4,
+   "gold_chunks": 1,
+   "cov_pdf": 0.47,
+   "cov_chunk": 0.47,
+   "cov_doc": 0.6,
+   "best_chunk_pages": [
+    4
+   ],
+   "best_chunk_cov": 0.47,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_41",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "240130(보도자료) 지방은행의 시중은행 전환시 인가방식 및 절차.pdf",
+   "gold_page": 5,
+   "gold_chunks": 1,
+   "cov_pdf": 0.63,
+   "cov_chunk": 0.63,
+   "cov_doc": 0.74,
+   "best_chunk_pages": [
+    5
+   ],
+   "best_chunk_cov": 0.63,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_42",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "240320(보도자료) 금융권의 상생금융 추진현황.pdf",
+   "gold_page": 1,
+   "gold_chunks": 3,
+   "cov_pdf": 0.7,
+   "cov_chunk": 0.7,
+   "cov_doc": 0.74,
+   "best_chunk_pages": [
+    1
+   ],
+   "best_chunk_cov": 0.65,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_43",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "240320(보도자료) 금융권의 상생금융 추진현황.pdf",
+   "gold_page": 3,
+   "gold_chunks": 2,
+   "cov_pdf": 0.48,
+   "cov_chunk": 0.48,
+   "cov_doc": 0.57,
+   "best_chunk_pages": [
+    3
+   ],
+   "best_chunk_cov": 0.48,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_44",
+   "domain": "finance",
+   "context_type": "table",
+   "file_name": "240320(보도자료) 금융권의 상생금융 추진현황.pdf",
+   "gold_page": 5,
+   "gold_chunks": 3,
+   "cov_pdf": 0.54,
+   "cov_chunk": 0.54,
+   "cov_doc": 0.69,
+   "best_chunk_pages": [
+    5
+   ],
+   "best_chunk_cov": 0.51,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_45",
+   "domain": "finance",
+   "context_type": "table",
+   "file_name": "240320(보도자료) 금융권의 상생금융 추진현황.pdf",
+   "gold_page": 5,
+   "gold_chunks": 3,
+   "cov_pdf": 0.33,
+   "cov_chunk": 0.33,
+   "cov_doc": 0.5,
+   "best_chunk_pages": [
+    3
+   ],
+   "best_chunk_cov": 0.42,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_46",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "240320(보도자료) 금융권의 상생금융 추진현황.pdf",
+   "gold_page": 5,
+   "gold_chunks": 3,
+   "cov_pdf": 0.61,
+   "cov_chunk": 0.61,
+   "cov_doc": 0.72,
+   "best_chunk_pages": [
+    5
+   ],
+   "best_chunk_cov": 0.61,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_47",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "240409(보도자료) 금융위 핀테크 투자 생태계 활성화 나선다.pdf",
+   "gold_page": 3,
+   "gold_chunks": 3,
+   "cov_pdf": 0.47,
+   "cov_chunk": 0.47,
+   "cov_doc": 0.51,
+   "best_chunk_pages": [
+    3
+   ],
+   "best_chunk_cov": 0.47,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_48",
+   "domain": "finance",
+   "context_type": "image",
+   "file_name": "240409(보도자료) 금융위 핀테크 투자 생태계 활성화 나선다.pdf",
+   "gold_page": 5,
+   "gold_chunks": 2,
+   "cov_pdf": 0.45,
+   "cov_chunk": 0.45,
+   "cov_doc": 0.55,
+   "best_chunk_pages": [
+    6
+   ],
+   "best_chunk_cov": 0.55,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_49",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "240409(보도자료) 금융위 핀테크 투자 생태계 활성화 나선다.pdf",
+   "gold_page": 5,
+   "gold_chunks": 2,
+   "cov_pdf": 0.58,
+   "cov_chunk": 0.54,
+   "cov_doc": 0.58,
+   "best_chunk_pages": [
+    5
+   ],
+   "best_chunk_cov": 0.54,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_50",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "한-호주 퇴직연금 포럼_책자(최종).pdf",
+   "gold_page": 1,
+   "gold_chunks": 1,
+   "cov_pdf": 0.89,
+   "cov_chunk": 0.89,
+   "cov_doc": 0.89,
+   "best_chunk_pages": [
+    1
+   ],
+   "best_chunk_cov": 0.89,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_51",
+   "domain": "finance",
+   "context_type": "paragraph",
+   "file_name": "한-호주 퇴직연금 포럼_책자(최종).pdf",
+   "gold_page": 2,
+   "gold_chunks": 2,
+   "cov_pdf": 0.93,
+   "cov_chunk": 0.93,
+   "cov_doc": 0.93,
+   "best_chunk_pages": [
+    2
+   ],
+   "best_chunk_cov": 0.93,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_52",
+   "domain": "finance",
+   "context_type": "image",
+   "file_name": "한-호주 퇴직연금 포럼_책자(최종).pdf",
+   "gold_page": 20,
+   "gold_chunks": 2,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.12,
+   "cov_doc": 0.25,
+   "best_chunk_pages": [
+    5,
+    6
+   ],
+   "best_chunk_cov": 0.25,
+   "verdict": "unreachable"
+  },
+  {
+   "qid": "q_53",
+   "domain": "finance",
+   "context_type": "image",
+   "file_name": "한-호주 퇴직연금 포럼_책자(최종).pdf",
+   "gold_page": 21,
+   "gold_chunks": 3,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.32,
+   "cov_doc": 0.47,
+   "best_chunk_pages": [
+    21
+   ],
+   "best_chunk_cov": 0.32,
+   "verdict": "recovered"
+  },
+  {
+   "qid": "q_54",
+   "domain": "finance",
+   "context_type": "image",
+   "file_name": "한-호주 퇴직연금 포럼_책자(최종).pdf",
+   "gold_page": 21,
+   "gold_chunks": 3,
+   "cov_pdf": 0.11,
+   "cov_chunk": 0.22,
+   "cov_doc": 0.67,
+   "best_chunk_pages": [
+    6,
+    7
+   ],
+   "best_chunk_cov": 0.44,
+   "verdict": "recovered"
+  },
+  {
+   "qid": "q_55",
+   "domain": "finance",
+   "context_type": "image",
+   "file_name": "한-호주 퇴직연금 포럼_책자(최종).pdf",
+   "gold_page": 23,
+   "gold_chunks": 3,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.0,
+   "cov_doc": 0.27,
+   "best_chunk_pages": [
+    6,
+    7
+   ],
+   "best_chunk_cov": 0.16,
+   "verdict": "unreachable"
+  },
+  {
+   "qid": "q_56",
+   "domain": "finance",
+   "context_type": "image",
+   "file_name": "한-호주 퇴직연금 포럼_책자(최종).pdf",
+   "gold_page": 27,
+   "gold_chunks": 3,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.65,
+   "cov_doc": 0.71,
+   "best_chunk_pages": [
+    27
+   ],
+   "best_chunk_cov": 0.59,
+   "verdict": "recovered"
+  },
+  {
+   "qid": "q_57",
+   "domain": "finance",
+   "context_type": "image",
+   "file_name": "한-호주 퇴직연금 포럼_책자(최종).pdf",
+   "gold_page": 27,
+   "gold_chunks": 3,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.31,
+   "cov_doc": 0.44,
+   "best_chunk_pages": [
+    27
+   ],
+   "best_chunk_cov": 0.28,
+   "verdict": "recovered"
+  },
+  {
+   "qid": "q_58",
+   "domain": "finance",
+   "context_type": "image",
+   "file_name": "한-호주 퇴직연금 포럼_책자(최종).pdf",
+   "gold_page": 30,
+   "gold_chunks": 4,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.47,
+   "cov_doc": 0.53,
+   "best_chunk_pages": [
+    30
+   ],
+   "best_chunk_cov": 0.4,
+   "verdict": "recovered"
+  },
+  {
+   "qid": "q_59",
+   "domain": "finance",
+   "context_type": "image",
+   "file_name": "한-호주 퇴직연금 포럼_책자(최종).pdf",
+   "gold_page": 32,
+   "gold_chunks": 4,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.32,
+   "cov_doc": 0.55,
+   "best_chunk_pages": [
+    32
+   ],
+   "best_chunk_cov": 0.29,
+   "verdict": "recovered"
+  },
+  {
+   "qid": "q_60",
+   "domain": "public",
+   "context_type": "table",
+   "file_name": "(240411보도자료) 재정동향 4월호.pdf",
+   "gold_page": 4,
+   "gold_chunks": 2,
+   "cov_pdf": 0.62,
+   "cov_chunk": 0.81,
+   "cov_doc": 0.88,
+   "best_chunk_pages": [
+    4
+   ],
+   "best_chunk_cov": 0.75,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_61",
+   "domain": "public",
+   "context_type": "table",
+   "file_name": "2023_2027 국가재정운용계획 주요내용.pdf",
+   "gold_page": 4,
+   "gold_chunks": 2,
+   "cov_pdf": 0.14,
+   "cov_chunk": 0.18,
+   "cov_doc": 0.36,
+   "best_chunk_pages": [
+    4
+   ],
+   "best_chunk_cov": 0.14,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_62",
+   "domain": "public",
+   "context_type": "table",
+   "file_name": "2023_2027 국가재정운용계획 주요내용.pdf",
+   "gold_page": 7,
+   "gold_chunks": 1,
+   "cov_pdf": 0.54,
+   "cov_chunk": 0.54,
+   "cov_doc": 0.77,
+   "best_chunk_pages": [
+    7
+   ],
+   "best_chunk_cov": 0.54,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_63",
+   "domain": "public",
+   "context_type": "table",
+   "file_name": "2023_2027 국가재정운용계획 주요내용.pdf",
+   "gold_page": 9,
+   "gold_chunks": 2,
+   "cov_pdf": 0.43,
+   "cov_chunk": 0.43,
+   "cov_doc": 0.71,
+   "best_chunk_pages": [
+    9
+   ],
+   "best_chunk_cov": 0.36,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_64",
+   "domain": "public",
+   "context_type": "table",
+   "file_name": "2023_2027 국가재정운용계획 주요내용.pdf",
+   "gold_page": 10,
+   "gold_chunks": 2,
+   "cov_pdf": 1.0,
+   "cov_chunk": 1.0,
+   "cov_doc": 1.0,
+   "best_chunk_pages": [
+    4
+   ],
+   "best_chunk_cov": 1.0,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_65",
+   "domain": "public",
+   "context_type": "table",
+   "file_name": "2024년+국립대학+육성사업+기본계획.pdf",
+   "gold_page": 6,
+   "gold_chunks": 3,
+   "cov_pdf": 0.33,
+   "cov_chunk": 0.33,
+   "cov_doc": 0.47,
+   "best_chunk_pages": [
+    6
+   ],
+   "best_chunk_cov": 0.33,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_66",
+   "domain": "public",
+   "context_type": "table",
+   "file_name": "제4차(24_28)+학교도서관+진흥+기본계획.pdf",
+   "gold_page": 18,
+   "gold_chunks": 4,
+   "cov_pdf": 0.1,
+   "cov_chunk": 0.1,
+   "cov_doc": 0.5,
+   "best_chunk_pages": [
+    3
+   ],
+   "best_chunk_cov": 0.2,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_67",
+   "domain": "public",
+   "context_type": "table",
+   "file_name": "국가안전시스템 개편 종합대책 대국민 보고(12.31. 기준).pdf",
+   "gold_page": 11,
+   "gold_chunks": 4,
+   "cov_pdf": 0.46,
+   "cov_chunk": 0.46,
+   "cov_doc": 0.62,
+   "best_chunk_pages": [
+    11
+   ],
+   "best_chunk_cov": 0.46,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_68",
+   "domain": "public",
+   "context_type": "table",
+   "file_name": "외교부-2024년 앙골라개황(저).pdf",
+   "gold_page": 25,
+   "gold_chunks": 4,
+   "cov_pdf": 1.0,
+   "cov_chunk": 1.0,
+   "cov_doc": 1.0,
+   "best_chunk_pages": [
+    25,
+    26
+   ],
+   "best_chunk_cov": 1.0,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_69",
+   "domain": "public",
+   "context_type": "table",
+   "file_name": "외교부-2024년 앙골라개황(저).pdf",
+   "gold_page": 37,
+   "gold_chunks": 8,
+   "cov_pdf": 0.25,
+   "cov_chunk": 0.3,
+   "cov_doc": 0.5,
+   "best_chunk_pages": [
+    37
+   ],
+   "best_chunk_cov": 0.25,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_70",
+   "domain": "public",
+   "context_type": "table",
+   "file_name": "외교부-2024년 앙골라개황(저).pdf",
+   "gold_page": 38,
+   "gold_chunks": 4,
+   "cov_pdf": 0.58,
+   "cov_chunk": 0.58,
+   "cov_doc": 0.68,
+   "best_chunk_pages": [
+    38
+   ],
+   "best_chunk_cov": 0.58,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_71",
+   "domain": "public",
+   "context_type": "table",
+   "file_name": "240418 도로터널 결로대책 가이드라인(최종).pdf",
+   "gold_page": 9,
+   "gold_chunks": 2,
+   "cov_pdf": 0.2,
+   "cov_chunk": 0.2,
+   "cov_doc": 0.2,
+   "best_chunk_pages": [
+    9
+   ],
+   "best_chunk_cov": 0.2,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_72",
+   "domain": "public",
+   "context_type": "table",
+   "file_name": "전문교육기관ᆞ항공훈련기관 지정ᆞ인가 및 안전관리 현황__.pdf",
+   "gold_page": 4,
+   "gold_chunks": 3,
+   "cov_pdf": 0.29,
+   "cov_chunk": 0.29,
+   "cov_doc": 0.43,
+   "best_chunk_pages": [
+    4
+   ],
+   "best_chunk_cov": 0.29,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_73",
+   "domain": "public",
+   "context_type": "table",
+   "file_name": "전문교육기관ᆞ항공훈련기관 지정ᆞ인가 및 안전관리 현황__.pdf",
+   "gold_page": 6,
+   "gold_chunks": 2,
+   "cov_pdf": 1.0,
+   "cov_chunk": 1.0,
+   "cov_doc": 1.0,
+   "best_chunk_pages": [
+    6
+   ],
+   "best_chunk_cov": 1.0,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_74",
+   "domain": "public",
+   "context_type": "table",
+   "file_name": "전문교육기관ᆞ항공훈련기관 지정ᆞ인가 및 안전관리 현황__.pdf",
+   "gold_page": 7,
+   "gold_chunks": 2,
+   "cov_pdf": 0.33,
+   "cov_chunk": 0.33,
+   "cov_doc": 0.33,
+   "best_chunk_pages": [
+    2
+   ],
+   "best_chunk_cov": 0.33,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_75",
+   "domain": "public",
+   "context_type": "image",
+   "file_name": "(보도자료)2024년+교육부+주요정책+추진계획+발표_보도자료.pdf",
+   "gold_page": 6,
+   "gold_chunks": 3,
+   "cov_pdf": 0.82,
+   "cov_chunk": 0.82,
+   "cov_doc": 0.84,
+   "best_chunk_pages": [
+    6
+   ],
+   "best_chunk_cov": 0.82,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_76",
+   "domain": "public",
+   "context_type": "image",
+   "file_name": "제4차(24_28)+학교도서관+진흥+기본계획.pdf",
+   "gold_page": 8,
+   "gold_chunks": 2,
+   "cov_pdf": 0.55,
+   "cov_chunk": 0.58,
+   "cov_doc": 0.68,
+   "best_chunk_pages": [
+    8
+   ],
+   "best_chunk_cov": 0.55,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_77",
+   "domain": "public",
+   "context_type": "image",
+   "file_name": "제4차(24_28)+학교도서관+진흥+기본계획.pdf",
+   "gold_page": 12,
+   "gold_chunks": 2,
+   "cov_pdf": 0.21,
+   "cov_chunk": 0.21,
+   "cov_doc": 0.21,
+   "best_chunk_pages": [
+    4
+   ],
+   "best_chunk_cov": 0.21,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_78",
+   "domain": "public",
+   "context_type": "image",
+   "file_name": "외교부-2024년 앙골라개황(저).pdf",
+   "gold_page": 46,
+   "gold_chunks": 2,
+   "cov_pdf": 0.48,
+   "cov_chunk": 0.48,
+   "cov_doc": 0.65,
+   "best_chunk_pages": [
+    46
+   ],
+   "best_chunk_cov": 0.48,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_79",
+   "domain": "public",
+   "context_type": "image",
+   "file_name": "240319 알기쉬운 청년농신보 책자(최종본)★_배포용.pdf",
+   "gold_page": 8,
+   "gold_chunks": 9,
+   "cov_pdf": 0.42,
+   "cov_chunk": 0.33,
+   "cov_doc": 0.67,
+   "best_chunk_pages": [
+    11
+   ],
+   "best_chunk_cov": 0.33,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_80",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "2023_2027 국가재정운용계획 주요내용.pdf",
+   "gold_page": 3,
+   "gold_chunks": 1,
+   "cov_pdf": 0.55,
+   "cov_chunk": 0.55,
+   "cov_doc": 0.6,
+   "best_chunk_pages": [
+    3
+   ],
+   "best_chunk_cov": 0.55,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_81",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "2023_2027 국가재정운용계획 주요내용.pdf",
+   "gold_page": 22,
+   "gold_chunks": 2,
+   "cov_pdf": 0.73,
+   "cov_chunk": 0.7,
+   "cov_doc": 0.76,
+   "best_chunk_pages": [
+    22
+   ],
+   "best_chunk_cov": 0.67,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_82",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "2023_2027 국가재정운용계획 주요내용.pdf",
+   "gold_page": 33,
+   "gold_chunks": 1,
+   "cov_pdf": 0.38,
+   "cov_chunk": 0.38,
+   "cov_doc": 0.55,
+   "best_chunk_pages": [
+    33
+   ],
+   "best_chunk_cov": 0.38,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_83",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "2024년+국립대학+육성사업+기본계획.pdf",
+   "gold_page": 19,
+   "gold_chunks": 3,
+   "cov_pdf": 0.57,
+   "cov_chunk": 0.64,
+   "cov_doc": 0.64,
+   "best_chunk_pages": [
+    19
+   ],
+   "best_chunk_cov": 0.57,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_84",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "2024년+국립대학+육성사업+기본계획.pdf",
+   "gold_page": 21,
+   "gold_chunks": 2,
+   "cov_pdf": 0.56,
+   "cov_chunk": 0.56,
+   "cov_doc": 0.72,
+   "best_chunk_pages": [
+    21
+   ],
+   "best_chunk_cov": 0.56,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_85",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "2024년 행정안전부 업무계획.pdf",
+   "gold_page": 3,
+   "gold_chunks": 2,
+   "cov_pdf": 0.36,
+   "cov_chunk": 0.36,
+   "cov_doc": 0.48,
+   "best_chunk_pages": [
+    3
+   ],
+   "best_chunk_cov": 0.36,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_86",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "2024년 행정안전부 업무계획.pdf",
+   "gold_page": 8,
+   "gold_chunks": 3,
+   "cov_pdf": 0.43,
+   "cov_chunk": 0.43,
+   "cov_doc": 0.5,
+   "best_chunk_pages": [
+    8
+   ],
+   "best_chunk_cov": 0.4,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_87",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "2024년 행정안전부 업무계획.pdf",
+   "gold_page": 9,
+   "gold_chunks": 2,
+   "cov_pdf": 0.78,
+   "cov_chunk": 0.78,
+   "cov_doc": 0.78,
+   "best_chunk_pages": [
+    9
+   ],
+   "best_chunk_cov": 0.78,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_88",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "2024년 행정안전부 업무계획.pdf",
+   "gold_page": 10,
+   "gold_chunks": 3,
+   "cov_pdf": 0.41,
+   "cov_chunk": 0.41,
+   "cov_doc": 0.65,
+   "best_chunk_pages": [
+    10
+   ],
+   "best_chunk_cov": 0.35,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_89",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "2024년 행정안전부 업무계획.pdf",
+   "gold_page": 11,
+   "gold_chunks": 4,
+   "cov_pdf": 0.45,
+   "cov_chunk": 0.45,
+   "cov_doc": 0.64,
+   "best_chunk_pages": [
+    11
+   ],
+   "best_chunk_cov": 0.45,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_90",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "2024년 행정안전부 업무계획.pdf",
+   "gold_page": 15,
+   "gold_chunks": 3,
+   "cov_pdf": 0.56,
+   "cov_chunk": 0.56,
+   "cov_doc": 0.68,
+   "best_chunk_pages": [
+    15
+   ],
+   "best_chunk_cov": 0.56,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_91",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "2024년 행정안전부 업무계획.pdf",
+   "gold_page": 18,
+   "gold_chunks": 3,
+   "cov_pdf": 0.4,
+   "cov_chunk": 0.4,
+   "cov_doc": 0.52,
+   "best_chunk_pages": [
+    18
+   ],
+   "best_chunk_cov": 0.36,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_92",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "2024년 행정안전부 업무계획.pdf",
+   "gold_page": 20,
+   "gold_chunks": 3,
+   "cov_pdf": 0.44,
+   "cov_chunk": 0.44,
+   "cov_doc": 0.52,
+   "best_chunk_pages": [
+    20
+   ],
+   "best_chunk_cov": 0.36,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_93",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "2024년 행정안전부 업무계획.pdf",
+   "gold_page": 21,
+   "gold_chunks": 3,
+   "cov_pdf": 0.42,
+   "cov_chunk": 0.42,
+   "cov_doc": 0.51,
+   "best_chunk_pages": [
+    21
+   ],
+   "best_chunk_cov": 0.42,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_94",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "제4차(24_28)+학교도서관+진흥+기본계획.pdf",
+   "gold_page": 6,
+   "gold_chunks": 2,
+   "cov_pdf": 0.4,
+   "cov_chunk": 0.4,
+   "cov_doc": 0.5,
+   "best_chunk_pages": [
+    6
+   ],
+   "best_chunk_cov": 0.4,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_95",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "제4차(24_28)+학교도서관+진흥+기본계획.pdf",
+   "gold_page": 9,
+   "gold_chunks": 2,
+   "cov_pdf": 0.5,
+   "cov_chunk": 0.55,
+   "cov_doc": 0.68,
+   "best_chunk_pages": [
+    9,
+    10
+   ],
+   "best_chunk_cov": 0.42,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_96",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "제4차(24_28)+학교도서관+진흥+기본계획.pdf",
+   "gold_page": 15,
+   "gold_chunks": 4,
+   "cov_pdf": 0.73,
+   "cov_chunk": 0.76,
+   "cov_doc": 0.82,
+   "best_chunk_pages": [
+    15
+   ],
+   "best_chunk_cov": 0.73,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_97",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "제4차(24_28)+학교도서관+진흥+기본계획.pdf",
+   "gold_page": 20,
+   "gold_chunks": 4,
+   "cov_pdf": 0.86,
+   "cov_chunk": 0.86,
+   "cov_doc": 0.88,
+   "best_chunk_pages": [
+    20
+   ],
+   "best_chunk_cov": 0.82,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_98",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "국가안전시스템 개편 종합대책 대국민 보고(12.31. 기준).pdf",
+   "gold_page": 8,
+   "gold_chunks": 2,
+   "cov_pdf": 0.68,
+   "cov_chunk": 0.7,
+   "cov_doc": 0.75,
+   "best_chunk_pages": [
+    8
+   ],
+   "best_chunk_cov": 0.68,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_99",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "국가안전시스템 개편 종합대책 대국민 보고(12.31. 기준).pdf",
+   "gold_page": 9,
+   "gold_chunks": 4,
+   "cov_pdf": 0.67,
+   "cov_chunk": 0.67,
+   "cov_doc": 0.72,
+   "best_chunk_pages": [
+    9
+   ],
+   "best_chunk_cov": 0.67,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_100",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "국가안전시스템 개편 종합대책 대국민 보고(12.31. 기준).pdf",
+   "gold_page": 10,
+   "gold_chunks": 3,
+   "cov_pdf": 0.64,
+   "cov_chunk": 0.64,
+   "cov_doc": 0.72,
+   "best_chunk_pages": [
+    10
+   ],
+   "best_chunk_cov": 0.64,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_101",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "국가안전시스템 개편 종합대책 대국민 보고(12.31. 기준).pdf",
+   "gold_page": 11,
+   "gold_chunks": 4,
+   "cov_pdf": 0.36,
+   "cov_chunk": 0.36,
+   "cov_doc": 0.55,
+   "best_chunk_pages": [
+    10,
+    11
+   ],
+   "best_chunk_cov": 0.36,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_102",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "국가안전시스템 개편 종합대책 대국민 보고(12.31. 기준).pdf",
+   "gold_page": 13,
+   "gold_chunks": 5,
+   "cov_pdf": 0.42,
+   "cov_chunk": 0.42,
+   "cov_doc": 0.51,
+   "best_chunk_pages": [
+    13
+   ],
+   "best_chunk_cov": 0.38,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_103",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "2024년 주요업무 추진계획.pdf",
+   "gold_page": 3,
+   "gold_chunks": 3,
+   "cov_pdf": 0.59,
+   "cov_chunk": 0.59,
+   "cov_doc": 0.64,
+   "best_chunk_pages": [
+    3
+   ],
+   "best_chunk_cov": 0.59,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_104",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "2024년 주요업무 추진계획.pdf",
+   "gold_page": 4,
+   "gold_chunks": 2,
+   "cov_pdf": 0.36,
+   "cov_chunk": 0.33,
+   "cov_doc": 0.39,
+   "best_chunk_pages": [
+    4
+   ],
+   "best_chunk_cov": 0.33,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_105",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "2024년 주요업무 추진계획.pdf",
+   "gold_page": 6,
+   "gold_chunks": 2,
+   "cov_pdf": 0.33,
+   "cov_chunk": 0.36,
+   "cov_doc": 0.56,
+   "best_chunk_pages": [
+    6
+   ],
+   "best_chunk_cov": 0.33,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_106",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "2024년 주요업무 추진계획.pdf",
+   "gold_page": 8,
+   "gold_chunks": 2,
+   "cov_pdf": 0.59,
+   "cov_chunk": 0.59,
+   "cov_doc": 0.71,
+   "best_chunk_pages": [
+    8
+   ],
+   "best_chunk_cov": 0.59,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_107",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "2024년 주요업무 추진계획.pdf",
+   "gold_page": 12,
+   "gold_chunks": 2,
+   "cov_pdf": 0.55,
+   "cov_chunk": 0.55,
+   "cov_doc": 0.64,
+   "best_chunk_pages": [
+    12
+   ],
+   "best_chunk_cov": 0.55,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_108",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "2024년 주요업무 추진계획.pdf",
+   "gold_page": 15,
+   "gold_chunks": 2,
+   "cov_pdf": 0.68,
+   "cov_chunk": 0.68,
+   "cov_doc": 0.72,
+   "best_chunk_pages": [
+    15
+   ],
+   "best_chunk_cov": 0.65,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_109",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "외교부-2024년 앙골라개황(저).pdf",
+   "gold_page": 20,
+   "gold_chunks": 1,
+   "cov_pdf": 0.62,
+   "cov_chunk": 0.62,
+   "cov_doc": 0.79,
+   "best_chunk_pages": [
+    20,
+    21
+   ],
+   "best_chunk_cov": 0.62,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_110",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "외교부-2024년 앙골라개황(저).pdf",
+   "gold_page": 20,
+   "gold_chunks": 1,
+   "cov_pdf": 0.66,
+   "cov_chunk": 0.66,
+   "cov_doc": 0.83,
+   "best_chunk_pages": [
+    20,
+    21
+   ],
+   "best_chunk_cov": 0.66,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_111",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "외교부-2024년 앙골라개황(저).pdf",
+   "gold_page": 22,
+   "gold_chunks": 6,
+   "cov_pdf": 0.74,
+   "cov_chunk": 0.74,
+   "cov_doc": 0.81,
+   "best_chunk_pages": [
+    22
+   ],
+   "best_chunk_cov": 0.72,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_112",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "외교부-2024년 앙골라개황(저).pdf",
+   "gold_page": 22,
+   "gold_chunks": 6,
+   "cov_pdf": 0.57,
+   "cov_chunk": 0.57,
+   "cov_doc": 0.68,
+   "best_chunk_pages": [
+    22
+   ],
+   "best_chunk_cov": 0.55,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_113",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "외교부-2024년 앙골라개황(저).pdf",
+   "gold_page": 23,
+   "gold_chunks": 5,
+   "cov_pdf": 0.69,
+   "cov_chunk": 0.7,
+   "cov_doc": 0.77,
+   "best_chunk_pages": [
+    23
+   ],
+   "best_chunk_cov": 0.48,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_114",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "외교부-2024년 앙골라개황(저).pdf",
+   "gold_page": 25,
+   "gold_chunks": 4,
+   "cov_pdf": 0.79,
+   "cov_chunk": 0.79,
+   "cov_doc": 0.87,
+   "best_chunk_pages": [
+    24,
+    25
+   ],
+   "best_chunk_cov": 0.79,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_115",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "외교부-2024년 앙골라개황(저).pdf",
+   "gold_page": 32,
+   "gold_chunks": 3,
+   "cov_pdf": 0.85,
+   "cov_chunk": 0.85,
+   "cov_doc": 0.89,
+   "best_chunk_pages": [
+    32
+   ],
+   "best_chunk_cov": 0.85,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_116",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "외교부-2024년 앙골라개황(저).pdf",
+   "gold_page": 36,
+   "gold_chunks": 3,
+   "cov_pdf": 0.53,
+   "cov_chunk": 0.53,
+   "cov_doc": 0.67,
+   "best_chunk_pages": [
+    8
+   ],
+   "best_chunk_cov": 0.53,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_117",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "외교부-2024년 앙골라개황(저).pdf",
+   "gold_page": 44,
+   "gold_chunks": 6,
+   "cov_pdf": 0.55,
+   "cov_chunk": 0.55,
+   "cov_doc": 0.66,
+   "best_chunk_pages": [
+    44
+   ],
+   "best_chunk_cov": 0.55,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_118",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "240319 알기쉬운 청년농신보 책자(최종본)★_배포용.pdf",
+   "gold_page": 22,
+   "gold_chunks": 2,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.64,
+   "cov_doc": 0.69,
+   "best_chunk_pages": [
+    22
+   ],
+   "best_chunk_cov": 0.64,
+   "verdict": "recovered"
+  },
+  {
+   "qid": "q_119",
+   "domain": "public",
+   "context_type": "paragraph",
+   "file_name": "240319 알기쉬운 청년농신보 책자(최종본)★_배포용.pdf",
+   "gold_page": 25,
+   "gold_chunks": 3,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.31,
+   "cov_doc": 0.47,
+   "best_chunk_pages": [
+    25
+   ],
+   "best_chunk_cov": 0.22,
+   "verdict": "recovered"
+  },
+  {
+   "qid": "q_120",
+   "domain": "medical",
+   "context_type": "table",
+   "file_name": "2017년-안과감염병-관리지침.pdf",
+   "gold_page": 15,
+   "gold_chunks": 1,
+   "cov_pdf": 0.56,
+   "cov_chunk": 0.56,
+   "cov_doc": 0.76,
+   "best_chunk_pages": [
+    15
+   ],
+   "best_chunk_cov": 0.56,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_121",
+   "domain": "medical",
+   "context_type": "table",
+   "file_name": "2017년-안과감염병-관리지침.pdf",
+   "gold_page": 23,
+   "gold_chunks": 1,
+   "cov_pdf": 0.6,
+   "cov_chunk": 0.6,
+   "cov_doc": 0.75,
+   "best_chunk_pages": [
+    23
+   ],
+   "best_chunk_cov": 0.6,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_122",
+   "domain": "medical",
+   "context_type": "table",
+   "file_name": "20080813_E_2.pdf",
+   "gold_page": 2,
+   "gold_chunks": 1,
+   "cov_pdf": 1.0,
+   "cov_chunk": 1.0,
+   "cov_doc": 1.0,
+   "best_chunk_pages": [
+    2
+   ],
+   "best_chunk_cov": 1.0,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_123",
+   "domain": "medical",
+   "context_type": "table",
+   "file_name": "20080813_E_2.pdf",
+   "gold_page": 6,
+   "gold_chunks": 1,
+   "cov_pdf": 0.38,
+   "cov_chunk": 0.38,
+   "cov_doc": 0.46,
+   "best_chunk_pages": [
+    6,
+    7
+   ],
+   "best_chunk_cov": 0.38,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_124",
+   "domain": "medical",
+   "context_type": "table",
+   "file_name": "20080813_E_2.pdf",
+   "gold_page": 14,
+   "gold_chunks": 1,
+   "cov_pdf": 0.47,
+   "cov_chunk": 0.47,
+   "cov_doc": 0.5,
+   "best_chunk_pages": [
+    14,
+    15
+   ],
+   "best_chunk_cov": 0.47,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_125",
+   "domain": "medical",
+   "context_type": "image",
+   "file_name": "2017년-안과감염병-관리지침.pdf",
+   "gold_page": 16,
+   "gold_chunks": 2,
+   "cov_pdf": 0.8,
+   "cov_chunk": 0.8,
+   "cov_doc": 0.87,
+   "best_chunk_pages": [
+    16,
+    17
+   ],
+   "best_chunk_cov": 0.8,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_126",
+   "domain": "medical",
+   "context_type": "image",
+   "file_name": "08 알기 쉬운 대장암.pdf",
+   "gold_page": 5,
+   "gold_chunks": 3,
+   "cov_pdf": 0.4,
+   "cov_chunk": 0.4,
+   "cov_doc": 0.53,
+   "best_chunk_pages": [
+    5
+   ],
+   "best_chunk_cov": 0.4,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_127",
+   "domain": "medical",
+   "context_type": "image",
+   "file_name": "08 알기 쉬운 대장암.pdf",
+   "gold_page": 5,
+   "gold_chunks": 3,
+   "cov_pdf": 0.31,
+   "cov_chunk": 0.31,
+   "cov_doc": 0.46,
+   "best_chunk_pages": [
+    5
+   ],
+   "best_chunk_cov": 0.31,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_128",
+   "domain": "medical",
+   "context_type": "image",
+   "file_name": "08 알기 쉬운 대장암.pdf",
+   "gold_page": 11,
+   "gold_chunks": 1,
+   "cov_pdf": 0.17,
+   "cov_chunk": 0.17,
+   "cov_doc": 0.38,
+   "best_chunk_pages": [
+    11
+   ],
+   "best_chunk_cov": 0.17,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_129",
+   "domain": "medical",
+   "context_type": "image",
+   "file_name": "08 알기 쉬운 대장암.pdf",
+   "gold_page": 17,
+   "gold_chunks": 1,
+   "cov_pdf": 0.62,
+   "cov_chunk": 0.62,
+   "cov_doc": 0.68,
+   "best_chunk_pages": [
+    17
+   ],
+   "best_chunk_cov": 0.62,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_130",
+   "domain": "medical",
+   "context_type": "image",
+   "file_name": "Colorectal-Screening-Korean-patient-guideline.pdf",
+   "gold_page": 4,
+   "gold_chunks": 8,
+   "cov_pdf": 0.75,
+   "cov_chunk": 0.64,
+   "cov_doc": 0.7,
+   "best_chunk_pages": [
+    4
+   ],
+   "best_chunk_cov": 0.34,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_131",
+   "domain": "medical",
+   "context_type": "image",
+   "file_name": "Colorectal-Screening-Korean-patient-guideline.pdf",
+   "gold_page": 12,
+   "gold_chunks": 4,
+   "cov_pdf": 0.69,
+   "cov_chunk": 0.62,
+   "cov_doc": 0.75,
+   "best_chunk_pages": [
+    12
+   ],
+   "best_chunk_cov": 0.62,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_132",
+   "domain": "medical",
+   "context_type": "image",
+   "file_name": "Colorectal-Screening-Korean-patient-guideline.pdf",
+   "gold_page": 19,
+   "gold_chunks": 3,
+   "cov_pdf": 0.63,
+   "cov_chunk": 0.66,
+   "cov_doc": 0.88,
+   "best_chunk_pages": [
+    19,
+    20
+   ],
+   "best_chunk_cov": 0.66,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_133",
+   "domain": "medical",
+   "context_type": "image",
+   "file_name": "Colorectal-Screening-Korean-patient-guideline.pdf",
+   "gold_page": 21,
+   "gold_chunks": 2,
+   "cov_pdf": 0.17,
+   "cov_chunk": 0.22,
+   "cov_doc": 0.72,
+   "best_chunk_pages": [
+    20
+   ],
+   "best_chunk_cov": 0.56,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_134",
+   "domain": "medical",
+   "context_type": "image",
+   "file_name": "4e304ca4ed0e0b678457e0cf26e372f42395.pdf",
+   "gold_page": 4,
+   "gold_chunks": 3,
+   "cov_pdf": 0.66,
+   "cov_chunk": 0.66,
+   "cov_doc": 0.86,
+   "best_chunk_pages": [
+    4
+   ],
+   "best_chunk_cov": 0.64,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_135",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "Kafm015-11-15.pdf",
+   "gold_page": 2,
+   "gold_chunks": 3,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.44,
+   "cov_doc": 0.53,
+   "best_chunk_pages": [
+    2
+   ],
+   "best_chunk_cov": 0.4,
+   "verdict": "recovered"
+  },
+  {
+   "qid": "q_136",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "2017년-안과감염병-관리지침.pdf",
+   "gold_page": 16,
+   "gold_chunks": 2,
+   "cov_pdf": 0.57,
+   "cov_chunk": 0.57,
+   "cov_doc": 0.64,
+   "best_chunk_pages": [
+    16,
+    17
+   ],
+   "best_chunk_cov": 0.57,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_137",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "2017년-안과감염병-관리지침.pdf",
+   "gold_page": 17,
+   "gold_chunks": 2,
+   "cov_pdf": 0.68,
+   "cov_chunk": 0.68,
+   "cov_doc": 0.68,
+   "best_chunk_pages": [
+    17,
+    18
+   ],
+   "best_chunk_cov": 0.68,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_138",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "2017년-안과감염병-관리지침.pdf",
+   "gold_page": 19,
+   "gold_chunks": 5,
+   "cov_pdf": 0.64,
+   "cov_chunk": 0.64,
+   "cov_doc": 0.81,
+   "best_chunk_pages": [
+    19
+   ],
+   "best_chunk_cov": 0.62,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_139",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "2017년-안과감염병-관리지침.pdf",
+   "gold_page": 20,
+   "gold_chunks": 2,
+   "cov_pdf": 0.71,
+   "cov_chunk": 0.71,
+   "cov_doc": 0.86,
+   "best_chunk_pages": [
+    19,
+    20
+   ],
+   "best_chunk_cov": 0.71,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_140",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "2017년-안과감염병-관리지침.pdf",
+   "gold_page": 24,
+   "gold_chunks": 2,
+   "cov_pdf": 0.58,
+   "cov_chunk": 0.58,
+   "cov_doc": 0.67,
+   "best_chunk_pages": [
+    24
+   ],
+   "best_chunk_cov": 0.58,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_141",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "2017년-안과감염병-관리지침.pdf",
+   "gold_page": 25,
+   "gold_chunks": 1,
+   "cov_pdf": 0.72,
+   "cov_chunk": 0.72,
+   "cov_doc": 0.83,
+   "best_chunk_pages": [
+    25
+   ],
+   "best_chunk_cov": 0.72,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_142",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "2017년-안과감염병-관리지침.pdf",
+   "gold_page": 26,
+   "gold_chunks": 5,
+   "cov_pdf": 0.58,
+   "cov_chunk": 0.58,
+   "cov_doc": 0.67,
+   "best_chunk_pages": [
+    23
+   ],
+   "best_chunk_cov": 0.55,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_143",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "2017년-안과감염병-관리지침.pdf",
+   "gold_page": 43,
+   "gold_chunks": 2,
+   "cov_pdf": 0.25,
+   "cov_chunk": 0.25,
+   "cov_doc": 0.42,
+   "best_chunk_pages": [
+    42,
+    43
+   ],
+   "best_chunk_cov": 0.25,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_144",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "질환별 약제정보_송영천_안구건조증(1).pdf",
+   "gold_page": 1,
+   "gold_chunks": 6,
+   "cov_pdf": 0.77,
+   "cov_chunk": 0.77,
+   "cov_doc": 0.81,
+   "best_chunk_pages": [
+    1
+   ],
+   "best_chunk_cov": 0.73,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_145",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "9906002.pdf",
+   "gold_page": 4,
+   "gold_chunks": 5,
+   "cov_pdf": 0.89,
+   "cov_chunk": 0.89,
+   "cov_doc": 0.94,
+   "best_chunk_pages": [
+    4
+   ],
+   "best_chunk_cov": 0.83,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_146",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "2015_21v53xmj21xyn_e21e2ee23r3grrh3.pdf",
+   "gold_page": 6,
+   "gold_chunks": 3,
+   "cov_pdf": 0.9,
+   "cov_chunk": 0.9,
+   "cov_doc": 0.9,
+   "best_chunk_pages": [
+    6,
+    7
+   ],
+   "best_chunk_cov": 0.9,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_147",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "2015_21v53xmj21xyn_e21e2ee23r3grrh3.pdf",
+   "gold_page": 7,
+   "gold_chunks": 1,
+   "cov_pdf": 0.75,
+   "cov_chunk": 0.75,
+   "cov_doc": 0.75,
+   "best_chunk_pages": [
+    6,
+    7
+   ],
+   "best_chunk_cov": 0.75,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_148",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "2015_21v53xmj21xyn_e21e2ee23r3grrh3.pdf",
+   "gold_page": 8,
+   "gold_chunks": 1,
+   "cov_pdf": 0.88,
+   "cov_chunk": 0.88,
+   "cov_doc": 0.88,
+   "best_chunk_pages": [
+    8
+   ],
+   "best_chunk_cov": 0.88,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_149",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "2015_21v53xmj21xyn_e21e2ee23r3grrh3.pdf",
+   "gold_page": 9,
+   "gold_chunks": 1,
+   "cov_pdf": 0.89,
+   "cov_chunk": 0.89,
+   "cov_doc": 0.89,
+   "best_chunk_pages": [
+    9
+   ],
+   "best_chunk_cov": 0.89,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_150",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "2015_21v53xmj21xyn_e21e2ee23r3grrh3.pdf",
+   "gold_page": 10,
+   "gold_chunks": 1,
+   "cov_pdf": 0.86,
+   "cov_chunk": 0.86,
+   "cov_doc": 0.86,
+   "best_chunk_pages": [
+    10
+   ],
+   "best_chunk_cov": 0.86,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_151",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "2015_21v53xmj21xyn_e21e2ee23r3grrh3.pdf",
+   "gold_page": 10,
+   "gold_chunks": 1,
+   "cov_pdf": 0.84,
+   "cov_chunk": 0.84,
+   "cov_doc": 0.89,
+   "best_chunk_pages": [
+    10
+   ],
+   "best_chunk_cov": 0.84,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_152",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "journal-31-3-308.pdf",
+   "gold_page": 5,
+   "gold_chunks": 3,
+   "cov_pdf": 0.64,
+   "cov_chunk": 0.67,
+   "cov_doc": 0.79,
+   "best_chunk_pages": [
+    5,
+    6
+   ],
+   "best_chunk_cov": 0.67,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_153",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "journal-31-3-308.pdf",
+   "gold_page": 18,
+   "gold_chunks": 2,
+   "cov_pdf": 0.74,
+   "cov_chunk": 0.77,
+   "cov_doc": 0.82,
+   "best_chunk_pages": [
+    18,
+    19
+   ],
+   "best_chunk_cov": 0.74,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_154",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "08 알기 쉬운 대장암.pdf",
+   "gold_page": 11,
+   "gold_chunks": 1,
+   "cov_pdf": 0.71,
+   "cov_chunk": 0.73,
+   "cov_doc": 0.76,
+   "best_chunk_pages": [
+    11
+   ],
+   "best_chunk_cov": 0.73,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_155",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "08 알기 쉬운 대장암.pdf",
+   "gold_page": 14,
+   "gold_chunks": 4,
+   "cov_pdf": 0.77,
+   "cov_chunk": 0.77,
+   "cov_doc": 0.8,
+   "best_chunk_pages": [
+    14
+   ],
+   "best_chunk_cov": 0.54,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_156",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "08 알기 쉬운 대장암.pdf",
+   "gold_page": 16,
+   "gold_chunks": 1,
+   "cov_pdf": 0.5,
+   "cov_chunk": 0.5,
+   "cov_doc": 0.61,
+   "best_chunk_pages": [
+    16
+   ],
+   "best_chunk_cov": 0.5,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_157",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "KJFP003-01-08.pdf",
+   "gold_page": 4,
+   "gold_chunks": 5,
+   "cov_pdf": 0.7,
+   "cov_chunk": 0.73,
+   "cov_doc": 0.84,
+   "best_chunk_pages": [
+    4
+   ],
+   "best_chunk_cov": 0.66,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_158",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "KJFP003-01-08.pdf",
+   "gold_page": 4,
+   "gold_chunks": 5,
+   "cov_pdf": 0.86,
+   "cov_chunk": 0.86,
+   "cov_doc": 0.89,
+   "best_chunk_pages": [
+    4
+   ],
+   "best_chunk_cov": 0.86,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_159",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "kjg-74-4.pdf",
+   "gold_page": 2,
+   "gold_chunks": 2,
+   "cov_pdf": 1.0,
+   "cov_chunk": 1.0,
+   "cov_doc": 1.0,
+   "best_chunk_pages": [
+    1,
+    2
+   ],
+   "best_chunk_cov": 1.0,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_160",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "kjg-74-4.pdf",
+   "gold_page": 5,
+   "gold_chunks": 4,
+   "cov_pdf": 1.0,
+   "cov_chunk": 1.0,
+   "cov_doc": 1.0,
+   "best_chunk_pages": [
+    5
+   ],
+   "best_chunk_cov": 1.0,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_161",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "Colorectal-Screening-Korean-patient-guideline.pdf",
+   "gold_page": 10,
+   "gold_chunks": 3,
+   "cov_pdf": 0.83,
+   "cov_chunk": 0.78,
+   "cov_doc": 0.91,
+   "best_chunk_pages": [
+    10
+   ],
+   "best_chunk_cov": 0.52,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_162",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "Colorectal-Screening-Korean-patient-guideline.pdf",
+   "gold_page": 20,
+   "gold_chunks": 4,
+   "cov_pdf": 0.79,
+   "cov_chunk": 0.79,
+   "cov_doc": 0.93,
+   "best_chunk_pages": [
+    20
+   ],
+   "best_chunk_cov": 0.79,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_163",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "Colorectal-Screening-Korean-patient-guideline.pdf",
+   "gold_page": 23,
+   "gold_chunks": 3,
+   "cov_pdf": 0.82,
+   "cov_chunk": 0.77,
+   "cov_doc": 0.77,
+   "best_chunk_pages": [
+    23
+   ],
+   "best_chunk_cov": 0.75,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_164",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "Colorectal-Screening-Korean-patient-guideline.pdf",
+   "gold_page": 25,
+   "gold_chunks": 5,
+   "cov_pdf": 0.69,
+   "cov_chunk": 0.6,
+   "cov_doc": 0.69,
+   "best_chunk_pages": [
+    25
+   ],
+   "best_chunk_cov": 0.51,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_165",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "Colorectal-Screening-Korean-patient-guideline.pdf",
+   "gold_page": 26,
+   "gold_chunks": 3,
+   "cov_pdf": 0.82,
+   "cov_chunk": 0.79,
+   "cov_doc": 0.91,
+   "best_chunk_pages": [
+    26
+   ],
+   "best_chunk_cov": 0.76,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_166",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "Colorectal-Screening-Korean-patient-guideline.pdf",
+   "gold_page": 30,
+   "gold_chunks": 7,
+   "cov_pdf": 0.59,
+   "cov_chunk": 0.53,
+   "cov_doc": 0.71,
+   "best_chunk_pages": [
+    25
+   ],
+   "best_chunk_cov": 0.38,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_167",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "Colorectal-Screening-Korean-patient-guideline.pdf",
+   "gold_page": 31,
+   "gold_chunks": 2,
+   "cov_pdf": 0.73,
+   "cov_chunk": 0.7,
+   "cov_doc": 0.85,
+   "best_chunk_pages": [
+    31
+   ],
+   "best_chunk_cov": 0.7,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_168",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "Colorectal-Screening-Korean-patient-guideline.pdf",
+   "gold_page": 37,
+   "gold_chunks": 2,
+   "cov_pdf": 0.55,
+   "cov_chunk": 0.5,
+   "cov_doc": 0.65,
+   "best_chunk_pages": [
+    37
+   ],
+   "best_chunk_cov": 0.4,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_169",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "14.cancer_info.pdf",
+   "gold_page": 7,
+   "gold_chunks": 3,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.23,
+   "cov_doc": 0.45,
+   "best_chunk_pages": [
+    3
+   ],
+   "best_chunk_cov": 0.16,
+   "verdict": "unreachable"
+  },
+  {
+   "qid": "q_170",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "4e304ca4ed0e0b678457e0cf26e372f42395.pdf",
+   "gold_page": 2,
+   "gold_chunks": 5,
+   "cov_pdf": 0.5,
+   "cov_chunk": 0.5,
+   "cov_doc": 0.75,
+   "best_chunk_pages": [
+    2
+   ],
+   "best_chunk_cov": 0.5,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_171",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "4e304ca4ed0e0b678457e0cf26e372f42395.pdf",
+   "gold_page": 3,
+   "gold_chunks": 6,
+   "cov_pdf": 0.89,
+   "cov_chunk": 0.89,
+   "cov_doc": 0.89,
+   "best_chunk_pages": [
+    3
+   ],
+   "best_chunk_cov": 0.89,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_172",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "4e304ca4ed0e0b678457e0cf26e372f42395.pdf",
+   "gold_page": 8,
+   "gold_chunks": 4,
+   "cov_pdf": 0.75,
+   "cov_chunk": 0.75,
+   "cov_doc": 0.75,
+   "best_chunk_pages": [
+    8
+   ],
+   "best_chunk_cov": 0.75,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_173",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "위식도역류성질환(Gastroesophageal Reflux Disease) (2).pdf",
+   "gold_page": 1,
+   "gold_chunks": 2,
+   "cov_pdf": 0.83,
+   "cov_chunk": 0.83,
+   "cov_doc": 0.9,
+   "best_chunk_pages": [
+    1
+   ],
+   "best_chunk_cov": 0.64,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_174",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "위식도역류성질환(Gastroesophageal Reflux Disease) (2).pdf",
+   "gold_page": 3,
+   "gold_chunks": 3,
+   "cov_pdf": 0.65,
+   "cov_chunk": 0.65,
+   "cov_doc": 0.72,
+   "best_chunk_pages": [
+    2,
+    3
+   ],
+   "best_chunk_cov": 0.65,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_175",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "위식도역류성질환(Gastroesophageal Reflux Disease) (2).pdf",
+   "gold_page": 4,
+   "gold_chunks": 3,
+   "cov_pdf": 0.89,
+   "cov_chunk": 0.89,
+   "cov_doc": 0.89,
+   "best_chunk_pages": [
+    4
+   ],
+   "best_chunk_cov": 0.88,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_176",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "위식도역류성질환(Gastroesophageal Reflux Disease) (2).pdf",
+   "gold_page": 9,
+   "gold_chunks": 2,
+   "cov_pdf": 0.67,
+   "cov_chunk": 0.75,
+   "cov_doc": 0.87,
+   "best_chunk_pages": [
+    9,
+    10
+   ],
+   "best_chunk_cov": 0.69,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_177",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "위식도역류성질환(Gastroesophageal Reflux Disease) (2).pdf",
+   "gold_page": 10,
+   "gold_chunks": 4,
+   "cov_pdf": 0.68,
+   "cov_chunk": 0.7,
+   "cov_doc": 0.76,
+   "best_chunk_pages": [
+    10
+   ],
+   "best_chunk_cov": 0.66,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_178",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "위식도역류성질환(Gastroesophageal Reflux Disease) (2).pdf",
+   "gold_page": 11,
+   "gold_chunks": 2,
+   "cov_pdf": 0.56,
+   "cov_chunk": 0.56,
+   "cov_doc": 0.72,
+   "best_chunk_pages": [
+    11
+   ],
+   "best_chunk_cov": 0.56,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_179",
+   "domain": "medical",
+   "context_type": "text",
+   "file_name": "위식도역류성질환(Gastroesophageal Reflux Disease) (2).pdf",
+   "gold_page": 16,
+   "gold_chunks": 2,
+   "cov_pdf": 0.91,
+   "cov_chunk": 0.91,
+   "cov_doc": 0.93,
+   "best_chunk_pages": [
+    16,
+    17
+   ],
+   "best_chunk_cov": 0.91,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_180",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "재해보상판례 당직 중 사적 행위의 공무수행성 여부.pdf",
+   "gold_page": 3,
+   "gold_chunks": 3,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.24,
+   "cov_doc": 0.4,
+   "best_chunk_pages": [
+    6,
+    7,
+    8
+   ],
+   "best_chunk_cov": 0.29,
+   "verdict": "unreachable"
+  },
+  {
+   "qid": "q_181",
+   "domain": "law",
+   "context_type": "image",
+   "file_name": "재해보상판례 당직 중 사적 행위의 공무수행성 여부.pdf",
+   "gold_page": 6,
+   "gold_chunks": 2,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.47,
+   "cov_doc": 0.49,
+   "best_chunk_pages": [
+    6,
+    7,
+    8
+   ],
+   "best_chunk_cov": 0.47,
+   "verdict": "recovered"
+  },
+  {
+   "qid": "q_182",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "재해보상판례 당직 중 사적 행위의 공무수행성 여부.pdf",
+   "gold_page": 7,
+   "gold_chunks": 1,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.48,
+   "cov_doc": 0.57,
+   "best_chunk_pages": [
+    6,
+    7,
+    8
+   ],
+   "best_chunk_cov": 0.48,
+   "verdict": "recovered"
+  },
+  {
+   "qid": "q_183",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[민사] 스마트폰 성능조절기능이 탑재된 소프트웨어 업데이트로 인한 일부 성능제한 또는 앱 실행지연 등 불이익한 결과 초래 가능성에 대한 고지의무 불완전이행 여부가 문제된 사안.pdf",
+   "gold_page": 4,
+   "gold_chunks": 2,
+   "cov_pdf": 0.61,
+   "cov_chunk": 0.65,
+   "cov_doc": 0.74,
+   "best_chunk_pages": [
+    4
+   ],
+   "best_chunk_cov": 0.61,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_185",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[민사] 스마트폰 성능조절기능이 탑재된 소프트웨어 업데이트로 인한 일부 성능제한 또는 앱 실행지연 등 불이익한 결과 초래 가능성에 대한 고지의무 불완전이행 여부가 문제된 사안.pdf",
+   "gold_page": 12,
+   "gold_chunks": 3,
+   "cov_pdf": 0.56,
+   "cov_chunk": 0.56,
+   "cov_doc": 0.56,
+   "best_chunk_pages": [
+    12
+   ],
+   "best_chunk_cov": 0.56,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_186",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[민사] 스마트폰 성능조절기능이 탑재된 소프트웨어 업데이트로 인한 일부 성능제한 또는 앱 실행지연 등 불이익한 결과 초래 가능성에 대한 고지의무 불완전이행 여부가 문제된 사안.pdf",
+   "gold_page": 23,
+   "gold_chunks": 3,
+   "cov_pdf": 0.75,
+   "cov_chunk": 0.77,
+   "cov_doc": 0.87,
+   "best_chunk_pages": [
+    23
+   ],
+   "best_chunk_cov": 0.75,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_187",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[민사] 스마트폰 성능조절기능이 탑재된 소프트웨어 업데이트로 인한 일부 성능제한 또는 앱 실행지연 등 불이익한 결과 초래 가능성에 대한 고지의무 불완전이행 여부가 문제된 사안.pdf",
+   "gold_page": 28,
+   "gold_chunks": 1,
+   "cov_pdf": 0.97,
+   "cov_chunk": 0.97,
+   "cov_doc": 1.0,
+   "best_chunk_pages": [
+    28
+   ],
+   "best_chunk_cov": 0.97,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_188",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[행정] 금품 등 약속이 공무원 재직 중에 이루어지고 수수가 퇴직 후에 이루어진 경우 공무원연금법에 해당하는 지가 문제된 사건.pdf",
+   "gold_page": 2,
+   "gold_chunks": 1,
+   "cov_pdf": 0.74,
+   "cov_chunk": 0.74,
+   "cov_doc": 0.85,
+   "best_chunk_pages": [
+    2
+   ],
+   "best_chunk_cov": 0.74,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_189",
+   "domain": "law",
+   "context_type": "image",
+   "file_name": "[행정] 금품 등 약속이 공무원 재직 중에 이루어지고 수수가 퇴직 후에 이루어진 경우 공무원연금법에 해당하는 지가 문제된 사건.pdf",
+   "gold_page": 3,
+   "gold_chunks": 2,
+   "cov_pdf": 0.11,
+   "cov_chunk": 0.11,
+   "cov_doc": 0.33,
+   "best_chunk_pages": [
+    23
+   ],
+   "best_chunk_cov": 0.22,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_190",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[행정] 금품 등 약속이 공무원 재직 중에 이루어지고 수수가 퇴직 후에 이루어진 경우 공무원연금법에 해당하는 지가 문제된 사건.pdf",
+   "gold_page": 4,
+   "gold_chunks": 3,
+   "cov_pdf": 0.74,
+   "cov_chunk": 0.68,
+   "cov_doc": 0.95,
+   "best_chunk_pages": [
+    4,
+    5
+   ],
+   "best_chunk_cov": 0.68,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_191",
+   "domain": "law",
+   "context_type": "table",
+   "file_name": "[행정] 금품 등 약속이 공무원 재직 중에 이루어지고 수수가 퇴직 후에 이루어진 경우 공무원연금법에 해당하는 지가 문제된 사건.pdf",
+   "gold_page": 6,
+   "gold_chunks": 3,
+   "cov_pdf": 0.33,
+   "cov_chunk": 0.33,
+   "cov_doc": 0.33,
+   "best_chunk_pages": [
+    6
+   ],
+   "best_chunk_cov": 0.33,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_192",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[행정] 금품 등 약속이 공무원 재직 중에 이루어지고 수수가 퇴직 후에 이루어진 경우 공무원연금법에 해당하는 지가 문제된 사건.pdf",
+   "gold_page": 14,
+   "gold_chunks": 2,
+   "cov_pdf": 1.0,
+   "cov_chunk": 1.0,
+   "cov_doc": 1.0,
+   "best_chunk_pages": [
+    14
+   ],
+   "best_chunk_cov": 1.0,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_193",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[행정] 금품 등 약속이 공무원 재직 중에 이루어지고 수수가 퇴직 후에 이루어진 경우 공무원연금법에 해당하는 지가 문제된 사건.pdf",
+   "gold_page": 15,
+   "gold_chunks": 2,
+   "cov_pdf": 0.97,
+   "cov_chunk": 0.97,
+   "cov_doc": 0.97,
+   "best_chunk_pages": [
+    15
+   ],
+   "best_chunk_cov": 0.97,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_194",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[행정] 금품 등 약속이 공무원 재직 중에 이루어지고 수수가 퇴직 후에 이루어진 경우 공무원연금법에 해당하는 지가 문제된 사건.pdf",
+   "gold_page": 25,
+   "gold_chunks": 2,
+   "cov_pdf": 1.0,
+   "cov_chunk": 1.0,
+   "cov_doc": 1.0,
+   "best_chunk_pages": [
+    25
+   ],
+   "best_chunk_cov": 0.97,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_195",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[행정] 금품 등 약속이 공무원 재직 중에 이루어지고 수수가 퇴직 후에 이루어진 경우 공무원연금법에 해당하는 지가 문제된 사건.pdf",
+   "gold_page": 27,
+   "gold_chunks": 4,
+   "cov_pdf": 1.0,
+   "cov_chunk": 1.0,
+   "cov_doc": 1.0,
+   "best_chunk_pages": [
+    27
+   ],
+   "best_chunk_cov": 1.0,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_196",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[형사] 피고인이 자신이 근무하는 시청 사무실에서 소속 팀장과 방문자 사이의 대화를 피고인의 휴대전화로 녹음하여 통신비밀보호법 위반으로 기소된 사건.pdf",
+   "gold_page": 3,
+   "gold_chunks": 2,
+   "cov_pdf": 0.84,
+   "cov_chunk": 0.84,
+   "cov_doc": 0.92,
+   "best_chunk_pages": [
+    3
+   ],
+   "best_chunk_cov": 0.84,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_197",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[형사] 피고인이 자신이 근무하는 시청 사무실에서 소속 팀장과 방문자 사이의 대화를 피고인의 휴대전화로 녹음하여 통신비밀보호법 위반으로 기소된 사건.pdf",
+   "gold_page": 4,
+   "gold_chunks": 2,
+   "cov_pdf": 0.83,
+   "cov_chunk": 0.81,
+   "cov_doc": 0.85,
+   "best_chunk_pages": [
+    3,
+    4
+   ],
+   "best_chunk_cov": 0.81,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_198",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[형사] 피고인이 자신이 근무하는 시청 사무실에서 소속 팀장과 방문자 사이의 대화를 피고인의 휴대전화로 녹음하여 통신비밀보호법 위반으로 기소된 사건.pdf",
+   "gold_page": 5,
+   "gold_chunks": 2,
+   "cov_pdf": 0.77,
+   "cov_chunk": 0.77,
+   "cov_doc": 0.77,
+   "best_chunk_pages": [
+    5
+   ],
+   "best_chunk_cov": 0.77,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_199",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[행정][조세] 가상자산 거래소를 운영하는 원고가 2017년에 비거주자인 회원들에게 지급한 가상자산 거래로 인한 차익.pdf",
+   "gold_page": 2,
+   "gold_chunks": 2,
+   "cov_pdf": 0.67,
+   "cov_chunk": 0.67,
+   "cov_doc": 0.75,
+   "best_chunk_pages": [
+    2
+   ],
+   "best_chunk_cov": 0.67,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_200",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[행정][조세] 가상자산 거래소를 운영하는 원고가 2017년에 비거주자인 회원들에게 지급한 가상자산 거래로 인한 차익.pdf",
+   "gold_page": 4,
+   "gold_chunks": 2,
+   "cov_pdf": 0.85,
+   "cov_chunk": 0.82,
+   "cov_doc": 0.88,
+   "best_chunk_pages": [
+    4
+   ],
+   "best_chunk_cov": 0.82,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_201",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[행정][조세] 가상자산 거래소를 운영하는 원고가 2017년에 비거주자인 회원들에게 지급한 가상자산 거래로 인한 차익.pdf",
+   "gold_page": 7,
+   "gold_chunks": 2,
+   "cov_pdf": 1.0,
+   "cov_chunk": 1.0,
+   "cov_doc": 1.0,
+   "best_chunk_pages": [
+    7
+   ],
+   "best_chunk_cov": 1.0,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_202",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[행정][조세] 가상자산 거래소를 운영하는 원고가 2017년에 비거주자인 회원들에게 지급한 가상자산 거래로 인한 차익.pdf",
+   "gold_page": 13,
+   "gold_chunks": 3,
+   "cov_pdf": 0.73,
+   "cov_chunk": 0.75,
+   "cov_doc": 0.78,
+   "best_chunk_pages": [
+    13,
+    14
+   ],
+   "best_chunk_cov": 0.75,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_203",
+   "domain": "law",
+   "context_type": "table",
+   "file_name": "[행정] 원고가 담배브랜드의 상표 등 사용에 관하여 다국적기업에게 지급하는 로열티가 원고가 다른 계열사 등으로부터 수입하는 담배재료의 권리사용료라는 전제에서 관세가 부과되자 그 부과처분의 취소를 구하는 사건.pdf",
+   "gold_page": 11,
+   "gold_chunks": 3,
+   "cov_pdf": 0.67,
+   "cov_chunk": 0.67,
+   "cov_doc": 0.76,
+   "best_chunk_pages": [
+    11
+   ],
+   "best_chunk_cov": 0.62,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_204",
+   "domain": "law",
+   "context_type": "table",
+   "file_name": "[행정] 원고가 담배브랜드의 상표 등 사용에 관하여 다국적기업에게 지급하는 로열티가 원고가 다른 계열사 등으로부터 수입하는 담배재료의 권리사용료라는 전제에서 관세가 부과되자 그 부과처분의 취소를 구하는 사건.pdf",
+   "gold_page": 11,
+   "gold_chunks": 3,
+   "cov_pdf": 0.74,
+   "cov_chunk": 0.74,
+   "cov_doc": 0.74,
+   "best_chunk_pages": [
+    11
+   ],
+   "best_chunk_cov": 0.74,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_205",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[행정] 원고가 담배브랜드의 상표 등 사용에 관하여 다국적기업에게 지급하는 로열티가 원고가 다른 계열사 등으로부터 수입하는 담배재료의 권리사용료라는 전제에서 관세가 부과되자 그 부과처분의 취소를 구하는 사건.pdf",
+   "gold_page": 19,
+   "gold_chunks": 2,
+   "cov_pdf": 0.79,
+   "cov_chunk": 0.79,
+   "cov_doc": 0.88,
+   "best_chunk_pages": [
+    18,
+    19
+   ],
+   "best_chunk_cov": 0.79,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_206",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[행정] 원고가 담배브랜드의 상표 등 사용에 관하여 다국적기업에게 지급하는 로열티가 원고가 다른 계열사 등으로부터 수입하는 담배재료의 권리사용료라는 전제에서 관세가 부과되자 그 부과처분의 취소를 구하는 사건.pdf",
+   "gold_page": 22,
+   "gold_chunks": 2,
+   "cov_pdf": 0.88,
+   "cov_chunk": 0.9,
+   "cov_doc": 0.97,
+   "best_chunk_pages": [
+    22
+   ],
+   "best_chunk_cov": 0.9,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_207",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[행정] 원고가 담배브랜드의 상표 등 사용에 관하여 다국적기업에게 지급하는 로열티가 원고가 다른 계열사 등으로부터 수입하는 담배재료의 권리사용료라는 전제에서 관세가 부과되자 그 부과처분의 취소를 구하는 사건.pdf",
+   "gold_page": 26,
+   "gold_chunks": 2,
+   "cov_pdf": 1.0,
+   "cov_chunk": 1.0,
+   "cov_doc": 1.0,
+   "best_chunk_pages": [
+    26
+   ],
+   "best_chunk_cov": 1.0,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_208",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[행정] 원고가 담배브랜드의 상표 등 사용에 관하여 다국적기업에게 지급하는 로열티가 원고가 다른 계열사 등으로부터 수입하는 담배재료의 권리사용료라는 전제에서 관세가 부과되자 그 부과처분의 취소를 구하는 사건.pdf",
+   "gold_page": 27,
+   "gold_chunks": 2,
+   "cov_pdf": 0.9,
+   "cov_chunk": 0.9,
+   "cov_doc": 0.95,
+   "best_chunk_pages": [
+    27,
+    28
+   ],
+   "best_chunk_cov": 0.9,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_209",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[행정] 원고가 담배브랜드의 상표 등 사용에 관하여 다국적기업에게 지급하는 로열티가 원고가 다른 계열사 등으로부터 수입하는 담배재료의 권리사용료라는 전제에서 관세가 부과되자 그 부과처분의 취소를 구하는 사건.pdf",
+   "gold_page": 48,
+   "gold_chunks": 2,
+   "cov_pdf": 0.68,
+   "cov_chunk": 0.68,
+   "cov_doc": 0.81,
+   "best_chunk_pages": [
+    48
+   ],
+   "best_chunk_cov": 0.68,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_210",
+   "domain": "law",
+   "context_type": "image",
+   "file_name": "[특허] 제1항 출원발명은 진보성이 부정된다고 판단한 사례(특허법원 2023허10705).pdf",
+   "gold_page": 4,
+   "gold_chunks": 4,
+   "cov_pdf": 0.17,
+   "cov_chunk": 0.67,
+   "cov_doc": 1.0,
+   "best_chunk_pages": [
+    6
+   ],
+   "best_chunk_cov": 1.0,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_211",
+   "domain": "law",
+   "context_type": "image",
+   "file_name": "[특허] 제1항 출원발명은 진보성이 부정된다고 판단한 사례(특허법원 2023허10705).pdf",
+   "gold_page": 4,
+   "gold_chunks": 4,
+   "cov_pdf": 0.36,
+   "cov_chunk": 1.0,
+   "cov_doc": 1.0,
+   "best_chunk_pages": [
+    4,
+    5
+   ],
+   "best_chunk_cov": 1.0,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_212",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[특허] 제1항 출원발명은 진보성이 부정된다고 판단한 사례(특허법원 2023허10705).pdf",
+   "gold_page": 11,
+   "gold_chunks": 5,
+   "cov_pdf": 0.5,
+   "cov_chunk": 0.5,
+   "cov_doc": 0.59,
+   "best_chunk_pages": [
+    10,
+    11
+   ],
+   "best_chunk_cov": 0.5,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_213",
+   "domain": "law",
+   "context_type": "table",
+   "file_name": "[특허] 제1항 출원발명은 진보성이 부정된다고 판단한 사례(특허법원 2023허10705).pdf",
+   "gold_page": 12,
+   "gold_chunks": 2,
+   "cov_pdf": 0.73,
+   "cov_chunk": 0.73,
+   "cov_doc": 0.86,
+   "best_chunk_pages": [
+    12
+   ],
+   "best_chunk_cov": 0.73,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_214",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "2024 달라지는 세금제도.pdf",
+   "gold_page": 4,
+   "gold_chunks": 3,
+   "cov_pdf": 0.85,
+   "cov_chunk": 0.85,
+   "cov_doc": 0.85,
+   "best_chunk_pages": [
+    4
+   ],
+   "best_chunk_cov": 0.85,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_215",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "2024 달라지는 세금제도.pdf",
+   "gold_page": 5,
+   "gold_chunks": 4,
+   "cov_pdf": 0.64,
+   "cov_chunk": 0.64,
+   "cov_doc": 0.64,
+   "best_chunk_pages": [
+    5
+   ],
+   "best_chunk_cov": 0.64,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_216",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "2024 달라지는 세금제도.pdf",
+   "gold_page": 7,
+   "gold_chunks": 2,
+   "cov_pdf": 0.75,
+   "cov_chunk": 0.75,
+   "cov_doc": 0.83,
+   "best_chunk_pages": [
+    7
+   ],
+   "best_chunk_cov": 0.75,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_217",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "2024 달라지는 세금제도.pdf",
+   "gold_page": 11,
+   "gold_chunks": 4,
+   "cov_pdf": 0.94,
+   "cov_chunk": 0.94,
+   "cov_doc": 0.94,
+   "best_chunk_pages": [
+    11
+   ],
+   "best_chunk_cov": 0.94,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_218",
+   "domain": "law",
+   "context_type": "table",
+   "file_name": "2024 달라지는 세금제도.pdf",
+   "gold_page": 22,
+   "gold_chunks": 2,
+   "cov_pdf": 0.75,
+   "cov_chunk": 0.67,
+   "cov_doc": 0.75,
+   "best_chunk_pages": [
+    22
+   ],
+   "best_chunk_cov": 0.67,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_219",
+   "domain": "law",
+   "context_type": "table",
+   "file_name": "2024 달라지는 세금제도.pdf",
+   "gold_page": 22,
+   "gold_chunks": 2,
+   "cov_pdf": 0.75,
+   "cov_chunk": 0.75,
+   "cov_doc": 0.83,
+   "best_chunk_pages": [
+    22
+   ],
+   "best_chunk_cov": 0.75,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_220",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "2024 달라지는 세금제도.pdf",
+   "gold_page": 25,
+   "gold_chunks": 2,
+   "cov_pdf": 0.83,
+   "cov_chunk": 0.83,
+   "cov_doc": 0.96,
+   "best_chunk_pages": [
+    24,
+    25
+   ],
+   "best_chunk_cov": 0.83,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_221",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "2024 달라지는 세금제도.pdf",
+   "gold_page": 30,
+   "gold_chunks": 5,
+   "cov_pdf": 0.79,
+   "cov_chunk": 0.79,
+   "cov_doc": 0.79,
+   "best_chunk_pages": [
+    30
+   ],
+   "best_chunk_cov": 0.79,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_222",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[민사] 미성년자 성형외과 코필러 주입술 시 필러물질이 미성년자에 대한 사용금지 조치를 받은 상태였던 사안.pdf",
+   "gold_page": 7,
+   "gold_chunks": 2,
+   "cov_pdf": 0.71,
+   "cov_chunk": 0.71,
+   "cov_doc": 0.75,
+   "best_chunk_pages": [
+    7,
+    8
+   ],
+   "best_chunk_cov": 0.71,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_223",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[민사] 미성년자 성형외과 코필러 주입술 시 필러물질이 미성년자에 대한 사용금지 조치를 받은 상태였던 사안.pdf",
+   "gold_page": 10,
+   "gold_chunks": 2,
+   "cov_pdf": 1.0,
+   "cov_chunk": 1.0,
+   "cov_doc": 1.0,
+   "best_chunk_pages": [
+    10
+   ],
+   "best_chunk_cov": 1.0,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_224",
+   "domain": "law",
+   "context_type": "table",
+   "file_name": "[민사] 미성년자 성형외과 코필러 주입술 시 필러물질이 미성년자에 대한 사용금지 조치를 받은 상태였던 사안.pdf",
+   "gold_page": 19,
+   "gold_chunks": 3,
+   "cov_pdf": 0.43,
+   "cov_chunk": 0.43,
+   "cov_doc": 0.71,
+   "best_chunk_pages": [
+    19
+   ],
+   "best_chunk_cov": 0.43,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_225",
+   "domain": "law",
+   "context_type": "table",
+   "file_name": "[민사] 미성년자 성형외과 코필러 주입술 시 필러물질이 미성년자에 대한 사용금지 조치를 받은 상태였던 사안.pdf",
+   "gold_page": 19,
+   "gold_chunks": 3,
+   "cov_pdf": 0.44,
+   "cov_chunk": 0.44,
+   "cov_doc": 0.44,
+   "best_chunk_pages": [
+    14,
+    15
+   ],
+   "best_chunk_cov": 0.44,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_226",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[민사] 분양받은 상가 내에 설치된 기둥으로 인해 공간활용 제한 등 손해를 입었다고 주장하면서 수분양자들이 분양자를 상대로 고지의무위반을 이유로 손해배상을 구한 사건.pdf",
+   "gold_page": 5,
+   "gold_chunks": 2,
+   "cov_pdf": 0.87,
+   "cov_chunk": 0.87,
+   "cov_doc": 0.87,
+   "best_chunk_pages": [
+    5,
+    6
+   ],
+   "best_chunk_cov": 0.87,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_227",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[특허] 원고 제품들의 실시가 피고의 제1, 3, 5항 발명을 침해하지 않는다고 판단한 사례(특허법원 2022나2213).pdf",
+   "gold_page": 3,
+   "gold_chunks": 2,
+   "cov_pdf": 0.64,
+   "cov_chunk": 0.64,
+   "cov_doc": 0.64,
+   "best_chunk_pages": [
+    3,
+    4
+   ],
+   "best_chunk_cov": 0.64,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_228",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[특허] 원고 제품들의 실시가 피고의 제1, 3, 5항 발명을 침해하지 않는다고 판단한 사례(특허법원 2022나2213).pdf",
+   "gold_page": 20,
+   "gold_chunks": 3,
+   "cov_pdf": 0.86,
+   "cov_chunk": 0.88,
+   "cov_doc": 0.91,
+   "best_chunk_pages": [
+    20
+   ],
+   "best_chunk_cov": 0.71,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_229",
+   "domain": "law",
+   "context_type": "image",
+   "file_name": "[특허] 원고 제품들의 실시가 피고의 제1, 3, 5항 발명을 침해하지 않는다고 판단한 사례(특허법원 2022나2213).pdf",
+   "gold_page": 25,
+   "gold_chunks": 2,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.0,
+   "cov_doc": 0.5,
+   "best_chunk_pages": [
+    8,
+    9
+   ],
+   "best_chunk_cov": 0.38,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_230",
+   "domain": "law",
+   "context_type": "table",
+   "file_name": "[행정] 타인자금(예금, 보험료 등 고객의 예탁자금)이 아닌 자기자금(자본금, 대출금 등 자신의 고유재산)을 운용하는 경우에도 공정거래법 제11조에 의한 의결권 제한이 적용되는지가 문제된 사건.pdf",
+   "gold_page": 2,
+   "gold_chunks": 4,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.0,
+   "cov_doc": 0.62,
+   "best_chunk_pages": [
+    3,
+    4
+   ],
+   "best_chunk_cov": 0.25,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_231",
+   "domain": "law",
+   "context_type": "table",
+   "file_name": "[행정] 타인자금(예금, 보험료 등 고객의 예탁자금)이 아닌 자기자금(자본금, 대출금 등 자신의 고유재산)을 운용하는 경우에도 공정거래법 제11조에 의한 의결권 제한이 적용되는지가 문제된 사건.pdf",
+   "gold_page": 4,
+   "gold_chunks": 2,
+   "cov_pdf": 0.17,
+   "cov_chunk": 0.25,
+   "cov_doc": 0.5,
+   "best_chunk_pages": [
+    2
+   ],
+   "best_chunk_cov": 0.25,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_232",
+   "domain": "law",
+   "context_type": "table",
+   "file_name": "[행정] 타인자금(예금, 보험료 등 고객의 예탁자금)이 아닌 자기자금(자본금, 대출금 등 자신의 고유재산)을 운용하는 경우에도 공정거래법 제11조에 의한 의결권 제한이 적용되는지가 문제된 사건.pdf",
+   "gold_page": 6,
+   "gold_chunks": 1,
+   "cov_pdf": 0.82,
+   "cov_chunk": 0.82,
+   "cov_doc": 0.85,
+   "best_chunk_pages": [
+    6,
+    7
+   ],
+   "best_chunk_cov": 0.82,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_233",
+   "domain": "law",
+   "context_type": "table",
+   "file_name": "[행정] 타인자금(예금, 보험료 등 고객의 예탁자금)이 아닌 자기자금(자본금, 대출금 등 자신의 고유재산)을 운용하는 경우에도 공정거래법 제11조에 의한 의결권 제한이 적용되는지가 문제된 사건.pdf",
+   "gold_page": 7,
+   "gold_chunks": 2,
+   "cov_pdf": 0.69,
+   "cov_chunk": 0.69,
+   "cov_doc": 0.77,
+   "best_chunk_pages": [
+    7,
+    8
+   ],
+   "best_chunk_cov": 0.69,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_234",
+   "domain": "law",
+   "context_type": "table",
+   "file_name": "[행정] 타인자금(예금, 보험료 등 고객의 예탁자금)이 아닌 자기자금(자본금, 대출금 등 자신의 고유재산)을 운용하는 경우에도 공정거래법 제11조에 의한 의결권 제한이 적용되는지가 문제된 사건.pdf",
+   "gold_page": 7,
+   "gold_chunks": 2,
+   "cov_pdf": 0.6,
+   "cov_chunk": 0.6,
+   "cov_doc": 0.64,
+   "best_chunk_pages": [
+    7,
+    8
+   ],
+   "best_chunk_cov": 0.6,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_235",
+   "domain": "law",
+   "context_type": "table",
+   "file_name": "[행정] 타인자금(예금, 보험료 등 고객의 예탁자금)이 아닌 자기자금(자본금, 대출금 등 자신의 고유재산)을 운용하는 경우에도 공정거래법 제11조에 의한 의결권 제한이 적용되는지가 문제된 사건.pdf",
+   "gold_page": 8,
+   "gold_chunks": 5,
+   "cov_pdf": 0.65,
+   "cov_chunk": 0.65,
+   "cov_doc": 0.71,
+   "best_chunk_pages": [
+    8
+   ],
+   "best_chunk_cov": 0.65,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_236",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[행정] 타인자금(예금, 보험료 등 고객의 예탁자금)이 아닌 자기자금(자본금, 대출금 등 자신의 고유재산)을 운용하는 경우에도 공정거래법 제11조에 의한 의결권 제한이 적용되는지가 문제된 사건.pdf",
+   "gold_page": 12,
+   "gold_chunks": 4,
+   "cov_pdf": 0.97,
+   "cov_chunk": 0.97,
+   "cov_doc": 0.97,
+   "best_chunk_pages": [
+    12
+   ],
+   "best_chunk_cov": 0.97,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_237",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[행정] 타인자금(예금, 보험료 등 고객의 예탁자금)이 아닌 자기자금(자본금, 대출금 등 자신의 고유재산)을 운용하는 경우에도 공정거래법 제11조에 의한 의결권 제한이 적용되는지가 문제된 사건.pdf",
+   "gold_page": 17,
+   "gold_chunks": 2,
+   "cov_pdf": 1.0,
+   "cov_chunk": 1.0,
+   "cov_doc": 1.0,
+   "best_chunk_pages": [
+    17
+   ],
+   "best_chunk_cov": 1.0,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_238",
+   "domain": "law",
+   "context_type": "paragraph",
+   "file_name": "[행정] 타인자금(예금, 보험료 등 고객의 예탁자금)이 아닌 자기자금(자본금, 대출금 등 자신의 고유재산)을 운용하는 경우에도 공정거래법 제11조에 의한 의결권 제한이 적용되는지가 문제된 사건.pdf",
+   "gold_page": 19,
+   "gold_chunks": 2,
+   "cov_pdf": 0.68,
+   "cov_chunk": 0.74,
+   "cov_doc": 0.84,
+   "best_chunk_pages": [
+    18,
+    19
+   ],
+   "best_chunk_cov": 0.68,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_239",
+   "domain": "law",
+   "context_type": "table",
+   "file_name": "[행정] 타인자금(예금, 보험료 등 고객의 예탁자금)이 아닌 자기자금(자본금, 대출금 등 자신의 고유재산)을 운용하는 경우에도 공정거래법 제11조에 의한 의결권 제한이 적용되는지가 문제된 사건.pdf",
+   "gold_page": 29,
+   "gold_chunks": 2,
+   "cov_pdf": 1.0,
+   "cov_chunk": 1.0,
+   "cov_doc": 1.0,
+   "best_chunk_pages": [
+    27
+   ],
+   "best_chunk_cov": 1.0,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_240",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "이커머스의 진화와 소비자 후생.pdf",
+   "gold_page": 1,
+   "gold_chunks": 2,
+   "cov_pdf": 0.81,
+   "cov_chunk": 0.81,
+   "cov_doc": 0.88,
+   "best_chunk_pages": [
+    1
+   ],
+   "best_chunk_cov": 0.81,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_241",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "이커머스의 진화와 소비자 후생.pdf",
+   "gold_page": 2,
+   "gold_chunks": 2,
+   "cov_pdf": 0.58,
+   "cov_chunk": 0.58,
+   "cov_doc": 0.58,
+   "best_chunk_pages": [
+    2
+   ],
+   "best_chunk_cov": 0.58,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_242",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "이커머스의 진화와 소비자 후생.pdf",
+   "gold_page": 4,
+   "gold_chunks": 3,
+   "cov_pdf": 0.79,
+   "cov_chunk": 0.79,
+   "cov_doc": 0.86,
+   "best_chunk_pages": [
+    4
+   ],
+   "best_chunk_cov": 0.79,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_243",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "kr-im-new-luxury-business-trends-20220520.pdf",
+   "gold_page": 5,
+   "gold_chunks": 2,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.67,
+   "cov_doc": 0.69,
+   "best_chunk_pages": [
+    4,
+    5
+   ],
+   "best_chunk_cov": 0.67,
+   "verdict": "recovered"
+  },
+  {
+   "qid": "q_244",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "kr-im-new-luxury-business-trends-20220520.pdf",
+   "gold_page": 7,
+   "gold_chunks": 2,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.59,
+   "cov_doc": 0.68,
+   "best_chunk_pages": [
+    7
+   ],
+   "best_chunk_cov": 0.59,
+   "verdict": "recovered"
+  },
+  {
+   "qid": "q_245",
+   "domain": "commerce",
+   "context_type": "image",
+   "file_name": "kr-im-new-luxury-business-trends-20220520.pdf",
+   "gold_page": 10,
+   "gold_chunks": 2,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.29,
+   "cov_doc": 0.48,
+   "best_chunk_pages": [
+    10,
+    11
+   ],
+   "best_chunk_cov": 0.29,
+   "verdict": "unreachable"
+  },
+  {
+   "qid": "q_246",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "kr-im-new-luxury-business-trends-20220520.pdf",
+   "gold_page": 12,
+   "gold_chunks": 1,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.24,
+   "cov_doc": 0.45,
+   "best_chunk_pages": [
+    11,
+    12,
+    13
+   ],
+   "best_chunk_cov": 0.24,
+   "verdict": "unreachable"
+  },
+  {
+   "qid": "q_247",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "kr-im-new-luxury-business-trends-20220520.pdf",
+   "gold_page": 24,
+   "gold_chunks": 3,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.58,
+   "cov_doc": 0.63,
+   "best_chunk_pages": [
+    24
+   ],
+   "best_chunk_cov": 0.58,
+   "verdict": "recovered"
+  },
+  {
+   "qid": "q_248",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "kr-im-new-luxury-business-trends-20220520.pdf",
+   "gold_page": 30,
+   "gold_chunks": 1,
+   "cov_pdf": 0.0,
+   "cov_chunk": 0.52,
+   "cov_doc": 0.71,
+   "best_chunk_pages": [
+    29,
+    30,
+    31
+   ],
+   "best_chunk_cov": 0.52,
+   "verdict": "recovered"
+  },
+  {
+   "qid": "q_249",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "Dighty Data Insight Report 2023.pdf",
+   "gold_page": 4,
+   "gold_chunks": 1,
+   "cov_pdf": 0.86,
+   "cov_chunk": 0.86,
+   "cov_doc": 0.86,
+   "best_chunk_pages": [
+    1,
+    2,
+    3,
+    4
+   ],
+   "best_chunk_cov": 0.86,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_250",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "Dighty Data Insight Report 2023.pdf",
+   "gold_page": 9,
+   "gold_chunks": 2,
+   "cov_pdf": 0.8,
+   "cov_chunk": 0.8,
+   "cov_doc": 0.9,
+   "best_chunk_pages": [
+    9,
+    10
+   ],
+   "best_chunk_cov": 0.8,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_251",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "Dighty Data Insight Report 2023.pdf",
+   "gold_page": 11,
+   "gold_chunks": 2,
+   "cov_pdf": 0.81,
+   "cov_chunk": 0.81,
+   "cov_doc": 0.86,
+   "best_chunk_pages": [
+    11,
+    12
+   ],
+   "best_chunk_cov": 0.81,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_252",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "Dighty Data Insight Report 2023.pdf",
+   "gold_page": 20,
+   "gold_chunks": 2,
+   "cov_pdf": 0.38,
+   "cov_chunk": 0.49,
+   "cov_doc": 0.72,
+   "best_chunk_pages": [
+    20,
+    21,
+    22
+   ],
+   "best_chunk_cov": 0.46,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_253",
+   "domain": "commerce",
+   "context_type": "table",
+   "file_name": "쿠팡 상장과 이베이 인수  이후 국내 이커머스 시장은 어떻게 변할까.pdf",
+   "gold_page": 1,
+   "gold_chunks": 6,
+   "cov_pdf": 0.44,
+   "cov_chunk": 0.44,
+   "cov_doc": 0.81,
+   "best_chunk_pages": [
+    5,
+    6
+   ],
+   "best_chunk_cov": 0.5,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_254",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "쿠팡 상장과 이베이 인수  이후 국내 이커머스 시장은 어떻게 변할까.pdf",
+   "gold_page": 5,
+   "gold_chunks": 4,
+   "cov_pdf": 0.71,
+   "cov_chunk": 0.71,
+   "cov_doc": 0.76,
+   "best_chunk_pages": [
+    5,
+    6
+   ],
+   "best_chunk_cov": 0.71,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_255",
+   "domain": "commerce",
+   "context_type": "table",
+   "file_name": "쿠팡 상장과 이베이 인수  이후 국내 이커머스 시장은 어떻게 변할까.pdf",
+   "gold_page": 6,
+   "gold_chunks": 3,
+   "cov_pdf": 0.56,
+   "cov_chunk": 0.62,
+   "cov_doc": 0.69,
+   "best_chunk_pages": [
+    6,
+    7
+   ],
+   "best_chunk_cov": 0.5,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_256",
+   "domain": "commerce",
+   "context_type": "table",
+   "file_name": "쿠팡 상장과 이베이 인수  이후 국내 이커머스 시장은 어떻게 변할까.pdf",
+   "gold_page": 7,
+   "gold_chunks": 4,
+   "cov_pdf": 0.48,
+   "cov_chunk": 0.48,
+   "cov_doc": 0.64,
+   "best_chunk_pages": [
+    7,
+    8
+   ],
+   "best_chunk_cov": 0.44,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_257",
+   "domain": "commerce",
+   "context_type": "image",
+   "file_name": "쿠팡 상장과 이베이 인수  이후 국내 이커머스 시장은 어떻게 변할까.pdf",
+   "gold_page": 7,
+   "gold_chunks": 4,
+   "cov_pdf": 0.35,
+   "cov_chunk": 0.35,
+   "cov_doc": 0.4,
+   "best_chunk_pages": [
+    1
+   ],
+   "best_chunk_cov": 0.3,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_258",
+   "domain": "commerce",
+   "context_type": "image",
+   "file_name": "쿠팡 상장과 이베이 인수  이후 국내 이커머스 시장은 어떻게 변할까.pdf",
+   "gold_page": 8,
+   "gold_chunks": 3,
+   "cov_pdf": 0.5,
+   "cov_chunk": 0.56,
+   "cov_doc": 0.75,
+   "best_chunk_pages": [
+    8,
+    9
+   ],
+   "best_chunk_cov": 0.44,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_259",
+   "domain": "commerce",
+   "context_type": "image",
+   "file_name": "쿠팡 상장과 이베이 인수  이후 국내 이커머스 시장은 어떻게 변할까.pdf",
+   "gold_page": 10,
+   "gold_chunks": 4,
+   "cov_pdf": 0.1,
+   "cov_chunk": 0.14,
+   "cov_doc": 0.55,
+   "best_chunk_pages": [
+    5,
+    6
+   ],
+   "best_chunk_cov": 0.21,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_260",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "쿠팡 상장과 이베이 인수  이후 국내 이커머스 시장은 어떻게 변할까.pdf",
+   "gold_page": 15,
+   "gold_chunks": 3,
+   "cov_pdf": 0.81,
+   "cov_chunk": 0.81,
+   "cov_doc": 0.85,
+   "best_chunk_pages": [
+    15
+   ],
+   "best_chunk_cov": 0.78,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_261",
+   "domain": "commerce",
+   "context_type": "table",
+   "file_name": "쿠팡 상장과 이베이 인수  이후 국내 이커머스 시장은 어떻게 변할까.pdf",
+   "gold_page": 21,
+   "gold_chunks": 4,
+   "cov_pdf": 0.48,
+   "cov_chunk": 0.48,
+   "cov_doc": 0.59,
+   "best_chunk_pages": [
+    21,
+    22
+   ],
+   "best_chunk_cov": 0.41,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_262",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "쿠팡 상장과 이베이 인수  이후 국내 이커머스 시장은 어떻게 변할까.pdf",
+   "gold_page": 22,
+   "gold_chunks": 5,
+   "cov_pdf": 0.86,
+   "cov_chunk": 0.86,
+   "cov_doc": 0.91,
+   "best_chunk_pages": [
+    22,
+    23
+   ],
+   "best_chunk_cov": 0.86,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_263",
+   "domain": "commerce",
+   "context_type": "image",
+   "file_name": "MezzoMedia 산업 보고서 e커머스.pdf",
+   "gold_page": 7,
+   "gold_chunks": 3,
+   "cov_pdf": 0.64,
+   "cov_chunk": 0.64,
+   "cov_doc": 0.72,
+   "best_chunk_pages": [
+    7
+   ],
+   "best_chunk_cov": 0.64,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_264",
+   "domain": "commerce",
+   "context_type": "image",
+   "file_name": "MezzoMedia 산업 보고서 e커머스.pdf",
+   "gold_page": 8,
+   "gold_chunks": 2,
+   "cov_pdf": 0.31,
+   "cov_chunk": 0.31,
+   "cov_doc": 0.38,
+   "best_chunk_pages": [
+    8,
+    9
+   ],
+   "best_chunk_cov": 0.31,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_265",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "MezzoMedia 산업 보고서 e커머스.pdf",
+   "gold_page": 11,
+   "gold_chunks": 1,
+   "cov_pdf": 0.59,
+   "cov_chunk": 0.59,
+   "cov_doc": 0.78,
+   "best_chunk_pages": [
+    11
+   ],
+   "best_chunk_cov": 0.59,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_266",
+   "domain": "commerce",
+   "context_type": "image",
+   "file_name": "MezzoMedia 산업 보고서 e커머스.pdf",
+   "gold_page": 11,
+   "gold_chunks": 1,
+   "cov_pdf": 0.4,
+   "cov_chunk": 0.4,
+   "cov_doc": 0.75,
+   "best_chunk_pages": [
+    24
+   ],
+   "best_chunk_cov": 0.5,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_267",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "MezzoMedia 산업 보고서 e커머스.pdf",
+   "gold_page": 20,
+   "gold_chunks": 1,
+   "cov_pdf": 0.68,
+   "cov_chunk": 0.68,
+   "cov_doc": 0.79,
+   "best_chunk_pages": [
+    20
+   ],
+   "best_chunk_cov": 0.68,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_268",
+   "domain": "commerce",
+   "context_type": "image",
+   "file_name": "MezzoMedia 산업 보고서 e커머스.pdf",
+   "gold_page": 28,
+   "gold_chunks": 1,
+   "cov_pdf": 0.55,
+   "cov_chunk": 0.55,
+   "cov_doc": 0.6,
+   "best_chunk_pages": [
+    28
+   ],
+   "best_chunk_cov": 0.55,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_269",
+   "domain": "commerce",
+   "context_type": "image",
+   "file_name": "MezzoMedia 산업 보고서 e커머스.pdf",
+   "gold_page": 29,
+   "gold_chunks": 1,
+   "cov_pdf": 0.47,
+   "cov_chunk": 0.47,
+   "cov_doc": 0.51,
+   "best_chunk_pages": [
+    29
+   ],
+   "best_chunk_cov": 0.47,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_270",
+   "domain": "commerce",
+   "context_type": "image",
+   "file_name": "MezzoMedia 산업 보고서 e커머스.pdf",
+   "gold_page": 30,
+   "gold_chunks": 1,
+   "cov_pdf": 0.4,
+   "cov_chunk": 0.4,
+   "cov_doc": 0.6,
+   "best_chunk_pages": [
+    30,
+    31
+   ],
+   "best_chunk_cov": 0.4,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_271",
+   "domain": "commerce",
+   "context_type": "image",
+   "file_name": "이커머스 솔루션 소개자료.pdf",
+   "gold_page": 3,
+   "gold_chunks": 1,
+   "cov_pdf": 0.21,
+   "cov_chunk": 0.21,
+   "cov_doc": 0.43,
+   "best_chunk_pages": [
+    4,
+    5
+   ],
+   "best_chunk_cov": 0.29,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_272",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "이커머스 솔루션 소개자료.pdf",
+   "gold_page": 6,
+   "gold_chunks": 5,
+   "cov_pdf": 1.0,
+   "cov_chunk": 1.0,
+   "cov_doc": 1.0,
+   "best_chunk_pages": [
+    6
+   ],
+   "best_chunk_cov": 1.0,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_273",
+   "domain": "commerce",
+   "context_type": "image",
+   "file_name": "이커머스 솔루션 소개자료.pdf",
+   "gold_page": 7,
+   "gold_chunks": 7,
+   "cov_pdf": 0.58,
+   "cov_chunk": 0.58,
+   "cov_doc": 0.68,
+   "best_chunk_pages": [
+    7
+   ],
+   "best_chunk_cov": 0.58,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_274",
+   "domain": "commerce",
+   "context_type": "image",
+   "file_name": "이커머스 솔루션 소개자료.pdf",
+   "gold_page": 12,
+   "gold_chunks": 3,
+   "cov_pdf": 0.49,
+   "cov_chunk": 0.51,
+   "cov_doc": 0.67,
+   "best_chunk_pages": [
+    12
+   ],
+   "best_chunk_cov": 0.49,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_275",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "이커머스 솔루션 소개자료.pdf",
+   "gold_page": 15,
+   "gold_chunks": 4,
+   "cov_pdf": 0.78,
+   "cov_chunk": 0.78,
+   "cov_doc": 0.83,
+   "best_chunk_pages": [
+    15
+   ],
+   "best_chunk_cov": 0.78,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_276",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "이커머스 솔루션 소개자료.pdf",
+   "gold_page": 19,
+   "gold_chunks": 4,
+   "cov_pdf": 0.76,
+   "cov_chunk": 0.76,
+   "cov_doc": 0.89,
+   "best_chunk_pages": [
+    19
+   ],
+   "best_chunk_cov": 0.76,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_277",
+   "domain": "commerce",
+   "context_type": "image",
+   "file_name": "이커머스 솔루션 소개자료.pdf",
+   "gold_page": 24,
+   "gold_chunks": 4,
+   "cov_pdf": 0.34,
+   "cov_chunk": 0.38,
+   "cov_doc": 0.59,
+   "best_chunk_pages": [
+    25
+   ],
+   "best_chunk_cov": 0.38,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_278",
+   "domain": "commerce",
+   "context_type": "image",
+   "file_name": "이커머스 솔루션 소개자료.pdf",
+   "gold_page": 32,
+   "gold_chunks": 5,
+   "cov_pdf": 0.41,
+   "cov_chunk": 0.47,
+   "cov_doc": 0.59,
+   "best_chunk_pages": [
+    32
+   ],
+   "best_chunk_cov": 0.41,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_279",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "이커머스 솔루션 소개자료.pdf",
+   "gold_page": 39,
+   "gold_chunks": 5,
+   "cov_pdf": 0.63,
+   "cov_chunk": 0.63,
+   "cov_doc": 0.77,
+   "best_chunk_pages": [
+    39
+   ],
+   "best_chunk_cov": 0.57,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_280",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "PRP008.pdf",
+   "gold_page": 2,
+   "gold_chunks": 2,
+   "cov_pdf": 0.72,
+   "cov_chunk": 0.72,
+   "cov_doc": 0.83,
+   "best_chunk_pages": [
+    2
+   ],
+   "best_chunk_cov": 0.72,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_281",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "PRP008.pdf",
+   "gold_page": 4,
+   "gold_chunks": 3,
+   "cov_pdf": 0.94,
+   "cov_chunk": 0.94,
+   "cov_doc": 0.94,
+   "best_chunk_pages": [
+    4
+   ],
+   "best_chunk_cov": 0.94,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_282",
+   "domain": "commerce",
+   "context_type": "table",
+   "file_name": "PRP008.pdf",
+   "gold_page": 4,
+   "gold_chunks": 3,
+   "cov_pdf": 1.0,
+   "cov_chunk": 1.0,
+   "cov_doc": 1.0,
+   "best_chunk_pages": [
+    4
+   ],
+   "best_chunk_cov": 1.0,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_283",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "B2BDigCommEra_Translation_KR_Offer_V1.pdf",
+   "gold_page": 3,
+   "gold_chunks": 1,
+   "cov_pdf": 0.79,
+   "cov_chunk": 0.75,
+   "cov_doc": 0.75,
+   "best_chunk_pages": [
+    3
+   ],
+   "best_chunk_cov": 0.75,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_284",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "B2BDigCommEra_Translation_KR_Offer_V1.pdf",
+   "gold_page": 5,
+   "gold_chunks": 2,
+   "cov_pdf": 0.81,
+   "cov_chunk": 0.75,
+   "cov_doc": 0.75,
+   "best_chunk_pages": [
+    5
+   ],
+   "best_chunk_cov": 0.75,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_285",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "B2BDigCommEra_Translation_KR_Offer_V1.pdf",
+   "gold_page": 8,
+   "gold_chunks": 1,
+   "cov_pdf": 0.61,
+   "cov_chunk": 0.55,
+   "cov_doc": 0.71,
+   "best_chunk_pages": [
+    8
+   ],
+   "best_chunk_cov": 0.55,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_286",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "B2BDigCommEra_Translation_KR_Offer_V1.pdf",
+   "gold_page": 9,
+   "gold_chunks": 4,
+   "cov_pdf": 1.0,
+   "cov_chunk": 0.96,
+   "cov_doc": 0.96,
+   "best_chunk_pages": [
+    9
+   ],
+   "best_chunk_cov": 0.96,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_287",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "B2BDigCommEra_Translation_KR_Offer_V1.pdf",
+   "gold_page": 10,
+   "gold_chunks": 4,
+   "cov_pdf": 0.55,
+   "cov_chunk": 0.55,
+   "cov_doc": 0.74,
+   "best_chunk_pages": [
+    10
+   ],
+   "best_chunk_cov": 0.45,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_288",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "B2BDigCommEra_Translation_KR_Offer_V1.pdf",
+   "gold_page": 14,
+   "gold_chunks": 2,
+   "cov_pdf": 0.76,
+   "cov_chunk": 0.69,
+   "cov_doc": 0.72,
+   "best_chunk_pages": [
+    14
+   ],
+   "best_chunk_cov": 0.66,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_289",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "KCA Media Issue Trend Vol 50 Report.pdf",
+   "gold_page": 3,
+   "gold_chunks": 1,
+   "cov_pdf": 0.83,
+   "cov_chunk": 0.83,
+   "cov_doc": 0.86,
+   "best_chunk_pages": [
+    3
+   ],
+   "best_chunk_cov": 0.83,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_290",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "KCA Media Issue Trend Vol 50 Report.pdf",
+   "gold_page": 6,
+   "gold_chunks": 2,
+   "cov_pdf": 0.81,
+   "cov_chunk": 0.81,
+   "cov_doc": 0.81,
+   "best_chunk_pages": [
+    6
+   ],
+   "best_chunk_cov": 0.81,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_291",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "중국21-18호 2021 라이브커머스 산업 보고.pdf",
+   "gold_page": 5,
+   "gold_chunks": 2,
+   "cov_pdf": 0.54,
+   "cov_chunk": 0.57,
+   "cov_doc": 0.81,
+   "best_chunk_pages": [
+    5
+   ],
+   "best_chunk_cov": 0.57,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_292",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "중국21-18호 2021 라이브커머스 산업 보고.pdf",
+   "gold_page": 7,
+   "gold_chunks": 1,
+   "cov_pdf": 0.27,
+   "cov_chunk": 0.31,
+   "cov_doc": 0.61,
+   "best_chunk_pages": [
+    7
+   ],
+   "best_chunk_cov": 0.31,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_293",
+   "domain": "commerce",
+   "context_type": "image",
+   "file_name": "중국21-18호 2021 라이브커머스 산업 보고.pdf",
+   "gold_page": 8,
+   "gold_chunks": 1,
+   "cov_pdf": 0.12,
+   "cov_chunk": 0.12,
+   "cov_doc": 0.53,
+   "best_chunk_pages": [
+    3
+   ],
+   "best_chunk_cov": 0.24,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_294",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "중국21-18호 2021 라이브커머스 산업 보고.pdf",
+   "gold_page": 9,
+   "gold_chunks": 2,
+   "cov_pdf": 0.83,
+   "cov_chunk": 0.83,
+   "cov_doc": 0.88,
+   "best_chunk_pages": [
+    9
+   ],
+   "best_chunk_cov": 0.83,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_295",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "중국21-18호 2021 라이브커머스 산업 보고.pdf",
+   "gold_page": 12,
+   "gold_chunks": 2,
+   "cov_pdf": 0.94,
+   "cov_chunk": 0.94,
+   "cov_doc": 0.94,
+   "best_chunk_pages": [
+    12
+   ],
+   "best_chunk_cov": 0.94,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_296",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "중국21-18호 2021 라이브커머스 산업 보고.pdf",
+   "gold_page": 16,
+   "gold_chunks": 2,
+   "cov_pdf": 0.62,
+   "cov_chunk": 0.62,
+   "cov_doc": 0.71,
+   "best_chunk_pages": [
+    16,
+    17
+   ],
+   "best_chunk_cov": 0.62,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_297",
+   "domain": "commerce",
+   "context_type": "image",
+   "file_name": "중국21-18호 2021 라이브커머스 산업 보고.pdf",
+   "gold_page": 17,
+   "gold_chunks": 2,
+   "cov_pdf": 0.25,
+   "cov_chunk": 0.42,
+   "cov_doc": 0.75,
+   "best_chunk_pages": [
+    16,
+    17
+   ],
+   "best_chunk_cov": 0.42,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_298",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "중국21-18호 2021 라이브커머스 산업 보고.pdf",
+   "gold_page": 29,
+   "gold_chunks": 2,
+   "cov_pdf": 0.64,
+   "cov_chunk": 0.64,
+   "cov_doc": 0.64,
+   "best_chunk_pages": [
+    29
+   ],
+   "best_chunk_cov": 0.64,
+   "verdict": "ok"
+  },
+  {
+   "qid": "q_299",
+   "domain": "commerce",
+   "context_type": "paragraph",
+   "file_name": "중국21-18호 2021 라이브커머스 산업 보고.pdf",
+   "gold_page": 30,
+   "gold_chunks": 1,
+   "cov_pdf": 0.69,
+   "cov_chunk": 0.69,
+   "cov_doc": 0.76,
+   "best_chunk_pages": [
+    30,
+    31
+   ],
+   "best_chunk_cov": 0.69,
+   "verdict": "ok"
+  }
+ ]
+}

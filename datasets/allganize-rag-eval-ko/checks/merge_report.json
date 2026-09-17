@@ -1,0 +1,359 @@
+{
+  "documents": 64,
+  "pages_total": 1450,
+  "pages_by_domain": {
+    "commerce": 242,
+    "finance": 301,
+    "law": 291,
+    "medical": 302,
+    "public": 314
+  },
+  "questions": 300,
+  "questions_by_domain": {
+    "finance": 60,
+    "public": 60,
+    "medical": 60,
+    "law": 60,
+    "commerce": 60
+  },
+  "context_type": {
+    "paragraph": 148,
+    "image": 57,
+    "table": 50,
+    "text": 45
+  },
+  "untargeted_documents": [
+    "2014_08.pdf",
+    "[3.22.목.석간]질병관리본부_-_대한안과학회,_눈건강_관리를_위한_9대_생활수칙_발표.pdf",
+    "enm-26-126.pdf",
+    "jkan-38-140.pdf",
+    "jksc-25-356.pdf",
+    "소비자시대 12_20~21 겨울철 더욱 위험한 안과질환.pdf"
+  ],
+  "empty_text_pages_total": 157,
+  "docs_with_empty_text_pages": [
+    {
+      "file_name": "2024년 3월_2. 통화신용정책 운영.pdf",
+      "pages": 13,
+      "empty_text_pages": 1
+    },
+    {
+      "file_name": "2024년 3월_3. 향후 통화신용정책 방향.pdf",
+      "pages": 21,
+      "empty_text_pages": 1
+    },
+    {
+      "file_name": "★2019 제1회 증시콘서트 자료집_최종★.pdf",
+      "pages": 58,
+      "empty_text_pages": 9
+    },
+    {
+      "file_name": "한-호주 퇴직연금 포럼_책자(최종).pdf",
+      "pages": 50,
+      "empty_text_pages": 32
+    },
+    {
+      "file_name": "130292099630937500_KIFVIP2013-10.pdf",
+      "pages": 55,
+      "empty_text_pages": 3
+    },
+    {
+      "file_name": "133178946057443204_WP22-05.pdf",
+      "pages": 69,
+      "empty_text_pages": 2
+    },
+    {
+      "file_name": "(240411보도자료) 재정동향 4월호.pdf",
+      "pages": 61,
+      "empty_text_pages": 2
+    },
+    {
+      "file_name": "국가안전시스템 개편 종합대책 대국민 보고(12.31. 기준).pdf",
+      "pages": 21,
+      "empty_text_pages": 1
+    },
+    {
+      "file_name": "2024년 행정안전부 업무계획.pdf",
+      "pages": 21,
+      "empty_text_pages": 1
+    },
+    {
+      "file_name": "240319 알기쉬운 청년농신보 책자(최종본)★_배포용.pdf",
+      "pages": 32,
+      "empty_text_pages": 26
+    },
+    {
+      "file_name": "Kafm015-11-15.pdf",
+      "pages": 6,
+      "empty_text_pages": 6
+    },
+    {
+      "file_name": "2017년-안과감염병-관리지침.pdf",
+      "pages": 43,
+      "empty_text_pages": 7
+    },
+    {
+      "file_name": "08 알기 쉬운 대장암.pdf",
+      "pages": 20,
+      "empty_text_pages": 1
+    },
+    {
+      "file_name": "Colorectal-Screening-Korean-patient-guideline.pdf",
+      "pages": 50,
+      "empty_text_pages": 2
+    },
+    {
+      "file_name": "14.cancer_info.pdf",
+      "pages": 11,
+      "empty_text_pages": 11
+    },
+    {
+      "file_name": "[행정][조세] 가상자산 거래소를 운영하는 원고가 2017년에 비거주자인 회원들에게 지급한 가상자산 거래로 인한 차익.pdf",
+      "pages": 14,
+      "empty_text_pages": 1
+    },
+    {
+      "file_name": "재해보상판례 당직 중 사적 행위의 공무수행성 여부.pdf",
+      "pages": 9,
+      "empty_text_pages": 9
+    },
+    {
+      "file_name": "2024 달라지는 세금제도.pdf",
+      "pages": 32,
+      "empty_text_pages": 1
+    },
+    {
+      "file_name": "[민사] 미성년자 성형외과 코필러 주입술 시 필러물질이 미성년자에 대한 사용금지 조치를 받은 상태였던 사안.pdf",
+      "pages": 20,
+      "empty_text_pages": 1
+    },
+    {
+      "file_name": "[특허] 원고 제품들의 실시가 피고의 제1, 3, 5항 발명을 침해하지 않는다고 판단한 사례(특허법원 2022나2213).pdf",
+      "pages": 25,
+      "empty_text_pages": 1
+    },
+    {
+      "file_name": "MezzoMedia 산업 보고서 e커머스.pdf",
+      "pages": 32,
+      "empty_text_pages": 4
+    },
+    {
+      "file_name": "Dighty Data Insight Report 2023.pdf",
+      "pages": 26,
+      "empty_text_pages": 3
+    },
+    {
+      "file_name": "kr-im-new-luxury-business-trends-20220520.pdf",
+      "pages": 32,
+      "empty_text_pages": 32
+    }
+  ],
+  "gold_on_empty_text_page": [
+    {
+      "qid": "q_52",
+      "context_type": "image",
+      "file_name": "한-호주 퇴직연금 포럼_책자(최종).pdf",
+      "page": 20
+    },
+    {
+      "qid": "q_53",
+      "context_type": "image",
+      "file_name": "한-호주 퇴직연금 포럼_책자(최종).pdf",
+      "page": 21
+    },
+    {
+      "qid": "q_54",
+      "context_type": "image",
+      "file_name": "한-호주 퇴직연금 포럼_책자(최종).pdf",
+      "page": 21
+    },
+    {
+      "qid": "q_55",
+      "context_type": "image",
+      "file_name": "한-호주 퇴직연금 포럼_책자(최종).pdf",
+      "page": 23
+    },
+    {
+      "qid": "q_56",
+      "context_type": "image",
+      "file_name": "한-호주 퇴직연금 포럼_책자(최종).pdf",
+      "page": 27
+    },
+    {
+      "qid": "q_57",
+      "context_type": "image",
+      "file_name": "한-호주 퇴직연금 포럼_책자(최종).pdf",
+      "page": 27
+    },
+    {
+      "qid": "q_58",
+      "context_type": "image",
+      "file_name": "한-호주 퇴직연금 포럼_책자(최종).pdf",
+      "page": 30
+    },
+    {
+      "qid": "q_59",
+      "context_type": "image",
+      "file_name": "한-호주 퇴직연금 포럼_책자(최종).pdf",
+      "page": 32
+    },
+    {
+      "qid": "q_60",
+      "context_type": "table",
+      "file_name": "(240411보도자료) 재정동향 4월호.pdf",
+      "page": 4
+    },
+    {
+      "qid": "q_118",
+      "context_type": "paragraph",
+      "file_name": "240319 알기쉬운 청년농신보 책자(최종본)★_배포용.pdf",
+      "page": 22
+    },
+    {
+      "qid": "q_119",
+      "context_type": "paragraph",
+      "file_name": "240319 알기쉬운 청년농신보 책자(최종본)★_배포용.pdf",
+      "page": 25
+    },
+    {
+      "qid": "q_135",
+      "context_type": "text",
+      "file_name": "Kafm015-11-15.pdf",
+      "page": 2
+    },
+    {
+      "qid": "q_169",
+      "context_type": "text",
+      "file_name": "14.cancer_info.pdf",
+      "page": 7
+    },
+    {
+      "qid": "q_180",
+      "context_type": "paragraph",
+      "file_name": "재해보상판례 당직 중 사적 행위의 공무수행성 여부.pdf",
+      "page": 3
+    },
+    {
+      "qid": "q_181",
+      "context_type": "image",
+      "file_name": "재해보상판례 당직 중 사적 행위의 공무수행성 여부.pdf",
+      "page": 6
+    },
+    {
+      "qid": "q_182",
+      "context_type": "paragraph",
+      "file_name": "재해보상판례 당직 중 사적 행위의 공무수행성 여부.pdf",
+      "page": 7
+    },
+    {
+      "qid": "q_243",
+      "context_type": "paragraph",
+      "file_name": "kr-im-new-luxury-business-trends-20220520.pdf",
+      "page": 5
+    },
+    {
+      "qid": "q_244",
+      "context_type": "paragraph",
+      "file_name": "kr-im-new-luxury-business-trends-20220520.pdf",
+      "page": 7
+    },
+    {
+      "qid": "q_245",
+      "context_type": "image",
+      "file_name": "kr-im-new-luxury-business-trends-20220520.pdf",
+      "page": 10
+    },
+    {
+      "qid": "q_246",
+      "context_type": "paragraph",
+      "file_name": "kr-im-new-luxury-business-trends-20220520.pdf",
+      "page": 12
+    },
+    {
+      "qid": "q_247",
+      "context_type": "paragraph",
+      "file_name": "kr-im-new-luxury-business-trends-20220520.pdf",
+      "page": 24
+    },
+    {
+      "qid": "q_248",
+      "context_type": "paragraph",
+      "file_name": "kr-im-new-luxury-business-trends-20220520.pdf",
+      "page": 30
+    }
+  ],
+  "problems": [],
+  "vs_original": {
+    "doc_name_mismatch": [],
+    "page_count_mismatch": [
+      {
+        "file_name": "(240411보도자료) 재정동향 4월호.pdf",
+        "pages": 61,
+        "pages_declared": 4,
+        "pages_orig": 4
+      },
+      {
+        "file_name": "PRP008.pdf",
+        "pages": 6,
+        "pages_declared": 9,
+        "pages_orig": 9
+      },
+      {
+        "file_name": "[3.22.목.석간]질병관리본부_-_대한안과학회,_눈건강_관리를_위한_9대_생활수칙_발표.pdf",
+        "pages": 12,
+        "pages_declared": 3,
+        "pages_orig": 3
+      },
+      {
+        "file_name": "외교부-2024년 앙골라개황(저).pdf",
+        "pages": 47,
+        "pages_declared": 48,
+        "pages_orig": 48
+      }
+    ],
+    "declared_vs_actual_pages": [
+      {
+        "file_name": "(240411보도자료) 재정동향 4월호.pdf",
+        "pages": 61,
+        "pages_declared": 4
+      },
+      {
+        "file_name": "외교부-2024년 앙골라개황(저).pdf",
+        "pages": 47,
+        "pages_declared": 48
+      },
+      {
+        "file_name": "[3.22.목.석간]질병관리본부_-_대한안과학회,_눈건강_관리를_위한_9대_생활수칙_발표.pdf",
+        "pages": 12,
+        "pages_declared": 3
+      },
+      {
+        "file_name": "PRP008.pdf",
+        "pages": 6,
+        "pages_declared": 9
+      }
+    ],
+    "questions_unmatched_by_text": [],
+    "questions_changed": [
+      {
+        "qid": "q_75",
+        "target_file_name": "(보도자료)2024년+교육부+주요정책+추진계획+발표_업무계획.pdf",
+        "file_name": "(보도자료)2024년+교육부+주요정책+추진계획+발표_보도자료.pdf",
+        "target_page_no_orig": "6",
+        "target_page_no": "6",
+        "context_type_orig": "image",
+        "context_type": "image"
+      }
+    ]
+  },
+  "targets_missing_document": [],
+  "bad_target_page_no": [
+    {
+      "qid": "q_184",
+      "file_name": "[민사] 스마트폰 성능조절기능이 탑재된 소프트웨어 업데이트로 인한 일부 성능제한 또는 앱 실행지연 등 불이익한 결과 초래 가능성에 대한 고지의무 불완전이행 여부가 문제된 사안.pdf",
+      "target_page_no": " "
+    }
+  ],
+  "target_page_out_of_range": [],
+  "pdf_bytes_total": 447352351
+}

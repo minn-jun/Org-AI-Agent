@@ -1,0 +1,487 @@
+{
+ "base": "seed_tiers_400",
+ "seed": 20260916,
+ "count": 60,
+ "notes": {
+  "q_9": {
+   "evidence_id": "ev_mtm_planted-q_9",
+   "file": "planted-q_9.md",
+   "doc_id": "4fe09b2707986422",
+   "gold_page": 14,
+   "file_name": "★2019 제1회 증시콘서트 자료집_최종★.pdf",
+   "chars": 632
+  },
+  "q_12": {
+   "evidence_id": "ev_mtm_planted-q_12",
+   "file": "planted-q_12.md",
+   "doc_id": "ffc495ee245571db",
+   "gold_page": 6,
+   "file_name": "130292099630937500_KIFVIP2013-10.pdf",
+   "chars": 1200
+  },
+  "q_15": {
+   "evidence_id": "ev_mtm_planted-q_15",
+   "file": "planted-q_15.md",
+   "doc_id": "ffc495ee245571db",
+   "gold_page": 38,
+   "file_name": "130292099630937500_KIFVIP2013-10.pdf",
+   "chars": 1200
+  },
+  "q_21": {
+   "evidence_id": "ev_mtm_planted-q_21",
+   "file": "planted-q_21.md",
+   "doc_id": "7b1bc4039563f9bd",
+   "gold_page": 21,
+   "file_name": "133178946057443204_WP22-05.pdf",
+   "chars": 711
+  },
+  "q_23": {
+   "evidence_id": "ev_mtm_planted-q_23",
+   "file": "planted-q_23.md",
+   "doc_id": "7b1bc4039563f9bd",
+   "gold_page": 28,
+   "file_name": "133178946057443204_WP22-05.pdf",
+   "chars": 301
+  },
+  "q_24": {
+   "evidence_id": "ev_mtm_planted-q_24",
+   "file": "planted-q_24.md",
+   "doc_id": "7b1bc4039563f9bd",
+   "gold_page": 30,
+   "file_name": "133178946057443204_WP22-05.pdf",
+   "chars": 1200
+  },
+  "q_25": {
+   "evidence_id": "ev_mtm_planted-q_25",
+   "file": "planted-q_25.md",
+   "doc_id": "7b1bc4039563f9bd",
+   "gold_page": 40,
+   "file_name": "133178946057443204_WP22-05.pdf",
+   "chars": 887
+  },
+  "q_27": {
+   "evidence_id": "ev_mtm_planted-q_27",
+   "file": "planted-q_27.md",
+   "doc_id": "7b1bc4039563f9bd",
+   "gold_page": 47,
+   "file_name": "133178946057443204_WP22-05.pdf",
+   "chars": 1200
+  },
+  "q_38": {
+   "evidence_id": "ev_mtm_planted-q_38",
+   "file": "planted-q_38.md",
+   "doc_id": "a00fec2b7c9b0ca6",
+   "gold_page": 17,
+   "file_name": "2024년 3월_3. 향후 통화신용정책 방향.pdf",
+   "chars": 1200
+  },
+  "q_48": {
+   "evidence_id": "ev_mtm_planted-q_48",
+   "file": "planted-q_48.md",
+   "doc_id": "cd327b1d463eb515",
+   "gold_page": 5,
+   "file_name": "240409(보도자료) 금융위 핀테크 투자 생태계 활성화 나선다.pdf",
+   "chars": 767
+  },
+  "q_55": {
+   "evidence_id": "ev_mtm_planted-q_55",
+   "file": "planted-q_55.md",
+   "doc_id": "f265b1f68e58a9e5",
+   "gold_page": 23,
+   "file_name": "한-호주 퇴직연금 포럼_책자(최종).pdf",
+   "chars": 1200
+  },
+  "q_59": {
+   "evidence_id": "ev_mtm_planted-q_59",
+   "file": "planted-q_59.md",
+   "doc_id": "f265b1f68e58a9e5",
+   "gold_page": 32,
+   "file_name": "한-호주 퇴직연금 포럼_책자(최종).pdf",
+   "chars": 988
+  },
+  "q_60": {
+   "evidence_id": "ev_mtm_planted-q_60",
+   "file": "planted-q_60.md",
+   "doc_id": "ec9108571753001c",
+   "gold_page": 4,
+   "file_name": "(240411보도자료) 재정동향 4월호.pdf",
+   "chars": 1200
+  },
+  "q_62": {
+   "evidence_id": "ev_mtm_planted-q_62",
+   "file": "planted-q_62.md",
+   "doc_id": "e626826dd680a122",
+   "gold_page": 7,
+   "file_name": "2023_2027 국가재정운용계획 주요내용.pdf",
+   "chars": 838
+  },
+  "q_65": {
+   "evidence_id": "ev_mtm_planted-q_65",
+   "file": "planted-q_65.md",
+   "doc_id": "81ac96372d64bf34",
+   "gold_page": 6,
+   "file_name": "2024년+국립대학+육성사업+기본계획.pdf",
+   "chars": 1200
+  },
+  "q_66": {
+   "evidence_id": "ev_mtm_planted-q_66",
+   "file": "planted-q_66.md",
+   "doc_id": "96a7bd865efe7d63",
+   "gold_page": 18,
+   "file_name": "제4차(24_28)+학교도서관+진흥+기본계획.pdf",
+   "chars": 1200
+  },
+  "q_81": {
+   "evidence_id": "ev_mtm_planted-q_81",
+   "file": "planted-q_81.md",
+   "doc_id": "e626826dd680a122",
+   "gold_page": 22,
+   "file_name": "2023_2027 국가재정운용계획 주요내용.pdf",
+   "chars": 1000
+  },
+  "q_84": {
+   "evidence_id": "ev_mtm_planted-q_84",
+   "file": "planted-q_84.md",
+   "doc_id": "81ac96372d64bf34",
+   "gold_page": 21,
+   "file_name": "2024년+국립대학+육성사업+기본계획.pdf",
+   "chars": 714
+  },
+  "q_85": {
+   "evidence_id": "ev_mtm_planted-q_85",
+   "file": "planted-q_85.md",
+   "doc_id": "8edd528cded1b4ce",
+   "gold_page": 3,
+   "file_name": "2024년 행정안전부 업무계획.pdf",
+   "chars": 1200
+  },
+  "q_88": {
+   "evidence_id": "ev_mtm_planted-q_88",
+   "file": "planted-q_88.md",
+   "doc_id": "8edd528cded1b4ce",
+   "gold_page": 10,
+   "file_name": "2024년 행정안전부 업무계획.pdf",
+   "chars": 1200
+  },
+  "q_93": {
+   "evidence_id": "ev_mtm_planted-q_93",
+   "file": "planted-q_93.md",
+   "doc_id": "8edd528cded1b4ce",
+   "gold_page": 21,
+   "file_name": "2024년 행정안전부 업무계획.pdf",
+   "chars": 1200
+  },
+  "q_97": {
+   "evidence_id": "ev_mtm_planted-q_97",
+   "file": "planted-q_97.md",
+   "doc_id": "96a7bd865efe7d63",
+   "gold_page": 20,
+   "file_name": "제4차(24_28)+학교도서관+진흥+기본계획.pdf",
+   "chars": 1200
+  },
+  "q_110": {
+   "evidence_id": "ev_mtm_planted-q_110",
+   "file": "planted-q_110.md",
+   "doc_id": "47e4d141d09a28d2",
+   "gold_page": 20,
+   "file_name": "외교부-2024년 앙골라개황(저).pdf",
+   "chars": 704
+  },
+  "q_113": {
+   "evidence_id": "ev_mtm_planted-q_113",
+   "file": "planted-q_113.md",
+   "doc_id": "47e4d141d09a28d2",
+   "gold_page": 23,
+   "file_name": "외교부-2024년 앙골라개황(저).pdf",
+   "chars": 1200
+  },
+  "q_123": {
+   "evidence_id": "ev_mtm_planted-q_123",
+   "file": "planted-q_123.md",
+   "doc_id": "4750e47d8d5fe8e1",
+   "gold_page": 6,
+   "file_name": "20080813_E_2.pdf",
+   "chars": 376
+  },
+  "q_124": {
+   "evidence_id": "ev_mtm_planted-q_124",
+   "file": "planted-q_124.md",
+   "doc_id": "4750e47d8d5fe8e1",
+   "gold_page": 14,
+   "file_name": "20080813_E_2.pdf",
+   "chars": 803
+  },
+  "q_127": {
+   "evidence_id": "ev_mtm_planted-q_127",
+   "file": "planted-q_127.md",
+   "doc_id": "21424eec3a5f1bcc",
+   "gold_page": 5,
+   "file_name": "08 알기 쉬운 대장암.pdf",
+   "chars": 953
+  },
+  "q_132": {
+   "evidence_id": "ev_mtm_planted-q_132",
+   "file": "planted-q_132.md",
+   "doc_id": "0a087f59465a1ece",
+   "gold_page": 19,
+   "file_name": "Colorectal-Screening-Korean-patient-guideline.pdf",
+   "chars": 1200
+  },
+  "q_137": {
+   "evidence_id": "ev_mtm_planted-q_137",
+   "file": "planted-q_137.md",
+   "doc_id": "db23c8ba39def958",
+   "gold_page": 17,
+   "file_name": "2017년-안과감염병-관리지침.pdf",
+   "chars": 1020
+  },
+  "q_143": {
+   "evidence_id": "ev_mtm_planted-q_143",
+   "file": "planted-q_143.md",
+   "doc_id": "db23c8ba39def958",
+   "gold_page": 43,
+   "file_name": "2017년-안과감염병-관리지침.pdf",
+   "chars": 1200
+  },
+  "q_153": {
+   "evidence_id": "ev_mtm_planted-q_153",
+   "file": "planted-q_153.md",
+   "doc_id": "d529f0690d97ec0d",
+   "gold_page": 18,
+   "file_name": "journal-31-3-308.pdf",
+   "chars": 1200
+  },
+  "q_155": {
+   "evidence_id": "ev_mtm_planted-q_155",
+   "file": "planted-q_155.md",
+   "doc_id": "21424eec3a5f1bcc",
+   "gold_page": 14,
+   "file_name": "08 알기 쉬운 대장암.pdf",
+   "chars": 1084
+  },
+  "q_166": {
+   "evidence_id": "ev_mtm_planted-q_166",
+   "file": "planted-q_166.md",
+   "doc_id": "0a087f59465a1ece",
+   "gold_page": 30,
+   "file_name": "Colorectal-Screening-Korean-patient-guideline.pdf",
+   "chars": 1200
+  },
+  "q_174": {
+   "evidence_id": "ev_mtm_planted-q_174",
+   "file": "planted-q_174.md",
+   "doc_id": "287b791ddc5d1bb4",
+   "gold_page": 3,
+   "file_name": "위식도역류성질환(Gastroesophageal Reflux Disease) (2).pdf",
+   "chars": 1200
+  },
+  "q_187": {
+   "evidence_id": "ev_mtm_planted-q_187",
+   "file": "planted-q_187.md",
+   "doc_id": "23c312676e9982f9",
+   "gold_page": 28,
+   "file_name": "[민사] 스마트폰 성능조절기능이 탑재된 소프트웨어 업데이트로 인한 일부 성능제한 또는 앱 실행지연 등 불이익한 결과 초래 가능성에 대한 고지의무 불완전이행 여부가 문제된 사안.pdf",
+   "chars": 1001
+  },
+  "q_190": {
+   "evidence_id": "ev_mtm_planted-q_190",
+   "file": "planted-q_190.md",
+   "doc_id": "9f4a9f4043e0574b",
+   "gold_page": 4,
+   "file_name": "[행정] 금품 등 약속이 공무원 재직 중에 이루어지고 수수가 퇴직 후에 이루어진 경우 공무원연금법에 해당하는 지가 문제된 사건.pdf",
+   "chars": 1200
+  },
+  "q_196": {
+   "evidence_id": "ev_mtm_planted-q_196",
+   "file": "planted-q_196.md",
+   "doc_id": "e6abfeb2d03f0084",
+   "gold_page": 3,
+   "file_name": "[형사] 피고인이 자신이 근무하는 시청 사무실에서 소속 팀장과 방문자 사이의 대화를 피고인의 휴대전화로 녹음하여 통신비밀보호법 위반으로 기소된 사건.pdf",
+   "chars": 1200
+  },
+  "q_208": {
+   "evidence_id": "ev_mtm_planted-q_208",
+   "file": "planted-q_208.md",
+   "doc_id": "dfc4095d78004259",
+   "gold_page": 27,
+   "file_name": "[행정] 원고가 담배브랜드의 상표 등 사용에 관하여 다국적기업에게 지급하는 로열티가 원고가 다른 계열사 등으로부터 수입하는 담배재료의 권리사용료라는 전제에서 관세가 부과되자 그 부과처분의 취소를 구하는 사건.pdf",
+   "chars": 1200
+  },
+  "q_209": {
+   "evidence_id": "ev_mtm_planted-q_209",
+   "file": "planted-q_209.md",
+   "doc_id": "dfc4095d78004259",
+   "gold_page": 48,
+   "file_name": "[행정] 원고가 담배브랜드의 상표 등 사용에 관하여 다국적기업에게 지급하는 로열티가 원고가 다른 계열사 등으로부터 수입하는 담배재료의 권리사용료라는 전제에서 관세가 부과되자 그 부과처분의 취소를 구하는 사건.pdf",
+   "chars": 1171
+  },
+  "q_211": {
+   "evidence_id": "ev_mtm_planted-q_211",
+   "file": "planted-q_211.md",
+   "doc_id": "208bff3a16d88af7",
+   "gold_page": 4,
+   "file_name": "[특허] 제1항 출원발명은 진보성이 부정된다고 판단한 사례(특허법원 2023허10705).pdf",
+   "chars": 1200
+  },
+  "q_214": {
+   "evidence_id": "ev_mtm_planted-q_214",
+   "file": "planted-q_214.md",
+   "doc_id": "aa52d1472acf0a27",
+   "gold_page": 4,
+   "file_name": "2024 달라지는 세금제도.pdf",
+   "chars": 1155
+  },
+  "q_224": {
+   "evidence_id": "ev_mtm_planted-q_224",
+   "file": "planted-q_224.md",
+   "doc_id": "30042d69f361a8b9",
+   "gold_page": 19,
+   "file_name": "[민사] 미성년자 성형외과 코필러 주입술 시 필러물질이 미성년자에 대한 사용금지 조치를 받은 상태였던 사안.pdf",
+   "chars": 1200
+  },
+  "q_225": {
+   "evidence_id": "ev_mtm_planted-q_225",
+   "file": "planted-q_225.md",
+   "doc_id": "30042d69f361a8b9",
+   "gold_page": 19,
+   "file_name": "[민사] 미성년자 성형외과 코필러 주입술 시 필러물질이 미성년자에 대한 사용금지 조치를 받은 상태였던 사안.pdf",
+   "chars": 1200
+  },
+  "q_229": {
+   "evidence_id": "ev_mtm_planted-q_229",
+   "file": "planted-q_229.md",
+   "doc_id": "9031316649fa3d4f",
+   "gold_page": 25,
+   "file_name": "[특허] 원고 제품들의 실시가 피고의 제1, 3, 5항 발명을 침해하지 않는다고 판단한 사례(특허법원 2022나2213).pdf",
+   "chars": 463
+  },
+  "q_233": {
+   "evidence_id": "ev_mtm_planted-q_233",
+   "file": "planted-q_233.md",
+   "doc_id": "f9279224df9e77ec",
+   "gold_page": 7,
+   "file_name": "[행정] 타인자금(예금, 보험료 등 고객의 예탁자금)이 아닌 자기자금(자본금, 대출금 등 자신의 고유재산)을 운용하는 경우에도 공정거래법 제11조에 의한 의결권 제한이 적용되는지가 문제된 사건.pdf",
+   "chars": 1200
+  },
+  "q_244": {
+   "evidence_id": "ev_mtm_planted-q_244",
+   "file": "planted-q_244.md",
+   "doc_id": "212a73af53a6721c",
+   "gold_page": 7,
+   "file_name": "kr-im-new-luxury-business-trends-20220520.pdf",
+   "chars": 1200
+  },
+  "q_245": {
+   "evidence_id": "ev_mtm_planted-q_245",
+   "file": "planted-q_245.md",
+   "doc_id": "212a73af53a6721c",
+   "gold_page": 10,
+   "file_name": "kr-im-new-luxury-business-trends-20220520.pdf",
+   "chars": 1171
+  },
+  "q_246": {
+   "evidence_id": "ev_mtm_planted-q_246",
+   "file": "planted-q_246.md",
+   "doc_id": "212a73af53a6721c",
+   "gold_page": 12,
+   "file_name": "kr-im-new-luxury-business-trends-20220520.pdf",
+   "chars": 741
+  },
+  "q_249": {
+   "evidence_id": "ev_mtm_planted-q_249",
+   "file": "planted-q_249.md",
+   "doc_id": "dbac02924ac8fe7d",
+   "gold_page": 4,
+   "file_name": "Dighty Data Insight Report 2023.pdf",
+   "chars": 1050
+  },
+  "q_253": {
+   "evidence_id": "ev_mtm_planted-q_253",
+   "file": "planted-q_253.md",
+   "doc_id": "2d51f0812f22f554",
+   "gold_page": 1,
+   "file_name": "쿠팡 상장과 이베이 인수  이후 국내 이커머스 시장은 어떻게 변할까.pdf",
+   "chars": 1200
+  },
+  "q_257": {
+   "evidence_id": "ev_mtm_planted-q_257",
+   "file": "planted-q_257.md",
+   "doc_id": "2d51f0812f22f554",
+   "gold_page": 7,
+   "file_name": "쿠팡 상장과 이베이 인수  이후 국내 이커머스 시장은 어떻게 변할까.pdf",
+   "chars": 1200
+  },
+  "q_259": {
+   "evidence_id": "ev_mtm_planted-q_259",
+   "file": "planted-q_259.md",
+   "doc_id": "2d51f0812f22f554",
+   "gold_page": 10,
+   "file_name": "쿠팡 상장과 이베이 인수  이후 국내 이커머스 시장은 어떻게 변할까.pdf",
+   "chars": 1200
+  },
+  "q_272": {
+   "evidence_id": "ev_mtm_planted-q_272",
+   "file": "planted-q_272.md",
+   "doc_id": "863fb1754e434048",
+   "gold_page": 6,
+   "file_name": "이커머스 솔루션 소개자료.pdf",
+   "chars": 1200
+  },
+  "q_274": {
+   "evidence_id": "ev_mtm_planted-q_274",
+   "file": "planted-q_274.md",
+   "doc_id": "863fb1754e434048",
+   "gold_page": 12,
+   "file_name": "이커머스 솔루션 소개자료.pdf",
+   "chars": 1200
+  },
+  "q_277": {
+   "evidence_id": "ev_mtm_planted-q_277",
+   "file": "planted-q_277.md",
+   "doc_id": "863fb1754e434048",
+   "gold_page": 24,
+   "file_name": "이커머스 솔루션 소개자료.pdf",
+   "chars": 1200
+  },
+  "q_286": {
+   "evidence_id": "ev_mtm_planted-q_286",
+   "file": "planted-q_286.md",
+   "doc_id": "6a75355d33ff6bd3",
+   "gold_page": 9,
+   "file_name": "B2BDigCommEra_Translation_KR_Offer_V1.pdf",
+   "chars": 1141
+  },
+  "q_288": {
+   "evidence_id": "ev_mtm_planted-q_288",
+   "file": "planted-q_288.md",
+   "doc_id": "6a75355d33ff6bd3",
+   "gold_page": 14,
+   "file_name": "B2BDigCommEra_Translation_KR_Offer_V1.pdf",
+   "chars": 999
+  },
+  "q_294": {
+   "evidence_id": "ev_mtm_planted-q_294",
+   "file": "planted-q_294.md",
+   "doc_id": "f55c369dbbfdda19",
+   "gold_page": 9,
+   "file_name": "중국21-18호 2021 라이브커머스 산업 보고.pdf",
+   "chars": 1200
+  },
+  "q_296": {
+   "evidence_id": "ev_mtm_planted-q_296",
+   "file": "planted-q_296.md",
+   "doc_id": "f55c369dbbfdda19",
+   "gold_page": 16,
+   "file_name": "중국21-18호 2021 라이브커머스 산업 보고.pdf",
+   "chars": 1200
+  },
+  "q_298": {
+   "evidence_id": "ev_mtm_planted-q_298",
+   "file": "planted-q_298.md",
+   "doc_id": "f55c369dbbfdda19",
+   "gold_page": 29,
+   "file_name": "중국21-18호 2021 라이브커머스 산업 보고.pdf",
+   "chars": 950
+  }
+ }
+}

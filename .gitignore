@@ -1,25 +1,26 @@
-# 환경 · 실행 산출물
+# Local credentials and environment overrides
 .env
+.env.*
+!.env.example
+
+# Generated runs and model caches
 logs/
 runs/
+cache/
+
+# Python and local tooling
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
 
-# 임베딩 캐시. 코퍼스에서 재생성되고 수십 MB라 추적하지 않는다.
-cache/
-
-# ---------------------------------------------------------------------------
-# 20200504 과제 자료 — 연구실 실제 프로젝트 문서 기반. 저장소에 올리지 않는다.
-#
-# 과제번호, 사업비 금액, 참여 기관명, 계약 조건 같은 사실관계를 담고 있어
-# 코드가 아니라 데이터로 취급한다. 없으면 관련 테스트는 건너뛰고,
-# 나머지 테스트는 tests/fixtures/memory(가상 과제)로 돈다.
-# ---------------------------------------------------------------------------
-memory_seed_20200504/
-# 과제명·기관명 프로파일. 09-15에 datasets/20200504-doc_rag/로 옮겼고 검색기는 더 읽지 않는다.
-# 다시 생겨도 올라가지 않도록 남겨 둔다.
-config/corpus_profile.json
-scripts/build_lowvision_seed.py
-scripts/build_eval_cases_20200504.py
-tests/fixtures/eval_cases_20200504.jsonl
+# Temporary and OS files
+*.log
+*.tmp
+*.bak
+.DS_Store
+Thumbs.db
+desktop.ini

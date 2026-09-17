@@ -1,0 +1,81 @@
+{
+  "built_at": "2026-09-08T16:32:11",
+  "project": "20200504_지식서비스산업핵심기술개발사업",
+  "mode": "doc_rag_sqlite_export",
+  "exported_from": "leasw/RAG  index/doc_rag/chunks.sqlite3",
+  "note": "원문 재파싱 없이 doc_rag가 만들어 둔 청크를 옮겨 담았다. 청킹은 Docling HybridChunker(토큰 기준)이고, 벡터만 RAG-test와 동일한 hashed sparse TF-IDF로 다시 계산했다.",
+  "chunker": {
+    "type": "docling_hybrid_chunker",
+    "tokenizer": "BAAI/bge-m3",
+    "max_tokens_by_format": {
+      "pdf": 512,
+      "hwp": 640,
+      "docx": 512,
+      "pptx": 320,
+      "xlsx": 768,
+      "txt": 512
+    }
+  },
+  "vectorizer": {
+    "type": "hashed_sparse_tfidf",
+    "vector_dim": 4096,
+    "token_pattern": "[0-9A-Za-z가-힣_]{2,}"
+  },
+  "counts": {
+    "documents_indexed": 698,
+    "chunks_indexed": 26031,
+    "vectors_indexed": 26031,
+    "skipped_files": 823,
+    "vocabulary": 133378
+  },
+  "indexed_source_types": {
+    "pdf": 318,
+    "hwp": 263,
+    "pptx": 78,
+    "xlsx": 24,
+    "docx": 9,
+    "txt": 6
+  },
+  "chunks_by_source_type": {
+    "pdf": 12996,
+    "hwp": 11123,
+    "pptx": 1133,
+    "docx": 648,
+    "xlsx": 108,
+    "txt": 23
+  },
+  "skipped_by_reason": {
+    "unsupported_binary": 535,
+    "filtered": 194,
+    "duplicate_of": 90,
+    "empty_text": 3,
+    "too_large": 1
+  },
+  "excluded_by_filter": {
+    "시범서비스 설문 응답지": 37,
+    "개인정보 동의서": 35,
+    "근로계약/급여": 30,
+    "건강보험/4대보험": 27,
+    "통장/계좌": 21,
+    "재직/경력 증명": 15,
+    "퇴직급여": 10,
+    "이력서": 7,
+    "법정부담금": 6,
+    "신분/인감": 5,
+    "주민등록/가족": 1
+  },
+  "masked_identifiers": {
+    "[전화번호]": 767,
+    "[휴대전화]": 310,
+    "[주민등록번호]": 44,
+    "[계좌번호]": 8
+  },
+  "outputs": [
+    "manifest.json",
+    "sources.jsonl",
+    "chunks.jsonl",
+    "vectors.jsonl",
+    "idf.json",
+    "skipped.jsonl"
+  ]
+}

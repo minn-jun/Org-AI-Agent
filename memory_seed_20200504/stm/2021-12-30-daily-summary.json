@@ -1,0 +1,16 @@
+{
+  "memory_tier": "stm",
+  "source_type": "daily_conversation_summary",
+  "project": "스마트글래스 과제",
+  "title": "2021-12-30 스마트글래스 과제 대화 요약",
+  "date": "2021-12-30",
+  "permission_scope": "project_team",
+  "status": "active",
+  "summary": "오늘 대화는 이월 승인 요청서 제출, 연차보고서 4장 작성 시점, 공식 제출 기한 확인 순으로 진행됐다.",
+  "topics": [
+    "이월 승인 요청서 제출",
+    "연차보고서 4장 작성 시점",
+    "공식 제출 기한 확인",
+    "피씨티 측정 원본 수령"
+  ]
+}

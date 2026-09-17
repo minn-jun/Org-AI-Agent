@@ -1,0 +1,15 @@
+{
+  "memory_tier": "stm",
+  "source_type": "daily_conversation_summary",
+  "project": "스마트글래스 과제",
+  "title": "2021-12-27 스마트글래스 과제 대화 요약",
+  "date": "2021-12-27",
+  "permission_scope": "project_team",
+  "status": "active",
+  "summary": "오늘 대화는 연차보고서 초안 v2 완료, 특허 출원과 학술대회 발표 순서, 세목 변경 제출 준비 순으로 진행됐다.",
+  "topics": [
+    "연차보고서 초안 v2 완료",
+    "특허 출원과 발표 순서",
+    "세목 변경 제출 준비"
+  ]
+}

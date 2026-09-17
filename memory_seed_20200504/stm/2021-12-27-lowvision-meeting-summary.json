@@ -1,0 +1,15 @@
+{
+  "memory_tier": "stm",
+  "source_type": "meeting_summary",
+  "project": "스마트글래스 과제",
+  "title": "2021-12-27 스마트글래스 과제 회의 요약",
+  "date": "2021-12-27",
+  "permission_scope": "project_team",
+  "status": "active",
+  "summary": "연차보고서 내부 초안 v2를 완료했고 4장 사업비 집행 실적만 남았다. 세목 변경 요청서를 12-28에 제출하기로 확정했다.",
+  "decisions": [
+    "연차보고서 내부 초안 v2 완료, 4장만 미작성",
+    "세목 변경 요청서 2021-12-28 제출",
+    "이월 승인 요청서 2021-12-30 제출"
+  ]
+}

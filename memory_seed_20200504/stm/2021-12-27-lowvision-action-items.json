@@ -1,0 +1,27 @@
+{
+  "memory_tier": "stm",
+  "source_type": "action_items",
+  "project": "스마트글래스 과제",
+  "title": "2021-12-27 스마트글래스 과제 action item",
+  "date": "2021-12-27",
+  "permission_scope": "project_team",
+  "status": "active",
+  "summary": "세목 변경 요청서 작성과 이월 금액 확정에 대한 후속 조치다.",
+  "action_items": [
+    {
+      "owner": "산학협력단 김주임",
+      "task": "세목 변경 요청서 작성",
+      "due": "2021-12-28"
+    },
+    {
+      "owner": "산학협력단 김주임",
+      "task": "세목 변경 후 잔액 확정",
+      "due": "2021-12-29"
+    },
+    {
+      "owner": "이연구원",
+      "task": "이월 사유서 초안 작성",
+      "due": "2021-12-29"
+    }
+  ]
+}

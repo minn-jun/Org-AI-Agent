@@ -1,0 +1,46 @@
+{
+ "seed": 20260915,
+ "rule": "domain x context_type 칸별 섞어 절반, 홀수 칸은 dev/test 번갈아",
+ "excluded": [
+  "q_184"
+ ],
+ "dev": {
+  "n": 150,
+  "domain": {
+   "commerce": 30,
+   "finance": 30,
+   "law": 30,
+   "medical": 30,
+   "public": 30
+  },
+  "context_type": {
+   "image": 29,
+   "paragraph": 73,
+   "table": 25,
+   "text": 23
+  },
+  "gold_page_has_text_false": 11,
+  "flagged": []
+ },
+ "test": {
+  "n": 149,
+  "domain": {
+   "commerce": 30,
+   "finance": 30,
+   "law": 29,
+   "medical": 30,
+   "public": 30
+  },
+  "context_type": {
+   "image": 28,
+   "paragraph": 74,
+   "table": 25,
+   "text": 22
+  },
+  "gold_page_has_text_false": 10,
+  "flagged": [
+   "q_133",
+   "q_230"
+  ]
+ }
+}

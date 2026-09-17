@@ -41,7 +41,7 @@
 
 ## Quick Start
 
-저장소에는 실제 과제 자료가 없다. 흐름만 볼 때는 테스트용 가상 저장소를 쓴다.
+실제 과제 자료는 `datasets/`와 `memory_seed_20200504/`에 있다. 흐름만 볼 때는 테스트용 가상 저장소를 쓴다.
 
 ```powershell
 cd org_agent_mvp
@@ -80,7 +80,7 @@ OPENROUTER_RETRIES=2          # 연결 끊김·5xx·429 재시도 횟수 (0이�
 | 변수 | 의미 | 기본값 |
 |---|---|---|
 | `MEMORY_ROOT` | `stm/ mtm/ ltm/` 폴더를 가진 시드 폴더 | `memory_seed_20200504` (저장소 미포함) |
-| `LTM_CORPUS` | LTM으로 붙일 `chunks.jsonl`. `auto`면 `../datasets/20200504-doc_rag/export/...`에서 찾는다 | 없음 |
+| `LTM_CORPUS` | LTM으로 붙일 `chunks.jsonl`. `auto`면 `datasets/20200504-doc_rag/export/...`에서 찾는다 | 없음 |
 
 `LTM_CORPUS`를 주면 청크 코퍼스를 역색인으로 읽어 LTM에 붙인다(`ltm_corpus.py`).
 검색은 청크 단위로 하고 근거 카드는 문서 단위로 접는다.
@@ -100,10 +100,10 @@ OPENROUTER_RETRIES=2          # 연결 끊김·5xx·429 재시도 횟수 (0이�
 
 문서 필드는 청크 `metadata`나 `chunks.jsonl` 옆 `document_meta.jsonl`에 둔다. `LTM_DOC_META=none`이면 옆 파일을 읽지 않는다.
 20200504 과제 폴더 전용 규칙(폴더 이름 → 문서 유형, 버전 꼬리표, 최종제출 폴더)은 2026-09-15에
-저장소 밖 전처리(`datasets/20200504-doc_rag/scripts/enrich_doc_meta.py`)로 옮겼다.
+코퍼스 전처리(`datasets/20200504-doc_rag/scripts/enrich_doc_meta.py`)로 옮겼다.
 
-실제 과제 기반 자료(`memory_seed_20200504/`, 평가셋)는
-연구실 문서라 `.gitignore` 대상이다. 없으면 해당 테스트는 건너뛴다.
+실제 과제 기반 자료(`memory_seed_20200504/`, 평가셋)는 로컬에서 사용할 수 있다.
+자료가 없으면 해당 테스트는 건너뛴다.
 
 ---
 
@@ -156,7 +156,7 @@ OPENROUTER_RETRIES=2          # 연결 끊김·5xx·429 재시도 횟수 (0이�
 재정렬 점수는 `cache/rerank/`에 (모델, 질문, 청크) 단위로 쌓는다.
 
 공개 평가셋(Allganize RAG-Evaluation-Dataset-KO)으로 LTM 검색기만 재는 스크립트는 `scripts/bench_allganize.py`다.
-데이터는 저장소 밖 `../datasets/allganize-rag-eval-ko/ltm/`에 둔다.
+데이터는 `datasets/allganize-rag-eval-ko/ltm/`에 둔다.
 
 ---
 

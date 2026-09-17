@@ -8,7 +8,7 @@
     python scripts/bench_allganize.py cv logs/allganize/all_A.json logs/allganize/all_B.json --out cv_A_B.json
     python scripts/bench_allganize.py table logs/allganize/dev_*.json
 
-데이터 (저장소 밖): datasets/allganize-rag-eval-ko/ltm/  ← scripts/export_ltm_jsonl.py가 만든다
+데이터: datasets/allganize-rag-eval-ko/ltm/  ← scripts/export_ltm_jsonl.py가 만든다
   chunks.jsonl, cases_dev.jsonl, cases_test.jsonl   (--split all = dev + test 299문항)
 
 채점
@@ -42,7 +42,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-DATA = ROOT.parent / "datasets" / "allganize-rag-eval-ko" / "ltm"
+DATA = ROOT / "datasets" / "allganize-rag-eval-ko" / "ltm"
 LOGS = ROOT / "logs" / "allganize"
 TOP_K = 10
 SEED = 20260915

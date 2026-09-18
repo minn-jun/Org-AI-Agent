@@ -8,6 +8,10 @@ logs/
 runs/
 cache/
 
+# Local project corpus and synthetic memory seed
+/memory_seed_20200504/
+/datasets/20200504-doc_rag/
+
 # Python and local tooling
 __pycache__/
 *.py[cod]

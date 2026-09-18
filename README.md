@@ -41,7 +41,7 @@
 
 ## Quick Start
 
-실제 과제 자료는 `datasets/`와 `memory_seed_20200504/`에 있다. 흐름만 볼 때는 테스트용 가상 저장소를 쓴다.
+실제 과제 자료가 로컬에 있다면 `datasets/20200504-doc_rag/`와 `memory_seed_20200504/`에서 읽는다. 두 폴더는 Git에 포함되지 않는다. 흐름만 볼 때는 저장소에 포함된 테스트용 가상 저장소를 쓴다.
 
 ```powershell
 cd org_agent_mvp
@@ -79,7 +79,7 @@ OPENROUTER_RETRIES=2          # 연결 끊김·5xx·429 재시도 횟수 (0이�
 
 | 변수 | 의미 | 기본값 |
 |---|---|---|
-| `MEMORY_ROOT` | `stm/ mtm/ ltm/` 폴더를 가진 시드 폴더 | `memory_seed_20200504` (저장소 포함) |
+| `MEMORY_ROOT` | `stm/ mtm/ ltm/` 폴더를 가진 시드 폴더 | `memory_seed_20200504` (로컬 자료, 저장소 제외) |
 | `LTM_CORPUS` | LTM으로 붙일 `chunks.jsonl`. `auto`면 `datasets/20200504-doc_rag/export/...`에서 찾는다 | 없음 |
 
 `LTM_CORPUS`를 주면 청크 코퍼스를 역색인으로 읽어 LTM에 붙인다(`ltm_corpus.py`).
@@ -102,7 +102,7 @@ OPENROUTER_RETRIES=2          # 연결 끊김·5xx·429 재시도 횟수 (0이�
 20200504 과제 폴더 전용 규칙(폴더 이름 → 문서 유형, 버전 꼬리표, 최종제출 폴더)은 2026-09-15에
 코퍼스 전처리(`datasets/20200504-doc_rag/scripts/enrich_doc_meta.py`)로 옮겼다.
 
-실제 과제 코퍼스와 과제 기반 평가셋은 `datasets/`에, 실험용 STM/MTM 시드는 `memory_seed_20200504/`에 있다.
+실제 과제 코퍼스와 과제 기반 평가셋은 로컬 `datasets/20200504-doc_rag/`에, 실험용 STM/MTM 시드는 로컬 `memory_seed_20200504/`에 있다. 두 폴더는 Git에서 제외한다.
 시드는 실제 업무 대화가 아니라 과제 사실을 바탕으로 만든 합성 자료다.
 
 ---
@@ -180,7 +180,7 @@ python -m org_agent_mvp --context-mode summary --question "..."
 
 ## 평가
 
-실제 과제 자료가 포함된 저장소에서 실행한다. 실모델을 쓰는 옵션은 API 키와 호출 비용이 필요하다.
+실제 과제 자료를 로컬의 위 두 경로에 둔 환경에서 실행한다. 새로 클론한 저장소에는 이 자료가 없으므로 과제 평가를 바로 재현할 수 없다. 실모델을 쓰는 옵션은 API 키와 호출 비용이 필요하다.
 
 ```powershell
 # 근거 선별 품질 - LLM 호출 없음, 결정적, 무료
@@ -264,9 +264,9 @@ org_agent_mvp/
 │  ├─ bench_ltm_only.py     LTM 검색만 측정
 │  └─ bench_allganize.py    공개 평가셋의 페이지/문서 검색 측정
 ├─ datasets/
-│  ├─ 20200504-doc_rag/     실제 과제 문서의 파싱 결과, 청크, 메타데이터, 전처리 스크립트
+│  ├─ 20200504-doc_rag/     로컬 전용: 실제 과제 문서의 파싱 결과, 청크, 메타데이터, 전처리 스크립트
 │  └─ allganize-rag-eval-ko/  공개 평가셋 원본 PDF, 라벨, 청크, 검증·실험 자료
-├─ memory_seed_20200504/   과제 사실 기반 합성 STM/MTM 시드 및 LTM 자료
+├─ memory_seed_20200504/   로컬 전용: 과제 사실 기반 합성 STM/MTM 시드 및 LTM 자료
 ├─ config/                 검색어 확장 설정
 ├─ eval/
 │  ├─ run_eval.py           근거 선별 품질
@@ -292,7 +292,7 @@ python -m unittest discover -s tests -v
 컨텍스트 모드 3종, 원문 확장, 토크나이저·점수 함수·임베딩·LTM 코퍼스 모듈,
 병합 정규화, **프로세스를 바꿔도 같은 결과가 나오는지(재현성)**를 검증한다.
 
-실제 과제 평가셋 검사(`test_eval_cases_20200504.py`)도 포함된다.
+실제 과제 평가셋 검사(`test_eval_cases_20200504.py`)는 해당 로컬 자료가 있을 때 실행된다.
 
 ---
 
@@ -333,4 +333,4 @@ python -m unittest discover -s tests -v
 
 실제 OpenRouter 호출도 한 질문으로 끝까지 확인했다. “이 과제의 전체 연구개발기간은 언제부터 언제까지야?”에 대해 **2020-07-01~2022-12-31**을 답했고, 회수된 HWP 청크에서 날짜를 대조했다. 이 턴은 초기 근거 8장, 추가 검색 2회, analyzer 1회와 agent 3회 호출에 실제 토큰 **140,491개**를 썼다. 단일 성공 사례이며 평균 비용이나 전체 정확도 측정은 아니다.
 
-재현 절차와 실험별 조건·실패 사례는 로컬 상위 폴더의 `llm_study/260904-0918/99-인수인계서.md` 및 `09-2주-발표-구성안.md`에 정리했다. 이 문서들은 현재 Git 저장소 바깥에 있다. `logs/`와 `cache/`는 로컬 산출물로 Git에서 제외되며, `.env`의 API 키도 추적하지 않는다.
+재현 절차와 실험별 조건·실패 사례는 로컬 상위 폴더의 `llm_study/260904-0918/99-인수인계서.md` 및 `09-2주-발표-구성안.md`에 정리했다. 이 문서들은 현재 Git 저장소 바깥에 있다. `memory_seed_20200504/`, `datasets/20200504-doc_rag/`, `logs/`, `cache/`는 Git에서 제외되며, `.env`의 API 키도 추적하지 않는다.

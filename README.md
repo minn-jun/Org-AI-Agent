@@ -41,13 +41,14 @@
 
 ## Quick Start
 
-실제 과제 자료가 로컬에 있다면 `datasets/20200504-doc_rag/`와 `memory_seed_20200504/`에서 읽는다. 두 폴더는 Git에 포함되지 않는다. 흐름만 볼 때는 저장소에 포함된 테스트용 가상 저장소를 쓴다.
+새로 클론한 저장소에는 테스트용 가상 메모리와 Allganize 공개 평가셋이 있다. 실제 과제 자료인 `datasets/20200504-doc_rag/`와 합성 메모리 `memory_seed_20200504/`는 Git에 포함되지 않는다.
 
 ```powershell
 cd org_agent_mvp
 
 # API 없이 흐름만 확인 (가상 과제 A/B)
 $env:MEMORY_ROOT = "tests/fixtures/memory"
+$env:LTM_CORPUS = ""
 python -m org_agent_mvp --mock --verbose --question "A 과제 예산 검토에서 뭐가 지적됐어?"
 
 # 대화형 세션
@@ -55,6 +56,16 @@ python -m org_agent_mvp --mock --verbose
 ```
 
 대화 중 `exit` 또는 `quit`로 종료하고, `--session-id session-...`으로 기존 세션을 이어간다.
+
+로컬에 실제 과제 자료를 보관하고 있다면 아래처럼 경로를 지정해 실행한다. `LTM_CORPUS=auto`는 `datasets/20200504-doc_rag/export/.../chunks.jsonl`을 찾는다.
+
+```powershell
+$env:MEMORY_ROOT = "memory_seed_20200504"
+$env:LTM_CORPUS = "auto"
+python -m org_agent_mvp --mock --verbose --question "이 과제의 전체 연구개발기간은 언제부터 언제까지야?"
+```
+
+`--mock`은 실행 흐름 확인용이며 실제 모델의 답변을 재현하지 않는다.
 
 실제 모델을 쓰려면 `.env`에 키를 넣고 `--mock`을 뺀다.
 
@@ -73,7 +84,7 @@ OPENROUTER_RETRIES=2          # 연결 끊김·5xx·429 재시도 횟수 (0이�
 |---|---|---|
 | STM | 최신 대화와 당일 업무 흐름 | 회의 요약, 통화 메모, action item |
 | MTM | 진행 중인 프로젝트 지식 | 회의록, 제안서 초안, 일정표, 검토 보고 |
-| LTM | 승인된 조직 기준 지식 | 최종 계획서, 규정, 작성 기준 |
+| LTM | 장기 보관 문서와 기준 지식 | 최종 계획서, 규정, 작성 기준 |
 
 두 환경변수로 무엇을 읽을지 정한다.
 
@@ -102,8 +113,7 @@ OPENROUTER_RETRIES=2          # 연결 끊김·5xx·429 재시도 횟수 (0이�
 20200504 과제 폴더 전용 규칙(폴더 이름 → 문서 유형, 버전 꼬리표, 최종제출 폴더)은 2026-09-15에
 코퍼스 전처리(`datasets/20200504-doc_rag/scripts/enrich_doc_meta.py`)로 옮겼다.
 
-실제 과제 코퍼스와 과제 기반 평가셋은 로컬 `datasets/20200504-doc_rag/`에, 실험용 STM/MTM 시드는 로컬 `memory_seed_20200504/`에 있다. 두 폴더는 Git에서 제외한다.
-시드는 실제 업무 대화가 아니라 과제 사실을 바탕으로 만든 합성 자료다.
+실제 과제 코퍼스는 로컬 `datasets/20200504-doc_rag/`에, 실험용 STM/MTM 시드는 로컬 `memory_seed_20200504/`에 있다. 과제 기반 평가 질문은 저장소의 `tests/fixtures/eval_cases_20200504.jsonl`에 있지만, 채점에는 제외된 두 로컬 폴더가 필요하다. 시드는 실제 업무 대화가 아니라 과제 사실을 바탕으로 만든 합성 자료다.
 
 ---
 
@@ -174,13 +184,13 @@ python -m org_agent_mvp --context-mode summary --question "..."
 | `summary` | 요약만, 원문은 요청 시 |
 
 `summary`와 `hybrid`에서는 `expand_evidence` 도구가 노출된다.
-이 도구는 **재검색이 아니라 턴 안에 이미 들고 있는 카드의 조회**라 비용이 없다.
+이 도구는 **재검색이 아니라 턴 안에 이미 들고 있는 카드의 조회**다. 조회 자체에는 검색·API 비용이 없지만, 도구 결과를 모델에 다시 전달하면 모델 호출 토큰은 든다.
 
 ---
 
 ## 평가
 
-실제 과제 자료를 로컬의 위 두 경로에 둔 환경에서 실행한다. 새로 클론한 저장소에는 이 자료가 없으므로 과제 평가를 바로 재현할 수 없다. 실모델을 쓰는 옵션은 API 키와 호출 비용이 필요하다.
+과제 평가 명령은 로컬의 `datasets/20200504-doc_rag/`와 `memory_seed_20200504/`가 있어야 한다. 새로 클론한 저장소에는 과제 평가 질문만 있으므로 해당 결과 수치를 바로 재현할 수 없다. 실모델을 쓰는 옵션은 API 키와 호출 비용이 필요하다.
 
 ```powershell
 # 근거 선별 품질 - LLM 호출 없음, 결정적, 무료
@@ -192,10 +202,15 @@ python eval/run_eval.py --analyzer llm      # 실제 analyzer 사용 (유료)
 # 검색기 단계 비교
 python scripts/bench_retriever.py --stage 0 1 2 3 3h
 python scripts/bench_ltm_only.py            # 계층 병합 제외, LTM 검색만
-
 # 컨텍스트 주입 방식
 python eval/run_context_eval.py --mock      # 흐름 확인
 python eval/run_context_eval.py --limit 5   # 실모델
+```
+
+저장소에 포함된 Allganize 공개 평가셋은 과제 자료 없이 별도로 측정할 수 있다.
+
+```powershell
+python scripts/bench_allganize.py run --split test --label current
 ```
 
 `--analyzer rule`(기본)은 analyzer를 고정한 **통제 비교**다. 실운영 수치가 아니다.
@@ -288,11 +303,11 @@ org_agent_mvp/
 python -m unittest discover -s tests -v
 ```
 
-139건. 계층 prior 계산, 상대 컷, 후속 질문의 프로젝트 상속, LLM 오판 방어,
+로컬 과제 자료가 있을 때 확인한 **139건**이다. 계층 prior 계산, 상대 컷, 후속 질문의 프로젝트 상속, LLM 오판 방어,
 컨텍스트 모드 3종, 원문 확장, 토크나이저·점수 함수·임베딩·LTM 코퍼스 모듈,
 병합 정규화, **프로세스를 바꿔도 같은 결과가 나오는지(재현성)**를 검증한다.
 
-실제 과제 평가셋 검사(`test_eval_cases_20200504.py`)는 해당 로컬 자료가 있을 때 실행된다.
+실제 과제 평가셋 검사(`test_eval_cases_20200504.py`) 중 자료가 필요한 검사는 해당 로컬 폴더가 없으면 건너뛴다.
 
 ---
 
@@ -303,7 +318,7 @@ python -m unittest discover -s tests -v
 | 상수 | `_score()`의 프로젝트 +1.5 등은 근거 없는 임의값 (제목 가산점은 2026-09-16부터 기본 꺼짐) |
 | 세션 캐시 | 최근 N턴 고정 주입. 관련 턴 선택 없음 |
 | 대화 -> STM | 일일 요약 승격 경로가 구현되지 않음 |
-| LTM 적재 | 과제 폴더를 정제 없이 넣는다. 승격 규칙 미정 |
+| LTM 적재 | 개인정보 제외·마스킹과 버전 메타데이터 정리는 했지만, 승인·승격 규칙을 거친 조직 지식 저장소는 아님 |
 | 과제 전용 규칙 | 버전 접기·최종본 폴더 판정이 한 과제 폴더 구조에 맞춰져 있다 |
 | 컨텍스트 주입 | LTM 근거가 짧아 summary와 비용 차이가 작을 수 있다. 소수 질문에서만 답변·토큰을 확인했다 |
 
@@ -322,7 +337,7 @@ python -m unittest discover -s tests -v
 
 | 범위 | 결과 | 해석 |
 |---|---|---|
-| 단위·통합 테스트 | **139건 통과** | 데이터 이동 후 현재 코드에서 재확인 |
+| 단위·통합 테스트 | **139건 통과** | 로컬 과제 자료가 있는 환경에서 확인한 기록 |
 | 자체 과제 60문항, 에이전트 근거 선별 | MRR **0.426 → 0.589**, 재현율 **52.1% → 63.6%** | LTM은 실문서, STM/MTM은 합성 시드. 답변 정확도 지표가 아님 |
 | Allganize test 149문항, LTM 검색 | 페이지 MRR@10 **0.516 → 0.823** | dev 150문항에서 설정 선택 후 test 측정한 당시 결과 |
 | Allganize 현재 코드 재실행 | 페이지 MRR@10 **0.8201** | 이전 0.8234와 q_274 한 문항의 순위 차이. 실행 코드 버전이 달라 원인 단정 불가 |

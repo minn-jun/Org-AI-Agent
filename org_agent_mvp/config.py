@@ -131,6 +131,17 @@ class AppConfig:
     #:
     #: 그래서 새 문서가 이 값보다 적으면 상위 참조를 본문으로 되돌린다.
     session_ledger_min_bodies: int = 2
+    #: 원장을 켤 때 후보 전체 상한을 `PREFETCH_TOP_K`의 몇 배까지 허용할지.
+    #:
+    #: 원장은 상한을 **새 문서 기준**으로 센다(prefetch._cap). 그래야 참조가
+    #: 본문 자리를 공짜로 먹지 않는다. 그런데 참조가 그 위에 덧붙으므로
+    #: 전체 카드 수가 늘고, 그만큼 토큰이 늘어난다.
+    #:
+    #: 2026-10-07 연쇄 27턴 실측에서 2.0이 턴당 입력을 70,561 → 90,302토큰
+    #: (+28%)으로 올렸는데 정답은 25/27로 같았다. 하드코딩이던 2.0을 꺼내
+    #: 분해할 수 있게 한다. 1.0이면 참조가 본문 자리를 먹는 예전 결함으로
+    #: 돌아가므로 1.0 이하로 두지 않는다.
+    session_ledger_cap_ratio: float = 2.0
 
     @classmethod
     def load(cls) -> "AppConfig":
@@ -215,5 +226,9 @@ class AppConfig:
             ),
             session_ledger_min_bodies=int(
                 os.environ.get("SESSION_LEDGER_MIN_BODIES", "2")
+            ),
+            # 1.0 아래로 내려가면 참조가 본문 자리를 먹는다. 바닥을 둔다.
+            session_ledger_cap_ratio=max(
+                1.0, float(os.environ.get("SESSION_LEDGER_CAP_RATIO", "2.0"))
             ),
         )

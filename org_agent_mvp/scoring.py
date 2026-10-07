@@ -3,7 +3,10 @@
     RETRIEVER_SCORER=freq      빈도 기반 (기본, 0~1단계)
     RETRIEVER_SCORER=bm25      BM25 (2단계~)
     RETRIEVER_SCORER=bm25plus  BM25+ (BM25에 단어 등장 하한 δ를 더한다)
-    RETRIEVER_BM25_K1=<수>     k1을 바꾼다 (기본 2.0)
+    RETRIEVER_BM25_K1=<수>     k1을 바꾼다 (기본 1.2)
+    RETRIEVER_BM25_B=<수>      길이 보정 세기 b (범위 0~1)
+    RETRIEVER_BM25_B_SEED=<수> STM/MTM만 따로 (없으면 위 값을 따른다)
+                               기본값은 LTM 0.75 · STM/MTM 1.0으로 다르다
 
 ## 왜 BM25인가
 
@@ -71,6 +74,14 @@ K1 = 1.2
 #: (b=1.0이 MRR은 0.010 높지만 재현율이 2.8%p 낮다).
 B = 0.75
 
+#: STM/MTM의 길이 보정 기본값. LTM(0.75)과 **다르게** 둔다.
+#:
+#: 시드는 파일 하나가 카드 하나라 길이가 75토큰에서 1만 토큰 넘게까지
+#: 벌어진다(중앙값 936). 짧은 피드백 한 장이 긴 회의자료에 묻히지 않게
+#: 길이를 끝까지 본다. LTM은 청크로 갈라 길이가 고르므로 0.75를 둔다.
+#: 근거는 bm25_b()의 측정표다.
+B_SEED = 1.0
+
 #: BM25+ 하한. Lv & Zhai(2011)의 기본값이다.
 BM25_PLUS_DELTA = 1.0
 
@@ -112,6 +123,53 @@ def bm25_k1() -> float:
     return value if value > 0 else K1
 
 
+def bm25_b(scope: str = "ltm") -> float:
+    """길이 보정 세기. 0이면 길이를 아예 안 보고, 1이면 끝까지 본다.
+
+    왜 꺼냈나 (2026-10-07)
+    ----------------------
+    연쇄 질문 측정에서 회의 녹취록 한 장(17,187토큰, avgdl의 8배)이 짧은
+    피드백 문서를 밀어냈다. 질문어가 거의 다 들어 있어 tf가 압도적인데
+    `b=0.75`로는 덜 눌린다. STM/MTM은 **파일 하나가 카드 하나**라 길이가
+    75토큰에서 17,187토큰까지 벌어진다(중앙값 936의 18배). LTM은 청크로
+    갈라 길이가 고른 쪽이다.
+
+    그래서 계층별로 따로 줄 수 있게 한다. `k1`과 같은 모양이다.
+
+    측정 (진행 과제 라우팅 80문항 · 전달 20문항, 시드 50건)
+
+        b_seed  tier@1       tier@3   혼합    STM tier@1  문서 1위
+        0.75    72/80 (90%)  77/80    12/12   9/15        43/50
+        0.85    73/80 (91%)  78/80    12/12   9/15        44/50
+        0.90    74/80 (92%)  78/80    12/12   10/15       45/50
+        1.00    75/80 (94%)  78/80    12/12   11/15       45/50   <- 채택
+
+    단조롭게 올라간다. 1.0에서 tier@1 실패가 9건에서 6건으로 줄고 나빠지는
+    칸이 없다. 전달 20문항은 네 값 모두 1위 15/20 · 3위내 20/20으로 같다.
+
+    **이 표는 녹취록을 뺀 뒤의 값이다.** 녹취록이 들어 있을 때는 순서가
+    반대로 나왔다(0.9가 최고, 1.0에서 STM tier@1이 12/15 → 11/15로 하락).
+    8배 긴 문서 한 장이 길이 보정 어블레이션 자체를 뒤집고 있었다.
+    이상치 하나가 손잡이의 방향을 거꾸로 보이게 할 수 있다는 사례다.
+
+    길이 보정으로는 녹취록을 1위에서 끌어내리지 못했고(b=1.0에서도 1위),
+    결국 시드에서 제외했다(build_prentice_seed.py의 TRANSCRIPT_SUFFIX 주석).
+
+        RETRIEVER_BM25_B        둘 다에 적용되는 기본값
+        RETRIEVER_BM25_B_SEED   STM/MTM만 따로 지정 (없으면 위 값을 따른다)
+    """
+    default = B_SEED if scope == "seed" else B
+    raw = os.environ.get("RETRIEVER_BM25_B", str(default))
+    if scope == "seed":
+        raw = os.environ.get("RETRIEVER_BM25_B_SEED", raw)
+    try:
+        value = float(raw)
+    except ValueError:
+        return default
+    # b는 [0, 1] 밖에서는 식의 의미가 없다.
+    return min(1.0, max(0.0, value))
+
+
 def freq_weight(tf: int) -> float:
     """0~1단계 점수. 문서 길이도 희소성도 보지 않는다."""
     return 1.0 + math.log1p(tf)
@@ -148,9 +206,15 @@ class Bm25Params:
 
 
 def bm25_params(n_docs: int, avg_len: float, scope: str = "ltm") -> Bm25Params:
-    """현재 설정(RETRIEVER_SCORER, RETRIEVER_BM25_K1)대로 BM25 계열 파라미터를 만든다."""
+    """현재 설정대로 BM25 계열 파라미터를 만든다.
+
+    읽는 변수는 RETRIEVER_SCORER · RETRIEVER_BM25_K1 · RETRIEVER_BM25_B이고,
+    `scope="seed"`면 `_SEED` 변종을 먼저 본다.
+    """
     delta = BM25_PLUS_DELTA if scorer_name(scope) == "bm25plus" else 0.0
-    return Bm25Params(n_docs=n_docs, avg_len=avg_len, k1=bm25_k1(), delta=delta)
+    return Bm25Params(
+        n_docs=n_docs, avg_len=avg_len, k1=bm25_k1(), b=bm25_b(scope), delta=delta
+    )
 
 
 #: prefetch가 계층 점수를 합칠 때 무엇을 기준으로 1.0을 잡을지.

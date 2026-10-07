@@ -11,7 +11,7 @@
 
   LTM  확정된 계획 · 협약 · 조직 공통 매뉴얼        doc_rag 패키지
   MTM  주차별 진행 산출물(주간회의 자료)            doc_rag 패키지 + seminar/
-  STM  세미나 피드백 기록 · 회의 녹취               회의내용/ + doc_rag 패키지
+  STM  세미나 피드백 기록 · 킥오프 회의             회의내용/ 폴더만
 
 길 A(계층별 청크 코퍼스)가 아니라 **길 B**를 쓴다 — 문서 하나를 md/json 한 장으로
 내려 기존 시드와 같은 모양으로 만든다. 코드 수정이 0이고, "실제 MTM이 들어오면
@@ -98,7 +98,19 @@ FORM_PATTERNS = (
 #: 내용을 확인한 빈 양식. 표 칸이 모두 비어 있다.
 BLANK_FORMS = ("연구개발계획서 본문1", "검증 양식")
 
-#: 발화 기록은 MTM이 아니라 STM이다.
+#: 회의 녹취(.vtt)는 **넣지 않는다.** (2026-10-07)
+#:
+#: 한 파일이 avgdl의 8배라 STM 검색을 거의 다 차지한다. 질문어가 대부분
+#: 들어 있어 tf가 압도적이고, 짧은 피드백 문서가 경쟁에서 밀린다. 길이 보정을
+#: 끝까지 올려도(b=1.0) 1위를 내주지 않았고, b=1.0은 STM tier@1을 12/15에서
+#: 11/15로 떨어뜨렸다.
+#:
+#: 자료 자체도 음성 인식 잡음이 있다. "이종원"이 206회, 잘못 인식된 표기가
+#: 1회 섞여 있고, 모델이 그 1회를 그대로 답에 옮긴 사례가 나왔다. 원문에
+#: 있으니 할루시네이션은 아니지만, 사람 이름을 틀리게 답하는 것은 같다.
+#:
+#: 청크로 갈라 넣으면 길이 문제는 풀리지만 시드는 "파일 하나가 카드 하나"
+#: 구조다. 구조를 바꾸기 전까지는 제외한다.
 TRANSCRIPT_SUFFIX = ".vtt"
 
 #: 특정 작성자의 발표자료는 PDF 추출에서 **띄어쓰기가 사라졌다**("컨텍스트구성").
@@ -158,8 +170,11 @@ def tier_of(rel_path: str) -> str | None:
         return None
     if any(part in name for part in BLANK_FORMS):
         return None
+    # 녹취록은 계층을 주지 않는다. 위 주석 참고.
+    if path.lower().endswith(TRANSCRIPT_SUFFIX):
+        return None
     if any(part in path for part in MTM_PATHS):
-        return "stm" if path.lower().endswith(TRANSCRIPT_SUFFIX) else "mtm"
+        return "mtm"
     if any(part in path for part in LTM_PATHS):
         return "ltm"
     return None
@@ -325,9 +340,9 @@ def convert_package(dry: bool) -> dict:
                         source_note = f"seminar/{candidates[0].name} (PDF 띄어쓰기 손실 대체)"
                         replaced.append(f"{date} {candidates[0].name}")
 
-            if tier == "stm":
-                meta_type = "meeting_transcript"
-            elif tier == "mtm":
+            # 녹취록을 빼면서 이 경로로 들어오는 stm은 없어졌다. STM은
+            # 회의내용/ 폴더에서만 들어온다(킥오프 1 · 세미나 피드백 10).
+            if tier == "mtm":
                 meta_type = "weekly_meeting"
             elif "매뉴얼" in doc["file_name"]:
                 meta_type = "manual"

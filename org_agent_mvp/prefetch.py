@@ -72,6 +72,7 @@ class MemoryPrefetcher:
         cut_ratio: float = 0.3,
         min_cards: int = 1,
         tier_floor: int = 1,
+        ledger_cap_ratio: float = 2.0,
     ):
         self.memory_store = memory_store
         self.total_top_k = total_top_k
@@ -80,6 +81,8 @@ class MemoryPrefetcher:
         self.cut_ratio = cut_ratio
         self.min_cards = min_cards
         self.tier_floor = tier_floor
+        # 원장을 켤 때만 쓰인다. 1.0 아래면 참조가 본문 자리를 먹는다.
+        self.ledger_cap_ratio = max(1.0, float(ledger_cap_ratio))
 
     def prefetch(
         self,
@@ -344,12 +347,16 @@ class MemoryPrefetcher:
         본문 카드와 같은 무게로 세면 안 된다. 같이 세면 턴이 쌓일수록 새
         근거가 0장이 되고, 2턴째가 1턴째보다 정보가 적어진다.
 
-        참조가 무한히 붙지도 않게 전체는 상한의 2배에서 끊는다.
+        참조가 무한히 붙지도 않게 전체는 `ledger_cap_ratio`배에서 끊는다.
+        이 배수가 원장의 토큰 대가를 정한다 — 2.0에서 턴당 입력이 28% 늘었다
+        (2026-10-07 연쇄 27턴).
         """
         if not delivered:
             return cards[: self.total_top_k]
         known = {str(item) for item in delivered}
-        ceiling = self.total_top_k * 2
+        ceiling = max(
+            self.total_top_k, int(self.total_top_k * self.ledger_cap_ratio)
+        )
         picked: list[dict[str, Any]] = []
         fresh = 0
         for card in cards:

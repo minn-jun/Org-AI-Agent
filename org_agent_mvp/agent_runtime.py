@@ -190,6 +190,7 @@ class AgentRuntime:
             cut_ratio=config.prefetch_cut_ratio,
             min_cards=config.prefetch_min_cards,
             tier_floor=config.prefetch_tier_floor,
+            ledger_cap_ratio=config.session_ledger_cap_ratio,
         )
         self.context_builder = ContextBuilder(
             context_mode=config.context_mode,

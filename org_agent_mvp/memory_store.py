@@ -119,11 +119,22 @@ def build_memory_store(config, filter_penalty: float | None = None) -> "MemorySt
     `config.ltm_corpus_path`가 있으면 실제 과제 문서를 LTM으로 붙인다.
     코퍼스 로드는 5초쯤 걸리므로(26,586청크 역색인) 실행마다 한 번만 한다.
     """
-    corpus = LtmCorpus(config.ltm_corpus_path) if config.ltm_corpus_path else None
+    corpus = (
+        LtmCorpus(
+            config.ltm_corpus_path,
+            excerpt_chars=config.ltm_excerpt_chars,
+            chunks_per_doc=config.ltm_chunks_per_doc,
+        )
+        if config.ltm_corpus_path
+        else None
+    )
     return MemoryStore(
         config.memory_root,
         filter_penalty=config.filter_penalty if filter_penalty is None else filter_penalty,
         ltm_corpus=corpus,
+        # 시드 문서 발췌는 따로 정할 수 있다. 0이면 청크 쪽 값을 따른다.
+        excerpt_chars=getattr(config, "seed_excerpt_chars", 0)
+        or config.ltm_excerpt_chars,
     )
 
 
@@ -133,9 +144,12 @@ class MemoryStore:
         root: Path,
         filter_penalty: float = DEFAULT_FILTER_PENALTY,
         ltm_corpus: "LtmCorpus | None" = None,
+        excerpt_chars: int = 600,
     ):
         self.root = root
         self.filter_penalty = filter_penalty
+        # 시드 문서(STM/MTM)의 카드 본문 길이. LTM 청크와 같은 값을 쓴다.
+        self.excerpt_chars = max(1, int(excerpt_chars))
         # 실제 과제 문서를 LTM으로 붙일 때만 들어온다. 없으면 기존처럼
         # `ltm/` 폴더의 파일만 LTM으로 쓴다.
         self.ltm_corpus = ltm_corpus
@@ -433,4 +447,45 @@ class MemoryStore:
 
     def _content_excerpt(self, text: str) -> str:
         compact = re.sub(r"\s+", " ", text).strip()
-        return compact[:600]
+        return compact[: self.excerpt_chars]
+
+    def chunk_context(
+        self,
+        document_id: str,
+        chunk_index: int,
+        *,
+        neighbors: int = 1,
+        max_chars: int = 6000,
+    ) -> dict[str, Any]:
+        """LTM 청크의 원문을 돌려준다. 코퍼스가 없으면 찾지 못한 것으로 답한다.
+
+        시드 문서(STM/MTM)는 파일 하나가 문서 하나라 청크 개념이 없다.
+        그쪽은 `documents`에서 본문을 직접 읽는다.
+        """
+        if self.ltm_corpus is not None:
+            found = self.ltm_corpus.chunk_context(
+                document_id, chunk_index, neighbors=neighbors, max_chars=max_chars
+            )
+            if found.get("found"):
+                return found
+        for doc in self.documents:
+            if doc.path.name != document_id:
+                continue
+            body = re.sub(r"\s+", " ", doc.text).strip()[:max_chars]
+            return {
+                "document_id": document_id,
+                "title": str(doc.metadata.get("title", doc.path.stem)),
+                "path": str(doc.path.relative_to(self.root)),
+                "chunk_count": 1,
+                "found": True,
+                "chunks": [
+                    {
+                        "chunk_index": 0,
+                        "page_nos": [],
+                        "is_requested": True,
+                        "content": body,
+                    }
+                ],
+                "chars": len(body),
+            }
+        return {"document_id": document_id, "found": False, "chunks": []}

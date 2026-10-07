@@ -29,7 +29,6 @@ RETRIEVE_MEMORY_TOOL: dict[str, Any] = {
                     "description": "Optional metadata filters.",
                     "properties": {
                         "project": {"type": "string"},
-                        "date_range": {"type": "string"},
                         "document_types": {
                             "type": "array",
                             "items": {"type": "string"},

@@ -4,6 +4,7 @@ import math
 import os
 from dataclasses import dataclass
 from typing import Any
+from collections.abc import Collection
 
 from .memory_store import MemoryStore
 from .scoring import RRF_K, ZSCORE_MIN_POOL, hybrid_weight, normalize_mode
@@ -80,7 +81,17 @@ class MemoryPrefetcher:
         self.min_cards = min_cards
         self.tier_floor = tier_floor
 
-    def prefetch(self, plan: QueryPlan) -> PrefetchResult:
+    def prefetch(
+        self,
+        plan: QueryPlan,
+        *,
+        delivered: Collection[str] = (),
+    ) -> PrefetchResult:
+        """`delivered`는 **앞선 턴에 본문을 전달한 문서**다(세션 전달 원장).
+
+        주면 상한을 새 문서 기준으로 세므로, 이미 본 문서가 자리를 차지하지
+        않는다. 빈 값이면 예전과 완전히 같다.
+        """
         priors = {tier: float(plan.memory_weights.get(tier, 0.0)) for tier in TIERS}
         if not plan.memory_needed:
             return PrefetchResult(
@@ -168,7 +179,7 @@ class MemoryPrefetcher:
                     ranks[id(card)] * (1.0 + self.alpha * card["tier_prior"]), 4
                 )
             return self._finish(candidates, priors, collected, deduped,
-                                tier_result_counts, max_raw)
+                                tier_result_counts, max_raw, delivered)
 
         if mode in {"zscore", "hybrid"}:
             # 계층 최고점이 아니라 **계층 안에서 몇 σ 튀는지**로 맞춘다.
@@ -242,7 +253,7 @@ class MemoryPrefetcher:
             )
 
         return self._finish(candidates, priors, collected, deduped,
-                            tier_result_counts, max_raw)
+                            tier_result_counts, max_raw, delivered)
 
     def _finish(
         self,
@@ -252,6 +263,7 @@ class MemoryPrefetcher:
         deduped: dict[str, dict[str, Any]],
         tier_result_counts: dict[str, int],
         max_raw: float,
+        delivered: Collection[str] = (),
     ) -> PrefetchResult:
         """정규화가 끝난 카드로 컷과 계층 최소 자리를 적용한다.
 
@@ -268,7 +280,7 @@ class MemoryPrefetcher:
         # 값을 2 이상으로 올리면 컷 아래 문서를 강제로 넣게 되므로 주의한다.
         if ranked and len(kept) < self.min_cards:
             kept = ranked[: self.min_cards]
-        cards = self._apply_tier_floor(kept, priors)
+        cards = self._apply_tier_floor(kept, priors, delivered)
 
         return PrefetchResult(
             tier_priors=priors,
@@ -285,6 +297,7 @@ class MemoryPrefetcher:
         self,
         eligible: list[dict[str, Any]],
         priors: dict[str, float],
+        delivered: Collection[str] = (),
     ) -> list[dict[str, Any]]:
         """계층별 최소 자리를 보장한다.
 
@@ -297,7 +310,7 @@ class MemoryPrefetcher:
         관련 없는 문서가 끌려 들어오지 않는다.
         """
         if self.tier_floor <= 0 or not eligible:
-            return eligible[: self.total_top_k]
+            return self._cap(eligible, delivered)
 
         reserved: list[dict[str, Any]] = []
         taken: set[str] = set()
@@ -317,8 +330,36 @@ class MemoryPrefetcher:
         # 예약분을 앞에 두어야 상한(total_top_k)에서 잘리지 않는다.
         # 여기서 다시 전역 정렬하면 예약이 무효가 되므로 자른 뒤에 정렬한다.
         rest = [card for card in eligible if str(card["evidence_id"]) not in taken]
-        selected = (reserved + rest)[: self.total_top_k]
+        selected = self._cap(reserved + rest, delivered)
         return sorted(selected, key=lambda card: card["final_score"], reverse=True)
+
+    def _cap(
+        self,
+        cards: list[dict[str, Any]],
+        delivered: Collection[str] = (),
+    ) -> list[dict[str, Any]]:
+        """상한을 적용한다. `delivered`를 주면 **새 문서만** 센다.
+
+        이미 전달한 문서는 컨텍스트에 참조 한 줄로 들어가므로(전달 원장)
+        본문 카드와 같은 무게로 세면 안 된다. 같이 세면 턴이 쌓일수록 새
+        근거가 0장이 되고, 2턴째가 1턴째보다 정보가 적어진다.
+
+        참조가 무한히 붙지도 않게 전체는 상한의 2배에서 끊는다.
+        """
+        if not delivered:
+            return cards[: self.total_top_k]
+        known = {str(item) for item in delivered}
+        ceiling = self.total_top_k * 2
+        picked: list[dict[str, Any]] = []
+        fresh = 0
+        for card in cards:
+            if fresh >= self.total_top_k or len(picked) >= ceiling:
+                break
+            document_id = str((card.get("source_ref") or {}).get("document_id", ""))
+            if document_id not in known:
+                fresh += 1
+            picked.append(card)
+        return picked
 
     @staticmethod
     def _raw(card: dict[str, Any]) -> float:

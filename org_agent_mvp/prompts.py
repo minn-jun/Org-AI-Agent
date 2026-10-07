@@ -21,11 +21,40 @@ prefetch 근거에 대해:
 """
 
 
+#: 근거에 없는 값을 지어내지 않게 하는 추가 안내.
+#:
+#: 2026-09-28 실측(Allganize 20문항, 답변 채점): 정답 문서는 20/20 확보했는데 답이 맞은 것은
+#: 10건이었다. 오답 3건은 모두 표·그림 안 수치를 묻는 질문이었고, 그중 2건은 모델이 원문에
+#: 없는 숫자를 채워 넣었다(조발생률 68.8명, 지원 예산 50억→100억). 근거가 글로 없을 때
+#: "확인되지 않는다"고 말한 것은 20건 중 1건뿐이었다.
+#:
+#: PROMPT_EVIDENCE_STRICT=1로 켠다. 효과를 재기 전까지 기본은 끔이다.
+EVIDENCE_STRICT = """
+근거 사용에 대해:
+- 수치, 날짜, 금액, 비율, 고유명사는 **근거 본문에 있는 값만** 쓴다. 기억이나 일반 지식으로 채우지 않는다.
+- 근거에 값이 없으면 계산하거나 추정하지 말고, 어떤 값이 확인되지 않았는지 밝힌다.
+- 표나 그림에서 읽어야 하는 값이 근거 본문에 없으면 "근거에서 확인되지 않는다"고 답한다.
+  비슷한 다른 수치를 대신 제시하지 않는다.
+- 확인된 부분과 확인되지 않은 부분을 나눠서 답한다. 확인되지 않은 부분을 채우려고 다시 검색하지 않는다.
+"""
+
+
 def system_prompt() -> str:
-    """시스템 프롬프트. PROMPT_PREFETCH_HINT로 prefetch 안내를 덧붙일 수 있다."""
-    if os.environ.get("PROMPT_PREFETCH_HINT", "0").strip().lower() in {"1", "true", "yes", "on"}:
-        return SYSTEM_PROMPT.rstrip() + "\n" + PREFETCH_HINT
-    return SYSTEM_PROMPT
+    """시스템 프롬프트. 환경변수로 추가 안내를 덧붙일 수 있다.
+
+    PROMPT_PREFETCH_HINT — prefetch가 이미 검색했다는 안내 (기본 꺼짐)
+    PROMPT_EVIDENCE_STRICT — 근거에 없는 값을 쓰지 말라는 안내 (기본 꺼짐)
+    """
+    text = SYSTEM_PROMPT
+    if _flag("PROMPT_PREFETCH_HINT"):
+        text = text.rstrip() + "\n" + PREFETCH_HINT
+    if _flag("PROMPT_EVIDENCE_STRICT"):
+        text = text.rstrip() + "\n" + EVIDENCE_STRICT
+    return text
+
+
+def _flag(name: str) -> bool:
+    return os.environ.get(name, "0").strip().lower() in {"1", "true", "yes", "on"}
 
 
 SYSTEM_PROMPT = """너는 조직지식 에이전트 MVP다.

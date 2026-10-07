@@ -9,7 +9,7 @@ from uuid import uuid4
 
 from .config import AppConfig
 from .context_builder import ContextBuilder
-from .memory_store import MemoryStore
+from .memory_store import MAX_RETRIEVE_TOP_K, MemoryStore
 from .prefetch import MemoryPrefetcher, prefetch_query
 from .prompts import system_prompt
 from .query_analyzer import QueryAnalyzer, RuleBasedQueryAnalyzer
@@ -77,9 +77,39 @@ class TokenUsage:
 
 @dataclass
 class AgentTrace:
+    """한 턴의 실행 기록.
+
+    근거를 세 단계로 나눠 적는다. 예전에는 한 칸(`final_sources`)에 섞여 있어서
+    "찾았다"와 "전달했다"와 "썼다"를 구분할 수 없었다.
+
+      retrieved_sources  검색이 찾아낸 후보 전체
+      injected_sources   1차 컨텍스트에 **실제로 들어간** 근거
+      tool_sources       실행 중 retrieve_memory로 추가된 근거
+      final_sources      모델이 받은 전체 (injected + tool)
+      cited_sources      답변 본문에 제목이나 출처가 나타난 근거 (문자열 일치 추정)
+
+    2026-09-28 Allganize 20문항에서 후보 8건 중 6~7건만 주입된 문항이 15건이었다.
+    그때 기록은 8건 전부를 근거로 적고 있었다.
+    """
+
     llm_calls: int = 0
     reasoning_steps: list[dict[str, Any]] = field(default_factory=list)
     tool_calls: list[dict[str, Any]] = field(default_factory=list)
+    retrieved_sources: list[str] = field(default_factory=list)
+    injected_sources: list[str] = field(default_factory=list)
+    tool_sources: list[str] = field(default_factory=list)
+    dropped_evidence_ids: list[str] = field(default_factory=list)
+    cited_sources: list[str] = field(default_factory=list)
+    #: 상한에 걸려 실행하지 않은 도구 요청 수.
+    skipped_tool_calls: int = 0
+    #: 앞선 턴에 본문을 전달한 문서(세션 전달 원장). 원장이 꺼져 있으면 빈 목록이다.
+    session_delivered_sources: list[str] = field(default_factory=list)
+    #: 그중 이번 턴 컨텍스트에 **참조 카드로만** 들어간 문서.
+    reference_sources: list[str] = field(default_factory=list)
+    #: 이번 턴에 본문을 전달한 카드 원본. 턴이 끝날 때 원장에 적는다.
+    delivered_cards: list[dict[str, Any]] = field(default_factory=list)
+    #: source_id -> 제목. 인용 판정에만 쓴다.
+    source_titles: dict[str, str] = field(default_factory=dict)
     final_sources: list[str] = field(default_factory=list)
     stopped_reason: str = ""
     session_id: str = ""
@@ -145,8 +175,11 @@ class AgentRuntime:
         self.client = client
         self.memory_store = memory_store
         self.tools = [RETRIEVE_MEMORY_TOOL]
-        if config.context_mode != "full":
+        if config.context_mode != "full" or config.session_evidence_ledger:
             # full 모드는 원문을 이미 전부 넣으므로 확장할 것이 없다.
+            # 단 전달 원장을 켜면 이전 턴 문서가 본문 없이 들어오므로,
+            # full 모드에서도 되불러오는 도구가 있어야 한다. 없으면 참조만
+            # 보여 주고 본문 경로를 막는 셈이 된다.
             self.tools.append(EXPAND_EVIDENCE_TOOL)
         self.query_analyzer = query_analyzer or RuleBasedQueryAnalyzer()
         self.prefetcher = MemoryPrefetcher(
@@ -158,7 +191,11 @@ class AgentRuntime:
             min_cards=config.prefetch_min_cards,
             tier_floor=config.prefetch_tier_floor,
         )
-        self.context_builder = ContextBuilder(context_mode=config.context_mode)
+        self.context_builder = ContextBuilder(
+            context_mode=config.context_mode,
+            max_evidence_chars=config.max_evidence_chars,
+            ledger_min_bodies=config.session_ledger_min_bodies,
+        )
         self.session_store = SessionStore(
             config.project_root / "logs" / "sessions",
             cache_turns=config.session_cache_turns,
@@ -185,8 +222,20 @@ class AgentRuntime:
                 ),
             },
         }
-        prefetch = self.prefetcher.prefetch(plan)
-        runtime_context = self.context_builder.build(plan, prefetch.cards, recent_turns)
+        # 앞선 턴에 본문을 전달한 문서. 원장이 꺼져 있으면 빈 dict이고,
+        # 그때는 아래 prefetch와 build_context가 예전과 똑같이 동작한다.
+        ledger = (
+            self.session_store.delivered(session)
+            if self.config.session_evidence_ledger
+            else {}
+        )
+        # 상한을 새 문서 기준으로 세게 한다. 참조로 줄어든 자리를 새 근거가
+        # 채우지 않으면, 원장은 정보를 줄이기만 하고 왕복을 늘린다.
+        prefetch = self.prefetcher.prefetch(plan, delivered=set(ledger))
+        built = self.context_builder.build_context(
+            plan, prefetch.cards, recent_turns, delivered=ledger
+        )
+        runtime_context = built.text
         messages: list[dict[str, Any]] = [
             {"role": "system", "content": system_prompt()},
             {"role": "system", "content": runtime_context},
@@ -215,8 +264,13 @@ class AgentRuntime:
         # 규칙 기반 analyzer는 LLM을 호출하지 않으므로 0으로 남는다.
         trace.tokens.analyzer_calls = 1 if analyzer_usage else 0
         trace.context_mode = self.config.context_mode
+        trace.session_delivered_sources = list(ledger)
         # expand_evidence는 재검색이 아니라 이 색인을 조회한다.
-        evidence_index = {str(card["evidence_id"]): card for card in prefetch.cards}
+        # 원장을 켰으면 **이전 턴에 전달한 근거도** 되불러올 수 있어야 한다.
+        evidence_index = self.session_store.delivered_cards(session) if ledger else {}
+        evidence_index.update(
+            {str(card["evidence_id"]): card for card in prefetch.cards}
+        )
         turn_logger = TurnLogger(log_dir) if log_dir else None
         seen_tier_queries: set[tuple[str, str]] = set()
 
@@ -271,17 +325,46 @@ class AgentRuntime:
             "context_built",
             {
                 "recent_turn_count": min(len(recent_turns), 4),
-                "evidence_count": len(prefetch.cards),
+                # candidate와 injected를 나눠 적는다. 예전의 evidence_count는
+                # candidate 값이었는데 이름만 보고 주입 건수로 읽히고 있었다.
+                "candidate_count": len(prefetch.cards),
+                "injected_count": len(built.injected),
+                "dropped_count": len(built.dropped_evidence_ids),
+                "dropped_evidence_ids": built.dropped_evidence_ids,
+                "evidence_chars": built.evidence_chars,
+                "max_evidence_chars": self.config.max_evidence_chars,
                 "context_chars": len(runtime_context),
             },
         )
         for card in prefetch.cards:
             source = card.get("source_ref", {}).get("document_id")
-            if source and source not in trace.final_sources:
-                trace.final_sources.append(source)
+            if not source:
+                continue
+            trace.source_titles.setdefault(str(source), str(card.get("title", "")))
+            if source not in trace.retrieved_sources:
+                trace.retrieved_sources.append(source)
+        trace.injected_sources = built.injected_source_ids
+        trace.reference_sources = built.reference_source_ids
+        trace.dropped_evidence_ids = list(built.dropped_evidence_ids)
+        # 모델이 받은 근거만 final_sources에 넣는다. 도구 결과는 실행할 때 더한다.
+        trace.final_sources = list(trace.injected_sources)
+        # 원장에 적을 것은 **본문을 전달한** 카드뿐이다. 참조만 준 문서는
+        # 이미 원장에 들어 있고, 다시 적으면 처음 전달한 턴 번호가 지워진다.
+        injected_ids = {str(card.get("evidence_id")) for card in built.injected}
+        trace.delivered_cards = [
+            card
+            for card in prefetch.cards
+            if str(card.get("evidence_id")) in injected_ids
+        ]
         for _ in range(self.config.max_tool_calls + 1):
             trace.llm_calls += 1
             message_roles = [message.get("role", "") for message in messages]
+            # 상한에 도달했으면 도구 목록을 빼고 호출한다.
+            # 예전에는 안내 메시지만 덧붙이고 도구를 계속 넘겼다. 안내는 지킬
+            # 의무가 없는 요청이라 실제 제한이 아니었다 — 상한 3회인데 8회가
+            # 실행되는 것을 재현했다. 여기서는 호출 자체에서 뺀다.
+            tools_left = self.config.max_tool_calls - len(trace.tool_calls)
+            tools_for_call = self.tools if tools_left > 0 else None
             self._emit(
                 event_callback,
                 turn_logger,
@@ -289,13 +372,14 @@ class AgentRuntime:
                 {
                     "llm_call": trace.llm_calls,
                     "message_count": len(messages),
-                    "tool_count": len(self.tools),
+                    "tool_count": len(tools_for_call or []),
+                    "tool_calls_left": max(0, tools_left),
                     "message_roles": message_roles,
                 },
             )
             chat_response = self.client.chat(
                 messages,
-                self.tools,
+                tools_for_call,
                 model=self.config.agent_model,
                 temperature=0.2,
             )
@@ -338,13 +422,17 @@ class AgentRuntime:
             if not tool_calls:
                 content = assistant_message.get("content") or ""
                 trace.stopped_reason = "final_answer"
+                trace.cited_sources = self._cited_sources(content, trace)
                 self._emit(
                     event_callback,
                     turn_logger,
                     "final_answer",
                     {
                         "stopped_reason": trace.stopped_reason,
+                        "retrieved_count": len(trace.retrieved_sources),
+                        "injected_count": len(trace.injected_sources),
                         "source_count": len(trace.final_sources),
+                        "cited_count": len(trace.cited_sources),
                         "tokens": trace.tokens.to_dict(),
                         "context_mode": trace.context_mode,
                         "expansion_count": len(trace.expanded_ids),
@@ -355,12 +443,22 @@ class AgentRuntime:
                     "trace": self._trace_dict(trace),
                     "messages": messages + [assistant_message],
                 }
-                self._save_session_turn(session, turn_logger, user_query, result)
+                self._save_session_turn(
+                    session, turn_logger, user_query, result, trace
+                )
                 self._write_turn_log(turn_logger, user_query, result)
                 return result
 
             messages.append(assistant_message)
             for tool_call in tool_calls:
+                # 한 응답에 도구 요청이 여러 개 들어오면 예전에는 전부 실행했다.
+                # 남은 횟수만 실행하고 나머지는 실행하지 않은 것으로 응답한다.
+                # tool_call마다 응답 메시지는 반드시 붙여야 한다 — 빠지면
+                # 다음 호출에서 대화 형식이 깨진다.
+                if len(trace.tool_calls) >= self.config.max_tool_calls:
+                    trace.skipped_tool_calls += 1
+                    messages.append(self._tool_limit_message(tool_call, turn_logger))
+                    continue
                 result_message = self._execute_tool_call(
                     tool_call,
                     seen_tier_queries,
@@ -377,7 +475,11 @@ class AgentRuntime:
                     event_callback,
                     turn_logger,
                     "tool_limit_reached",
-                    {"max_tool_calls": self.config.max_tool_calls},
+                    {
+                        "max_tool_calls": self.config.max_tool_calls,
+                        "executed": len(trace.tool_calls),
+                        "skipped": trace.skipped_tool_calls,
+                    },
                 )
                 messages.append(
                     {
@@ -396,7 +498,7 @@ class AgentRuntime:
             "trace": self._trace_dict(trace),
             "messages": messages,
         }
-        self._save_session_turn(session, turn_logger, user_query, result)
+        self._save_session_turn(session, turn_logger, user_query, result, trace)
         self._write_turn_log(turn_logger, user_query, result)
         return result
 
@@ -406,10 +508,22 @@ class AgentRuntime:
         turn_logger: TurnLogger | None,
         user_query: str,
         result: dict[str, Any],
+        trace: "AgentTrace | None" = None,
     ) -> None:
         turn_id = turn_logger.turn_id if turn_logger else (
             datetime.now().strftime("%Y%m%d-%H%M%S-") + uuid4().hex[:8]
         )
+        # 전달 원장은 append_turn **앞**에서 넣는다. append_turn이 저장까지
+        # 하므로 같은 쓰기에 함께 담긴다.
+        if self.config.session_evidence_ledger and trace is not None:
+            self.session_store.record_delivered(
+                session,
+                trace.delivered_cards,
+                turn_index=len(session.get("turns", [])) + 1,
+                turn_id=turn_id,
+                max_docs=self.config.session_ledger_max_docs,
+                excerpt_chars=self.config.ltm_excerpt_chars,
+            )
         session_path = self.session_store.append_turn(
             session,
             {
@@ -480,14 +594,44 @@ class AgentRuntime:
             if card is None:
                 unknown.append(evidence_id)
                 continue
+            ref = card.get("source_ref") or {}
+            document_id = str(ref.get("document_id", ""))
+            # 카드에 실린 발췌가 아니라 원문을 읽는다. 예전에는 카드의
+            # content_excerpt를 그대로 돌려줘서, 원문을 요청해도 이미 본 것과
+            # 같은 글자만 돌아왔다(둘 다 같은 600자였다).
+            source = self.memory_store.chunk_context(
+                document_id,
+                int(ref.get("chunk_index") or 0),
+                neighbors=1,
+                max_chars=self.config.max_evidence_chars,
+            )
+            if source.get("found"):
+                body = "\n\n".join(
+                    chunk["content"] for chunk in source.get("chunks", [])
+                )
+                pages = sorted(
+                    {
+                        page
+                        for chunk in source.get("chunks", [])
+                        for page in chunk.get("page_nos", [])
+                    }
+                )
+            else:
+                # 원문을 못 찾으면 최소한 카드 발췌라도 준다. 빈 내용을 주면
+                # 모델이 "근거 없음"으로 읽는다.
+                body = str(card.get("content_excerpt", ""))
+                pages = list(ref.get("page_nos") or [])
             expanded.append(
                 {
                     "evidence_id": evidence_id,
                     "title": card.get("title"),
                     "date": card.get("date"),
                     "project": card.get("project"),
-                    "source_id": card.get("source_ref", {}).get("document_id", ""),
-                    "content": card.get("content_excerpt", ""),
+                    "source_id": document_id,
+                    "page_nos": pages,
+                    "content": body,
+                    "content_chars": len(body),
+                    "from_source": bool(source.get("found")),
                 }
             )
             if evidence_id not in trace.expanded_ids:
@@ -609,12 +753,28 @@ class AgentRuntime:
             }
         else:
             seen_tier_queries.add(repeat_key)
+            requested_top_k = int(args.get("top_k") or self.config.default_top_k)
+            top_k = requested_top_k
+            if self.config.tool_result_top_k_cap > 0:
+                top_k = min(top_k, self.config.tool_result_top_k_cap)
+            # 중복을 뺄 거라면 **빼고 나서도 top_k장이 남도록** 넉넉히 받아 온다.
+            # 안 그러면 중복만 지운 빈 목록이 나가고(실측 q_180은 5장 전부 중복),
+            # 모델은 "찾아도 아무것도 없다"로 읽어 한 번 더 검색한다.
+            fetch_k = top_k
+            if self.config.tool_result_dedupe:
+                fetch_k = min(MAX_RETRIEVE_TOP_K, max(top_k * 3, top_k + 5))
             result = self.memory_store.retrieve(
                 tier=tier,
                 query=query,
                 filters=args.get("filters") or {},
-                top_k=int(args.get("top_k") or self.config.default_top_k),
+                top_k=fetch_k,
             )
+            # 자르는 것은 **여기**다. 검색 결과를 그대로 두고 모델에게 보낼 때만
+            # 줄인다. 기록에 남는 result도 잘린 쪽이어야 한다 — 09-28에 정리한
+            # "기록은 실제로 전달한 것"과 같은 규칙이다.
+            result = self._trim_tool_result(result, trace, limit=top_k)
+            result["requested_top_k"] = requested_top_k
+            result["effective_top_k"] = top_k
         self._emit(
             event_callback,
             turn_logger,
@@ -651,6 +811,24 @@ class AgentRuntime:
                     "result_count": result.get("result_count", 0),
                     "sources": sources,
                     "warning": result.get("warning", ""),
+                    # 모델에게 실제로 보낸 글자 수. 도구 예산이 먹었는지 여기서 본다.
+                    "content_chars": sum(
+                        len(str(card.get("content_excerpt") or ""))
+                        + sum(
+                            len(str(part.get("content") or ""))
+                            for part in (card.get("additional_excerpts") or [])
+                        )
+                        for card in (result.get("results") or [])
+                    ),
+                    "tool_result_budget": {
+                        "chunks_per_doc": self.config.tool_result_chunks_per_doc,
+                        "excerpt_chars": self.config.tool_result_excerpt_chars,
+                        "dedupe": self.config.tool_result_dedupe,
+                        "top_k_cap": self.config.tool_result_top_k_cap,
+                    },
+                    "duplicates_removed": result.get("duplicates_removed", 0),
+                    "requested_top_k": result.get("requested_top_k"),
+                    "effective_top_k": result.get("effective_top_k"),
                 }
             )
 
@@ -665,8 +843,17 @@ class AgentRuntime:
         )
         for card in result.get("results", []):
             source = card.get("source_ref", {}).get("document_id")
-            if source and source not in trace.final_sources:
+            if not source:
+                continue
+            trace.source_titles.setdefault(str(source), str(card.get("title", "")))
+            if source not in trace.tool_sources:
+                trace.tool_sources.append(source)
+            if source not in trace.retrieved_sources:
+                trace.retrieved_sources.append(source)
+            if source not in trace.final_sources:
                 trace.final_sources.append(source)
+            # 도구가 가져온 카드도 본문을 전달한 것이므로 원장 대상이다.
+            trace.delivered_cards.append(card)
 
         return {
             "role": "tool",
@@ -687,9 +874,143 @@ class AgentRuntime:
             "expansion_count": len(trace.expanded_ids),
             "reasoning_steps": trace.reasoning_steps,
             "tool_calls": trace.tool_calls,
+            "skipped_tool_calls": trace.skipped_tool_calls,
+            # 근거 3분리. 자세한 뜻은 AgentTrace의 주석에 있다.
+            "retrieved_sources": trace.retrieved_sources,
+            "injected_sources": trace.injected_sources,
+            "tool_sources": trace.tool_sources,
+            "dropped_evidence_ids": trace.dropped_evidence_ids,
+            "cited_sources": trace.cited_sources,
+            # 턴 간 기록. 원장이 꺼져 있으면 둘 다 빈 목록이다.
+            "session_delivered_sources": trace.session_delivered_sources,
+            "reference_sources": trace.reference_sources,
             "final_sources": trace.final_sources,
             "stopped_reason": trace.stopped_reason,
         }
+
+    def _trim_tool_result(
+        self,
+        result: dict[str, Any],
+        trace: "AgentTrace | None" = None,
+        limit: int | None = None,
+    ) -> dict[str, Any]:
+        """도구 결과 카드를 도구용 예산으로 줄인 새 결과를 돌려준다.
+
+        세 가지를 한다.
+
+        1. **이미 전달한 문서 제거** (`tool_result_dedupe`)
+        2. **장수 제한** (`limit`)
+        3. **본문 길이·대목 수 제한** (`tool_result_*`)
+
+        1차 컨텍스트와 도구 결과는 같은 검색 경로를 타므로 카드가 같은 깊이로
+        만들어진다. 그런데 비용은 전혀 다르다 — 1차 컨텍스트는 카드 8장이고
+        한 번 실리지만, 도구 결과는 10~20장이고 **호출마다 다시 실린다.**
+
+        2026-09-29 실측: 1차 컨텍스트를 3배로 키우자 도구 결과도 2.4배가 되어
+        입력 토큰의 46%를 차지했다. 그리고 그 카드 96장 중 66장(69%)이 이미
+        전달한 문서였다. 정답에 기여한 근거는 1차 컨텍스트 쪽이었다.
+
+        원본 카드는 건드리지 않는다. prefetch가 같은 객체를 쓸 수 있다.
+        """
+        chunks = max(1, self.config.tool_result_chunks_per_doc)
+        chars = max(1, self.config.tool_result_excerpt_chars)
+        cards = result.get("results") or []
+
+        duplicates = 0
+        if self.config.tool_result_dedupe and trace is not None:
+            # 이미 전달한 것 = 1차 컨텍스트 + 앞선 도구 호출 결과.
+            # (이 함수는 trace.tool_sources가 갱신되기 **전**에 불린다.)
+            # 원장을 켰으면 **이전 턴에 전달한 문서**까지 중복으로 본다.
+            delivered = (
+                set(trace.session_delivered_sources)
+                | set(trace.injected_sources)
+                | set(trace.tool_sources)
+            )
+            kept: list[dict[str, Any]] = []
+            for card in cards:
+                source = str((card.get("source_ref") or {}).get("document_id", ""))
+                if source and source in delivered:
+                    duplicates += 1
+                    continue
+                delivered.add(source)
+                kept.append(card)
+            cards = kept
+        if limit is not None and limit > 0:
+            cards = cards[:limit]
+
+        trimmed: list[dict[str, Any]] = []
+        for card in cards:
+            item = dict(card)
+            body = item.get("content_excerpt")
+            if isinstance(body, str) and len(body) > chars:
+                item["content_excerpt"] = body[:chars]
+            extra = [
+                {**part, "content": str(part.get("content", ""))[:chars]}
+                for part in (item.get("additional_excerpts") or [])[: chunks - 1]
+            ]
+            item["additional_excerpts"] = extra
+            ref = item.get("source_ref")
+            if isinstance(ref, dict) and "extra_chunk_indexes" in ref:
+                ref = dict(ref)
+                ref["extra_chunk_indexes"] = [
+                    part.get("chunk_index") for part in extra
+                ]
+                item["source_ref"] = ref
+            trimmed.append(item)
+        return {
+            **result,
+            "results": trimmed,
+            "result_count": len(trimmed),
+            "duplicates_removed": duplicates,
+        }
+
+    def _tool_limit_message(
+        self,
+        tool_call: dict[str, Any],
+        turn_logger: TurnLogger | None = None,
+    ) -> dict[str, Any]:
+        """상한 때문에 실행하지 않은 도구 요청에 붙이는 응답."""
+        tool_call_id = tool_call.get("id", "unknown_tool_call")
+        name = str(tool_call.get("function", {}).get("name", ""))
+        content = {
+            "error": "tool_call_limit_reached",
+            "max_tool_calls": self.config.max_tool_calls,
+            "message": "도구 호출 상한에 도달해 실행하지 않았다. 지금까지 모인 근거로 답한다.",
+        }
+        if turn_logger:
+            turn_logger.record_tool_execution(
+                {
+                    "tool": name,
+                    "tool_call_id": tool_call_id,
+                    "status": "skipped_tool_limit",
+                    "max_tool_calls": self.config.max_tool_calls,
+                }
+            )
+        return {
+            "role": "tool",
+            "tool_call_id": tool_call_id,
+            "name": name,
+            "content": json.dumps(content, ensure_ascii=False),
+        }
+
+    def _cited_sources(self, answer: str, trace: AgentTrace) -> list[str]:
+        """답변 본문에 나타난 근거를 고른다.
+
+        **추정이다.** 모델이 출처를 구조화해서 돌려주지 않으므로, 제목이나
+        source_id가 답변 글자에 있는지로 판단한다. 제목이 짧으면 우연히
+        맞을 수 있어서 8자 이상만 본다. 정확한 인용 기록은 모델이 출처를
+        따로 돌려주게 만들어야 하고, 그건 프롬프트·스키마 변경이 필요하다.
+        """
+        if not answer:
+            return []
+        cited: list[str] = []
+        for source in trace.final_sources:
+            title = str(trace.source_titles.get(source, "")).strip()
+            if source and str(source) in answer:
+                cited.append(source)
+            elif len(title) >= 8 and title in answer:
+                cited.append(source)
+        return cited
 
     def _build_decision_payload(
         self,

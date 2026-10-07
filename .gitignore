@@ -10,6 +10,11 @@ cache/
 
 # Local project corpus and synthetic memory seed
 /memory_seed_20200504/
+# 진행 중 과제의 실제 문서로 만든 시드. 공개 저장소에 올리지 않는다.
+/memory_seed_prentice/
+/logs/answer_check_prentice/
+# 진행 과제 평가셋(질문에 실제 과제명·사람 이름이 들어간다)
+/datasets/prentice/
 /datasets/20200504-doc_rag/
 
 # Python and local tooling

@@ -89,6 +89,24 @@ class RuleBasedQueryAnalyzer:
         "예산",
         "결정",
         "근거",
+        # 2026-10-07 추가. 실제 과제 문서를 붙이고 나서 드러난 구멍이다.
+        #
+        # "킥오프에서 말한 LTM 승격 개념이 계획서에도 적혀 있어?"가
+        # `memory_needed=False`로 판정돼 **검색을 아예 하지 않았다.**
+        # "계획서"가 이 목록에 없어 신호가 0이었고, 그 틈에 "개념"이
+        # DIRECT_MARKERS에 걸려 일반 개념 질문으로 분류됐다.
+        #
+        # 아래 주석이 적어 둔 설계 의도("필요한 검색을 건너뛰면 실패 방향이
+        # 훨씬 나쁘다")가 DIRECT_MARKERS 때문에 뒤집히던 자리다.
+        "계획서",
+        "협약",
+        "매뉴얼",
+        "보고",
+        "피드백",
+        "지표",
+        "특허",
+        "공고",
+        "세미나",
     )
     DIRECT_MARKERS = ("개념", "뜻", "일반적으로", "아이디어", "브레인스토밍")
     SESSION_SUMMARY_MARKERS = ("요약", "정리", "다시 말", "말한거", "말한 것", "정리해줘")
@@ -135,7 +153,19 @@ class RuleBasedQueryAnalyzer:
             memory_needed = True
 
         previous_query = str(recent_turns[-1].get("user_query", "")) if recent_turns else ""
-        should_inherit_project = bool(recent_turns) and memory_needed
+        # 이전 과제 필터를 물려받는 조건을 좁힌다.
+        # 예전에는 "이전 턴이 있고 검색이 필요하면" 전부 물려받았다. 그래서 주제가
+        # 바뀐 새 질문도 앞 과제로 검색이 치우쳤다 — 조직 전체 기준을 묻는
+        # 질문이 직전 과제 문서 쪽으로 끌려간다.
+        #
+        # 대화가 이어지고 있다는 신호가 있을 때만 물려받는다.
+        #   - 지시어·후속 표현 ("여기서", "그 일정", "이어서")
+        #   - 비교 질문 ("공식 계획이랑 다른 부분") — 비교 대상이 앞 맥락이다
+        #   - 최근성 표현 ("아까", "오늘")
+        # 아무 신호 없는 새 사실 질문은 물려받지 않는다.
+        should_inherit_project = memory_needed and (
+            refers_to_session or is_comparison or is_recent
+        )
         if should_inherit_project and "project" not in filters:
             previous_project = self._latest_project_from_turns(recent_turns)
             if previous_project:
@@ -316,9 +346,13 @@ class LLMQueryAnalyzer:
     ):
         self.client = client
         self.model = model
-        self.fallback = fallback or RuleBasedQueryAnalyzer()
-        self.max_tokens = max_tokens
         self.vocabulary = vocabulary or {}
+        # fallback에도 같은 어휘 목록을 넘긴다. 예전에는 빈 분석기를 만들어서,
+        # 규칙 분석기의 오탐 방지 장치가 **실제 실행 경로에서만** 빠져 있었다.
+        # 그래서 "이 과제의 전체 연구개발기간…"에서 project="이 과제"가 그대로
+        # 필터로 들어갔고, 모든 문서가 감점됐다.
+        self.fallback = fallback or RuleBasedQueryAnalyzer(vocabulary=self.vocabulary)
+        self.max_tokens = max_tokens
         self.response_format = self.build_response_format(self.vocabulary)
         self.last_usage: dict[str, Any] = {}
         self.last_fallback_used: bool = False
@@ -509,12 +543,15 @@ class LLMQueryAnalyzer:
         )
 
     #: MemoryStore._filter_weight가 실제로 해석하는 키만 통과시킨다.
+    #:
+    #: date_range는 뺐다. 스키마에는 있었지만 MemoryStore도 LtmCorpus도
+    #: 해석하지 않아서, 로그에는 날짜 조건이 걸린 것처럼 남고 검색은 무시했다.
+    #: 날짜 필터가 필요해지면 검색기에 구현한 뒤 다시 넣는다.
     ALLOWED_FILTER_KEYS = {
         "project",
         "source_type",
         "status",
         "document_types",
-        "date_range",
     }
 
     def _safe_filters(
@@ -528,15 +565,37 @@ class LLMQueryAnalyzer:
             for key, value in source.items()
             if key in self.ALLOWED_FILTER_KEYS and value
         }
+        # project는 점수 배수가 큰 필터라 값이 틀어지면 검색이 통째로 흔들린다.
+        # 규칙 기반 추출(fallback)을 기준으로 삼는 것은 그대로 둔다 — 작은 모델이
+        # 과제명을 영어로 번역하거나 임의로 바꾸는 경우가 실제로 있었다.
+        #
+        # 달라진 점은 **어휘 목록이 있을 때**다. 목록이 있으면 LLM이 고른 값이
+        # 코퍼스에 실제로 있는 과제명인지 확인할 수 있으므로, 그 값을 먼저 쓴다.
+        # 예전에는 목록이 있어도 fallback으로 무조건 덮어썼고, fallback에는
+        # 어휘 목록이 전달되지 않아서 "이 과제" 같은 오탐이 그대로 들어갔다.
         fallback_project = fallback_plan.filters.get("project")
-        if fallback_project:
-            # 규칙 기반 추출은 정규식과 표기 정규화라 결정적이다.
-            # 작은 모델이 과제명을 영어로 번역하거나 임의로 바꾸는 경우가 있는데,
-            # project는 하드 필터라 값이 틀어지면 후보가 0건이 된다.
+        llm_project = filters.get("project")
+        if llm_project and self._is_known_project(str(llm_project)):
+            filters["project"] = normalize_project_name(str(llm_project))
+        elif fallback_project:
             filters["project"] = fallback_project
-        elif filters.get("project"):
-            filters["project"] = normalize_project_name(str(filters["project"]))
+        elif llm_project:
+            filters["project"] = normalize_project_name(str(llm_project))
         return filters
+
+    def _is_known_project(self, name: str) -> bool:
+        """어휘 목록에 있는 과제명인지 본다.
+
+        목록이 없으면 **확인할 수 없으므로 False**다. 확인되지 않은 값을
+        통과시키면 예전처럼 모델이 지어낸 과제명이 하드 필터로 들어간다.
+        목록이 없을 때의 처리는 호출부에서 fallback으로 넘긴다.
+        """
+        known = {
+            normalized_project_key(value)
+            for value in (self.vocabulary.get("project") or [])
+            if value
+        }
+        return bool(known) and normalized_project_key(name) in known
 
     def _as_bool(self, value: Any, default: bool) -> bool:
         if isinstance(value, bool):

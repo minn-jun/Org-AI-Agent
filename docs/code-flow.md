@@ -1,6 +1,6 @@
 # 코드 기준 동작 흐름
 
-갱신일: 2026-09-01
+갱신일: 2026-09-28
 
 이 문서는 `org_agent_mvp` 코드가 어떤 책임 분리로 동작하는지 설명한다.
 함수 내부의 모든 분기보다, 나중에 수정할 때 어느 파일을 보면 되는지에 초점을 둔다.
@@ -25,8 +25,8 @@ org_agent_mvp/__main__.py
    ├─ SessionStore.recent()           컨텍스트용으로 최근 N턴만 잘라냄
    ├─ QueryAnalyzer.analyze()
    ├─ MemoryPrefetcher.prefetch()
-   ├─ ContextBuilder.build()
-   ├─ [반복] client.chat()
+   ├─ ContextBuilder.build_context()   text + 실제 주입 목록
+   ├─ [반복] client.chat()             상한 도달 시 tools=None
    │     ├─ _execute_tool_call()        retrieve_memory
    │     └─ _execute_expand_evidence()  expand_evidence
    ├─ _save_session_turn()
@@ -45,7 +45,8 @@ org_agent_mvp/__main__.py
 | `query_analyzer.py` | 질문 의도 분석, 계층 가중치, 필터 추출, LLM 방어 |
 | `prefetch.py` | 근거 선별 (수집, 정규화, 계층 prior, 상대 컷) |
 | `context_builder.py` | `[RUNTIME_CONTEXT]` 조립, 컨텍스트 모드 3종 |
-| `memory_store.py` | seed 로드, 필터링, 점수 계산, 근거 카드 생성 |
+| `memory_store.py` | seed 로드, 필터링, 점수 계산, 근거 카드 생성, 원문 조회 |
+| `ltm_corpus.py` | 실코퍼스 청크 역색인, 문서 단위 집계, 버전 접기, 원문 조회 |
 | `session_store.py` | 세션 파일 생성, 로드, 턴 누적 |
 | `normalization.py` | 과제명 표기 정규화 |
 | `openrouter_client.py` | OpenRouter API 호출, `usage` 수집, 오류 처리 |
@@ -124,10 +125,21 @@ QueryPlan(
 | 방어 | 조건 | 처리 |
 |---|---|---|
 | 검색 생략 오판 | 규칙은 검색 필요, LLM만 불필요 | `memory_prefetch`로 복원 |
-| 과제명 오염 | 규칙이 과제명을 추출함 | 규칙 값 우선 |
-| 스키마 밖 필터 | 허용 키 5개 외 | 제거 |
+| 과제명 오염 | LLM 값이 어휘 목록에 없음 | 규칙 값으로 물러남 |
+| 스키마 밖 필터 | 허용 키 4개 외 | 제거 |
 | 가중치 합 0 | `memory_needed=True`인데 전부 0 | fallback 가중치 |
 | 예외 / API 오류 | 파싱 실패, 429 등 | 규칙 기반 전체 사용 + `fallback_used=True` |
+
+**어휘 목록은 두 구현이 같이 쓴다** (2026-09-28). `LLMQueryAnalyzer`는 내부
+fallback에도 같은 `vocabulary`를 넘긴다. 예전에는 빈 분석기를 만들어서,
+`PROJECT_RE`의 오탐("이 과제", "총 사업")이 실제 실행 경로에서만 필터로 들어갔다.
+
+`date_range`는 허용 키에서 뺐다. 검색기가 해석하지 않는데 로그에는 날짜 조건이
+걸린 것처럼 남았다. 필요해지면 검색기에 구현한 뒤 다시 넣는다.
+
+과제 필터 상속도 좁혔다. 지시어·비교·최근성 신호가 있는 질문에서만 이전 과제를
+물려받는다. 예전에는 이전 턴이 있고 검색이 필요하면 전부 물려받아서, 주제가 바뀐
+새 질문도 앞 과제로 치우쳤다.
 
 ### query_rewrites에 계층 신호를 넣지 않는다
 
@@ -198,22 +210,54 @@ cards = _apply_tier_floor(kept, priors)
 모드에 따라 guidance 문구도 달라진다. `summary`/`hybrid`에서는
 "요약으로 판단 가능하면 그대로 답하고, 필요한 근거만 `expand_evidence`로 요청하라"고 지시한다.
 
+### 무엇이 실제로 들어갔는지 돌려준다 (2026-09-28)
+
+`build_context()`는 문자열이 아니라 `BuiltContext`를 돌려준다.
+
+```python
+BuiltContext(text, injected, dropped_evidence_ids, evidence_chars)
+```
+
+근거 블록이 `max_evidence_chars`를 넘으면 뒷순위 카드가 빠지는데, 예전에는
+`build()`가 문자열만 돌려줘서 런타임이 그 사실을 알 수 없었다. 그래서 근거 개수와
+`final_sources`에 **검색 후보 전체**를 적었다. Allganize 20문항 중 15건에서
+후보 8건 중 6~7건만 들어갔고, 기록은 8건이었다. 그 상태로는
+"근거를 줬는데 모델이 못 썼다"와 "근거가 안 들어갔다"를 구분할 수 없다.
+
+`build()`는 문자열만 필요한 곳을 위해 남겨 뒀다.
+
 ---
 
 ## 6. LLM 호출 루프
 
 ```python
 for _ in range(max_tool_calls + 1):     # 최대 4회
-    chat_response = client.chat(messages, tools, ...)
-    assistant_message = chat_response["message"]
+    # 남은 횟수가 없으면 도구를 아예 넘기지 않는다
+    tools_left = max_tool_calls - len(trace.tool_calls)
+    chat_response = client.chat(messages, tools if tools_left > 0 else None, ...)
     trace.tokens.add("agent", chat_response["usage"])
 
     if not tool_calls:
+        trace.cited_sources = _cited_sources(content, trace)
         return 최종 답변
 
     for tool_call in tool_calls:
+        if len(trace.tool_calls) >= max_tool_calls:
+            messages.append(_tool_limit_message(tool_call))   # 실행하지 않는다
+            continue
         _execute_tool_call(...)          # retrieve_memory 또는 expand_evidence
 ```
+
+### 도구 호출 상한은 실제 제한이다 (2026-09-28)
+
+예전에는 상한에 도달해도 안내 메시지만 덧붙이고 다음 호출에 도구를 계속 넘겼고,
+한 응답의 여러 도구 요청을 전부 실행했다. 상한 3회에 8회가 실행되는 것을
+재현했다. 지금은 두 곳에서 막는다.
+
+1. 남은 횟수가 0이면 `client.chat`에 `tools`를 넘기지 않는다.
+2. 한 응답 안에서도 남은 횟수만 실행하고, 나머지는 실행하지 않은 것으로 응답한다.
+
+`tool_call`마다 응답 메시지는 반드시 붙인다. 빠지면 다음 호출에서 대화 형식이 깨진다.
 
 `chat()`은 `{"message": ..., "usage": ...}`를 돌려준다.
 `usage`에는 `prompt_tokens`, `completion_tokens`, `total_tokens`, `estimated`가 있다.
@@ -223,12 +267,57 @@ mock은 문자 수 기반 근사값이라 `estimated: true`로 표시한다.
 
 | | `retrieve_memory` | `expand_evidence` |
 |---|---|---|
-| 하는 일 | 새로 검색 | 턴 안의 카드 조회 |
-| 비용 | 있음 | 없음 (dict 조회) |
+| 하는 일 | 새로 검색 | 카드가 가리키는 **원문 조회** |
+| 비용 | 있음 | 없음 (역색인 조회) |
 | 노출 조건 | 항상 | `context_mode != "full"` |
+| 결과 크기 | 도구 예산으로 자름 (아래) | `max_evidence_chars`까지 |
+
+### 도구 결과는 1차 컨텍스트와 다른 예산을 쓴다 (2026-09-29)
+
+`retrieve_memory`는 1차 컨텍스트와 같은 검색 경로를 타므로 카드가 같은 깊이로 만들어진다.
+그런데 비용 성격이 다르다 — 1차 컨텍스트는 카드 8장이 턴에 한 번 실리고, 도구 결과는
+10~20장이 **호출마다 누적 메시지로 다시 실린다.** 실측에서 1차 컨텍스트를 3배로 키웠을 때
+도구 결과도 2.4배가 되어 입력 토큰의 46%를 차지했다.
+
+`_trim_tool_result()`가 **검색 직후**에 카드를 도구용 예산으로 줄인다. 세 가지를 한다.
+
+```python
+requested_top_k = int(args.get("top_k") or config.default_top_k)
+top_k = min(requested_top_k, config.tool_result_top_k_cap or requested_top_k)
+# 중복을 뺄 거라면 빼고 나서도 top_k장이 남도록 넉넉히 받아 온다
+fetch_k = max(top_k * 3, top_k + 5) if config.tool_result_dedupe else top_k
+result = memory_store.retrieve(..., top_k=fetch_k)
+result = self._trim_tool_result(result, trace, limit=top_k)
+```
+
+| 무엇 | 설정 |
+|---|---|
+| 이미 전달한 문서 제거 | `tool_result_dedupe` |
+| 장수 제한 | `tool_result_top_k_cap` |
+| 본문 길이 · 대목 수 | `tool_result_excerpt_chars` · `tool_result_chunks_per_doc` |
+
+자르는 위치가 카드를 **만드는** 곳이 아니라 **쓰는** 곳이라는 점이 핵심이다. 검색 결과 객체는
+그대로 두므로 prefetch가 같은 카드를 깊게 쓸 수 있고, 잘린 쪽이 로그에 남으므로 기록은
+여전히 "실제로 전달한 것"이다.
+
+### 중복 제거는 왜 넉넉히 받아 와야 하나
+
+실측에서 도구 카드 96장 중 66장(69%)이 이미 전달한 문서였고, 한 문항은 5장 전부가 중복이었다.
+중복만 지우고 끝내면 그 문항의 도구 결과가 **빈 목록**이 되고, 모델은 "찾아도 아무것도 없다"로
+읽어 한 번 더 검색한다. 재검색은 컨텍스트 전체를 다시 전송하므로 아낀 것보다 더 쓸 수 있다.
+그래서 `fetch_k`를 키워 받아 온 뒤 `limit`으로 자른다.
+
+중복 판정 기준은 **`injected_sources` + 앞선 도구 호출의 `tool_sources`**다. 즉 "이 턴에 이미
+모델에게 보낸 문서"다. 이 함수는 `trace.tool_sources`가 갱신되기 **전**에 불린다.
 
 `evidence_index`는 프리페치 카드를 `{evidence_id: card}`로 턴 동안 들고 있는 것이다.
-확장은 이 색인만 본다. 알 수 없는 id는 `unknown_evidence_ids`로 보고한다.
+알 수 없는 id는 `unknown_evidence_ids`로 보고한다.
+
+확장은 카드의 발췌가 아니라 `MemoryStore.chunk_context()`로 **청크 전체와 앞뒤
+이웃 청크**를 읽는다(2026-09-28). 예전에는 카드에 이미 들어 있던 600자 발췌를 그대로
+돌려줬다 — 원문을 요청해도 새로 얻는 글자가 없었다. 카드 발췌는 "이 근거가 무엇인지
+알아보는 용도", 원문 조회는 "실제로 읽는 용도"로 나눠 뒀다. 이웃까지 붙이는 이유는
+표나 문단이 청크 경계에서 잘려 값과 머리글이 갈라지기 때문이다.
 
 ---
 
@@ -246,6 +335,30 @@ class TokenUsage:
 
 analyzer와 agent를 나눠 센다. `llm_calls`는 둘의 합이다.
 규칙 기반 analyzer는 LLM을 호출하지 않으므로 `analyzer_calls = 0`이 된다.
+
+---
+
+## 7-1. 근거 기록 3분리 (2026-09-28)
+
+`AgentTrace`가 근거를 단계별로 나눠 적는다. 예전에는 `final_sources` 한 칸에
+섞여 있어서 "찾았다 / 전달했다 / 썼다"를 구분할 수 없었다.
+
+| 칸 | 뜻 |
+|---|---|
+| `retrieved_sources` | 검색이 찾아낸 후보 전체 |
+| `injected_sources` | 1차 컨텍스트에 **실제로 들어간** 근거 |
+| `tool_sources` | 실행 중 `retrieve_memory`로 추가된 근거 |
+| `final_sources` | 모델이 받은 전체 (injected + tool) |
+| `cited_sources` | 답변 본문에 제목이나 출처가 나타난 근거 |
+| `dropped_evidence_ids` | 글자 수 제한에 걸려 빠진 카드 |
+| `skipped_tool_calls` | 상한 때문에 실행하지 않은 도구 요청 수 |
+
+`cited_sources`는 **추정이다.** 모델이 출처를 구조화해서 돌려주지 않으므로,
+제목(8자 이상)이나 `source_id`가 답변 글자에 있는지로 판단한다. 정확한 인용 기록은
+모델이 출처를 따로 돌려주게 만들어야 하고, 그건 프롬프트·스키마 변경이 필요하다.
+
+`context_built` 이벤트도 `candidate_count`와 `injected_count`를 나눠 적는다.
+예전의 `evidence_count`는 candidate 값이었는데 이름만 보고 주입 건수로 읽혔다.
 
 ---
 

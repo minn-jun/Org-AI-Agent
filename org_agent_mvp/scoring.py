@@ -153,12 +153,6 @@ def bm25_params(n_docs: int, avg_len: float, scope: str = "ltm") -> Bm25Params:
     return Bm25Params(n_docs=n_docs, avg_len=avg_len, k1=bm25_k1(), delta=delta)
 
 
-def describe() -> dict[str, object]:
-    name = scorer_name()
-    return {"scorer": name, "k1": bm25_k1(), "b": B,
-            "delta": BM25_PLUS_DELTA if name == "bm25plus" else 0.0}
-
-
 #: prefetch가 계층 점수를 합칠 때 무엇을 기준으로 1.0을 잡을지.
 #:
 #:   global  전역 최고점. 계층 간 점수가 비교 가능하다는 전제.

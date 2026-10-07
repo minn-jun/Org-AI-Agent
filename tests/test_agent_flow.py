@@ -51,6 +51,31 @@ class QueryAnalyzerTests(unittest.TestCase):
         self.assertGreater(plan.memory_weights["mtm"], 0)
         self.assertGreater(plan.memory_weights["ltm"], 0)
 
+    def test_document_question_is_not_treated_as_a_general_concept(self) -> None:
+        """조직 문서를 가리키는 질문은 "개념"이 들어 있어도 검색해야 한다.
+
+        2026-10-07 실제 과제 문서로 라우팅을 재면서 드러났다.
+        "킥오프에서 말한 LTM 승격 개념이 계획서에도 적혀 있어?"가
+        memory_needed=False로 판정돼 검색을 아예 하지 않았다 —
+        "계획서"가 MEMORY_MARKERS에 없어 신호가 0이었고, 그 틈에
+        "개념"이 DIRECT_MARKERS에 걸렸다.
+        """
+        analyzer = RuleBasedQueryAnalyzer()
+        for question in (
+            "킥오프에서 말한 LTM 승격 개념이 계획서에도 적혀 있어?",
+            "협약 절차의 개념이 어떻게 돼?",
+            "성능지표 개념이 뭐야?",
+        ):
+            with self.subTest(question=question):
+                plan = analyzer.analyze(question)
+                self.assertTrue(plan.memory_needed, question)
+                self.assertNotEqual(plan.intent, "direct_answer")
+
+    def test_general_concept_question_still_skips_memory(self) -> None:
+        """반대 방향도 지켜야 한다. 조직 문서와 무관한 개념 질문은 검색하지 않는다."""
+        plan = RuleBasedQueryAnalyzer().analyze("트랜스포머 어텐션 개념이 뭐야?")
+        self.assertFalse(plan.memory_needed)
+
     def test_follow_up_resolves_project_from_previous_turn(self) -> None:
         plan = RuleBasedQueryAnalyzer().analyze(
             "그 일정의 담당자는?",

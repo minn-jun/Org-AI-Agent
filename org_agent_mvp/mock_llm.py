@@ -47,6 +47,13 @@ class MockLLMClient:
         tool_results = self._tool_results(messages)
         runtime_context = self._runtime_context(messages)
         prefetch_cards = runtime_context.get("prefetched_evidence", [])
+        if not tools:
+            # 도구를 주지 않으면 요청하지 않는다. 실제 모델과 같은 동작이고,
+            # 런타임이 상한 도달 후 도구를 회수하는 것을 이 mock으로 확인할 수 있다.
+            return {
+                "role": "assistant",
+                "content": self._final_answer(user_query, tool_results, prefetch_cards),
+            }
         query_plan = runtime_context.get("query_plan", {})
         tried_tiers = {result.get("tier", "").lower() for result in tool_results}
 

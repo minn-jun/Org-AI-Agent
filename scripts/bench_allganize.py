@@ -49,13 +49,21 @@ SEED = 20260915
 BOOTSTRAP = 1000
 FOLDS = 5
 
-#: 기준선 설정 (코드 기본값). 과제명 가산점은 Allganize 문서에 project가 없어 자동으로 0이다.
+#: 기준선 설정. **서비스 기본값과 같아야 한다.**
+#:
+#: 2026-09-16에 형태소 + BM25(k1 1.2) + 제목 가산점 없음 + 동의어 없음으로
+#: 기본값을 바꿨는데, 이 표는 옛 값(whitespace + freq + k1 2.0 + 가산점)에
+#: 그대로 남아 있었다. 그래서 README의 기본 평가 명령이 실제로 돌아가는
+#: 검색기와 다른 설정을 재고 있었다 — 숫자는 맞지만 무엇의 숫자인지가 달랐다.
+#:
+#: 다른 설정을 재려면 BASE_ENV를 고치지 말고 `--variant`로 덮어쓴다.
+#: 과제명 가산점은 Allganize 문서에 project가 없어 자동으로 0이다.
 BASE_ENV = {
-    "RETRIEVER_TOKENIZER": "whitespace",
-    "RETRIEVER_SCORER": "freq",
-    "RETRIEVER_BM25_K1": "2.0",
-    "RETRIEVER_TITLE_BONUS": "add",
-    "QUERY_EXPANSIONS": "",          # 빈 값 = config/query_expansions.json
+    "RETRIEVER_TOKENIZER": "morph",
+    "RETRIEVER_SCORER": "bm25",
+    "RETRIEVER_BM25_K1": "1.2",
+    "RETRIEVER_TITLE_BONUS": "none",
+    "QUERY_EXPANSIONS": "none",      # 동의어 확장 없음 (2026-09-16 기본값)
     "RETRIEVER_DENSE": "0",
     "RETRIEVER_RERANK": "none",
     "RETRIEVER_RERANK_TOP_N": "30",

@@ -183,9 +183,20 @@ def _resolve_doc_meta_path(corpus_path: Path, explicit: Path | None) -> Path | N
 class LtmCorpus:
     """청크 역색인 + 문서 단위 근거 집계."""
 
-    def __init__(self, path: Path, doc_meta_path: Path | None = None):
+    def __init__(
+        self,
+        path: Path,
+        doc_meta_path: Path | None = None,
+        *,
+        excerpt_chars: int = 600,
+        chunks_per_doc: int = 1,
+    ):
         self.path = Path(path)
         self.doc_meta_path = _resolve_doc_meta_path(self.path, doc_meta_path)
+        # 카드 한 장에 넣을 본문 길이와, 한 문서에서 보여 줄 대목 수.
+        # 값의 배경은 config.AppConfig의 "근거 전달 예산" 주석에 있다.
+        self.excerpt_chars = max(1, int(excerpt_chars))
+        self.chunks_per_doc = max(1, int(chunks_per_doc))
         self.documents: dict[str, CorpusDocument] = {}
 
         # 청크는 인덱스 정렬 배열로 들고 있는다. 청크마다 dict를 만들면
@@ -497,11 +508,23 @@ class LtmCorpus:
             return []
 
         # 3) 문서 단위로 접는다. 최고점 청크가 그 문서를 대표한다.
+        #
+        #    대표 하나만 남기면 문서의 나머지가 통째로 사라진다. 문서 하나가
+        #    청크 16~68개인데 그중 한 대목만 모델에게 전달된다는 뜻이다.
+        #    2026-09-28 실측에서 정답 값이 대표 청크 밖에 있어 틀린 문항이 있었다.
+        #    그래서 문서별로 상위 chunks_per_doc개를 함께 들고 간다.
+        #    순위와 필터는 예전처럼 **최고점 청크** 하나로만 정한다 —
+        #    여기서 점수를 합치면 긴 문서가 유리해져 검색 결과가 통째로 바뀐다.
         best: dict[str, tuple[float, int]] = {}
+        per_doc: dict[str, list[tuple[float, int]]] = {}
         for idx, score in chunk_score.items():
             doc_id = self._chunk_doc[idx]
             if doc_id not in best or score > best[doc_id][0]:
                 best[doc_id] = (score, idx)
+            if self.chunks_per_doc > 1:
+                per_doc.setdefault(doc_id, []).append((score, idx))
+        for hits in per_doc.values():
+            hits.sort(key=lambda item: (-item[0], item[1]))
 
         # 4) 필터는 점수 배수로 적용한다. MemoryStore와 같은 방식이다.
         filters = filters or {}
@@ -543,7 +566,12 @@ class LtmCorpus:
             # 대표: 버전이 가장 높은 문서. 같으면 점수, 그래도 같으면 doc_id로 고정한다
             # (실행마다 순서가 흔들리면 gold 라벨이 붙었다 떨어졌다 한다).
             rep_id, rep_idx, _ = max(members, key=lambda m: self._representative_key(m))
-            card = self._card(rep_id, rep_idx, group["score"])
+            extra = [
+                idx
+                for _s, idx in per_doc.get(rep_id, [])[: self.chunks_per_doc]
+                if idx != rep_idx
+            ]
+            card = self._card(rep_id, rep_idx, group["score"], extra_chunks=extra)
             ref = card["source_ref"]
             for doc_id, _idx, _s in members:
                 if doc_id == rep_id:
@@ -596,9 +624,14 @@ class LtmCorpus:
     ) -> float:
         weight = 1.0
         if project := filters.get("project"):
+            # 보는 방향이 중요하다. 감점하지 말아야 할 대상은 **문서가 공통인 경우**다.
+            # 예전 코드는 `key not in {mine, "공통"}`으로 **필터값**이 공통인지를
+            # 봤다. 그래서 A 과제를 물으면 조직 전체에 적용되는 공통 문서가
+            # 0.3배로 감점됐다 — 규정·양식·지침이 바로 그 공통 문서다.
+            # MemoryStore._filter_weight는 처음부터 문서 쪽을 보고 있었다.
             key = re.sub(r"[\s_-]+", "", str(project).lower())
             mine = re.sub(r"[\s_-]+", "", doc.project.lower())
-            if key not in {mine, "공통"}:
+            if mine not in {key, "공통"}:
                 weight *= penalty
         if source_type := filters.get("source_type"):
             if doc.source_type != str(source_type).lower():
@@ -610,10 +643,26 @@ class LtmCorpus:
         # status 필터는 걸지 않는다. 과제 문서에는 draft/approved 같은 상태가 없다.
         return weight
 
-    def _card(self, doc_id: str, chunk_idx: int, score: float) -> dict[str, Any]:
+    def _card(
+        self,
+        doc_id: str,
+        chunk_idx: int,
+        score: float,
+        extra_chunks: list[int] | None = None,
+    ) -> dict[str, Any]:
         doc = self.documents[doc_id]
         text = self._chunk_text[chunk_idx]
         quote = re.sub(r"\s+", " ", text).strip()
+        additional = [
+            {
+                "chunk_index": idx,
+                "page_nos": list(self._chunk_pages[idx]),
+                "content": re.sub(r"\s+", " ", self._chunk_text[idx]).strip()[
+                    : self.excerpt_chars
+                ],
+            }
+            for idx in (extra_chunks or [])
+        ]
         return {
             "evidence_id": f"ev_ltm_{doc_id}",
             "tier": "LTM",
@@ -623,7 +672,9 @@ class LtmCorpus:
             "project": doc.project,
             "summary": quote[:220],
             "quote": quote[:220],
-            "content_excerpt": quote[:600],
+            "content_excerpt": quote[: self.excerpt_chars],
+            # 같은 문서의 다른 대목. chunks_per_doc가 1이면 빈 목록이다.
+            "additional_excerpts": additional,
             "source_ref": {
                 "document_id": doc_id,
                 "path": doc.rel_path,
@@ -631,6 +682,8 @@ class LtmCorpus:
                 "chunk_index": chunk_idx,
                 "chunk_count": doc.n_chunks,
                 "page_nos": list(self._chunk_pages[chunk_idx]),
+                # 카드에 함께 실린 다른 대목의 청크 번호. 원문 대조에 쓴다.
+                "extra_chunk_indexes": [item["chunk_index"] for item in additional],
                 # 이 카드로 접힌 다른 버전들. 평가에서 gold 라벨이 어느 버전을
                 # 가리키든 맞출 수 있도록 id를 그대로 남긴다.
                 "folded_document_ids": [],
@@ -652,6 +705,62 @@ class LtmCorpus:
             "page_nos": list(self._chunk_pages[chunk_idx]),
             "retrieval_score": round(score, 3),
             "quote": re.sub(r"\s+", " ", self._chunk_text[chunk_idx]).strip()[:220],
+        }
+
+    def chunk_context(
+        self,
+        document_id: str,
+        chunk_index: int,
+        *,
+        neighbors: int = 1,
+        max_chars: int = 6000,
+    ) -> dict[str, Any]:
+        """청크 **전체**와 앞뒤 이웃 청크를 돌려준다.
+
+        expand_evidence가 이걸 쓴다. 이전에는 카드에 이미 들어 있던 600자
+        발췌를 그대로 다시 돌려줬다 — 원문을 요청해도 새로 얻는 것이 없었다.
+        카드 발췌는 "이 근거가 무엇인지 알아보는 용도", 이 함수는
+        "실제로 읽는 용도"다. 둘을 나눠 둔다.
+
+        이웃 청크까지 붙이는 이유는 경계 때문이다. 표나 문단이 청크 경계에서
+        잘리면 값과 머리글이 서로 다른 청크로 갈라진다.
+        """
+        doc = self.documents.get(document_id)
+        if doc is None or not (0 <= chunk_index < len(self._chunk_text)):
+            return {"document_id": document_id, "found": False, "chunks": []}
+
+        span = [
+            idx
+            for idx in range(chunk_index - neighbors, chunk_index + neighbors + 1)
+            if 0 <= idx < len(self._chunk_text)
+            and self._chunk_doc[idx] == document_id
+        ]
+        chunks: list[dict[str, Any]] = []
+        used = 0
+        for idx in span:
+            body = re.sub(r"\s+", " ", self._chunk_text[idx]).strip()
+            if used + len(body) > max_chars:
+                # 요청한 청크 자체는 잘려도 넣는다. 이웃은 예산이 남을 때만 넣는다.
+                if idx != chunk_index:
+                    continue
+                body = body[: max(0, max_chars - used)]
+            chunks.append(
+                {
+                    "chunk_index": idx,
+                    "page_nos": list(self._chunk_pages[idx]),
+                    "is_requested": idx == chunk_index,
+                    "content": body,
+                }
+            )
+            used += len(body)
+        return {
+            "document_id": document_id,
+            "title": doc.title,
+            "path": doc.rel_path,
+            "chunk_count": doc.n_chunks,
+            "found": True,
+            "chunks": chunks,
+            "chars": used,
         }
 
     # ------------------------------------------------------------------ misc

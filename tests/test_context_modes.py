@@ -117,6 +117,32 @@ class ExpandEvidenceTests(unittest.TestCase):
         self.assertIn(SYSTEM_PROMPT.rstrip(), text)
         self.assertIn("이미 STM·MTM·LTM을 모두 검색해 고른 결과", text)
 
+    def test_evidence_strict_is_off_by_default(self) -> None:
+        """기본 동작은 2026-09-28 이전과 같아야 한다."""
+        from org_agent_mvp.prompts import SYSTEM_PROMPT, system_prompt
+
+        previous = os.environ.pop("PROMPT_EVIDENCE_STRICT", None)
+        try:
+            self.assertEqual(system_prompt(), SYSTEM_PROMPT)
+        finally:
+            if previous is not None:
+                os.environ["PROMPT_EVIDENCE_STRICT"] = previous
+
+    def test_evidence_strict_can_be_switched_on(self) -> None:
+        from org_agent_mvp.prompts import SYSTEM_PROMPT, system_prompt
+
+        previous = os.environ.get("PROMPT_EVIDENCE_STRICT")
+        os.environ["PROMPT_EVIDENCE_STRICT"] = "1"
+        try:
+            text = system_prompt()
+        finally:
+            if previous is None:
+                os.environ.pop("PROMPT_EVIDENCE_STRICT", None)
+            else:
+                os.environ["PROMPT_EVIDENCE_STRICT"] = previous
+        self.assertIn(SYSTEM_PROMPT.rstrip(), text)
+        self.assertIn("근거 본문에 있는 값만", text)
+
     def test_summary_mode_exposes_expand_tool(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             runtime = self._runtime("summary", temp_dir)

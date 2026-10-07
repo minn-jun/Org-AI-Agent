@@ -54,8 +54,13 @@ def compact(text: str) -> str:
     return re.sub(r"\s+", " ", str(text))
 
 
+#: "2026년 4월 1일" · "4월 1일" 같은 한글 날짜.
+YMD_RE = re.compile(r"(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일")
+MD_RE = re.compile(r"(?<!\d)(\d{1,2})\s*월\s*(\d{1,2})\s*일")
+
+
 def loose(text: str) -> str:
-    """공백 · 콤마 · 숫자 구분자를 지운 비교용 문자열.
+    """표기 차이를 지운 비교용 문자열.
 
     2026-10-07에 1차 자동 판정이 3건을 오탐했다. 원인이 전부 표기 차이였다.
 
@@ -63,9 +68,18 @@ def loose(text: str) -> str:
       구분자         원문 `2025-12-15` vs 답변 `2025.12.15`
       천 단위 콤마    기대값 `200000` vs 답변 `200,000`
 
-    셋 다 같은 값인데 문자열로는 다르다. 비교 전에 지운다.
+    같은 날 연쇄 질문 측정에서 두 가지가 더 나왔다.
+
+      대소문자      기대값 `jev` vs 답변 `Jev`
+      한글 날짜      기대값 `2026-04-01` vs 답변 `2026년 4월 1일`
+
+    다섯 다 같은 값인데 문자열로는 다르다. 비교 전에 지운다. 한글 날짜는
+    자리를 0으로 채워야 `2026-04-01`과 만난다(`4월` → `04`).
     """
-    text = re.sub(r"\s+", "", str(text)).replace(",", "")
+    text = str(text)
+    text = YMD_RE.sub(lambda m: f"{int(m[1]):04d}{int(m[2]):02d}{int(m[3]):02d}", text)
+    text = MD_RE.sub(lambda m: f"{int(m[1]):02d}{int(m[2]):02d}", text)
+    text = re.sub(r"\s+", "", text).replace(",", "").lower()
     return re.sub(r"[.\-/]", "", text)
 
 

@@ -141,6 +141,25 @@ fallback에도 같은 `vocabulary`를 넘긴다. 예전에는 빈 분석기를 �
 물려받는다. 예전에는 이전 턴이 있고 검색이 필요하면 전부 물려받아서, 주제가 바뀐
 새 질문도 앞 과제로 치우쳤다.
 
+### 문서 유형어가 없으면 검색을 건너뛴다 (2026-10-07 수정)
+
+`memory_needed`는 `MEMORY_MARKERS` · 최근 신호 · 계층 신호 중 하나라도 걸려야 참이 된다.
+하나도 없으면 "검색 쪽으로 기운다"는 안전망이 있는데, 그 앞에
+`DIRECT_MARKERS`(`개념 · 뜻 · 일반적으로 …`)가 걸리면 **일반 개념 질문으로 분류되어
+검색을 아예 하지 않는다.**
+
+실제 과제 문서를 붙이고 라우팅을 재면서 이것이 드러났다 —
+*"킥오프에서 말한 LTM 승격 **개념**이 계획서에도 적혀 있어?"*가 후보 0건이었다.
+`MEMORY_MARKERS`에 `"문서"`는 있는데 **`"계획서"`가 없어** 신호가 0이었고,
+그 틈에 `"개념"`이 걸렸다.
+
+`MEMORY_MARKERS`에 실제 문서 유형어를 넣어 고쳤다 —
+`계획서 · 협약 · 매뉴얼 · 보고 · 피드백 · 지표 · 특허 · 공고 · 세미나`.
+회귀 테스트는 양방향으로 둔다(문서 질문은 검색하고, `"트랜스포머 어텐션 개념"`
+같은 일반 개념 질문은 여전히 검색하지 않는다).
+
+> 이 결함은 공개 평가셋으로는 드러나지 않는다. 거기엔 "계획서"도 "협약"도 없다.
+
 ### query_rewrites에 계층 신호를 넣지 않는다
 
 이전에는 rewrite에 "공식 최종 승인 문서" 같은 단어를 덧붙였다.
@@ -171,8 +190,19 @@ cut = CUT_RATIO * top_score
 kept = [c for c in ranked if c.final >= cut]
 
 # 6. 계층별 최소 보장 후 상한 적용
-cards = _apply_tier_floor(kept, priors)
+#    delivered(앞선 턴에 본문을 준 문서)를 주면 상한을 **새 문서 기준**으로 센다
+cards = _apply_tier_floor(kept, priors, delivered)
 ```
+
+### 상한을 새 문서 기준으로 세는 이유 (2026-10-06)
+
+세션 전달 원장(아래 5절)을 켜면 이미 본문을 준 문서가 **참조 한 줄**로 줄어든다.
+그런데 상한(`total_top_k`)을 그대로 두면 그 참조가 본문 카드와 **같은 무게로** 자리를
+차지한다. 턴이 쌓일수록 새 근거가 0장이 되고, 2턴째가 1턴째보다 정보가 적어진다.
+
+`_cap()`은 `delivered`가 있을 때 **새 문서가 `total_top_k`장 모일 때까지** 순위를
+내려가며, 참조는 그 사이에 따라붙는다. 참조가 무한히 붙지 않게 전체는 상한의 2배에서
+끊는다. `delivered`가 비면 예전과 완전히 같다(`cards[:total_top_k]`).
 
 ### 설계 판단
 
@@ -225,6 +255,28 @@ BuiltContext(text, injected, dropped_evidence_ids, evidence_chars)
 "근거를 줬는데 모델이 못 썼다"와 "근거가 안 들어갔다"를 구분할 수 없다.
 
 `build()`는 문자열만 필요한 곳을 위해 남겨 뒀다.
+
+### 참조 카드 — 앞선 턴에 준 문서 (2026-10-06)
+
+`build_context(..., delivered=)`에 세션 전달 원장을 주면, 이미 본문을 전달한 문서는
+**본문 없이** 들어간다.
+
+```json
+{ "evidence_id": "...", "title": "...", "source_id": "...",
+  "body_available": true, "delivered_in_turn": 1,
+  "note": "이전 턴에 본문을 전달한 문서" }
+```
+
+목록에서 아예 빼지는 않는다. 빼면 모델이 "그 문서는 없다"로 읽고 같은 검색을 다시
+한다(2026-09-29에 도구 결과 5장이 전부 중복이라 빈 목록이 나간 q_180과 같은 모양).
+
+기록도 나눈다. `BuiltContext.reference`는 `injected`와 **별도**이고
+`injected_sources` · `final_sources`에 넣지 않는다. 같은 칸에 적으면
+"이번 턴에 본문을 전달했다"로 읽힌다.
+
+새로 볼 문서가 `SESSION_LEDGER_MIN_BODIES`보다 적으면 **상위 참조를 본문으로
+되돌린다.** 이전 턴의 본문은 메시지에 남지 않으므로(턴마다 messages를 새로 만든다),
+전부 참조로 바꾸면 모델이 받는 것은 제목과 `answer_summary` 500자뿐이다.
 
 ---
 
@@ -338,7 +390,7 @@ analyzer와 agent를 나눠 센다. `llm_calls`는 둘의 합이다.
 
 ---
 
-## 7-1. 근거 기록 3분리 (2026-09-28)
+## 7-1. 근거 기록 분리 (2026-09-28, 10-06 보강)
 
 `AgentTrace`가 근거를 단계별로 나눠 적는다. 예전에는 `final_sources` 한 칸에
 섞여 있어서 "찾았다 / 전달했다 / 썼다"를 구분할 수 없었다.
@@ -348,7 +400,9 @@ analyzer와 agent를 나눠 센다. `llm_calls`는 둘의 합이다.
 | `retrieved_sources` | 검색이 찾아낸 후보 전체 |
 | `injected_sources` | 1차 컨텍스트에 **실제로 들어간** 근거 |
 | `tool_sources` | 실행 중 `retrieve_memory`로 추가된 근거 |
-| `final_sources` | 모델이 받은 전체 (injected + tool) |
+| `session_delivered_sources` | 앞선 턴에 본문을 준 문서 (전달 원장. 꺼져 있으면 빈 목록) |
+| `reference_sources` | 그중 이번 턴에 **참조 카드로만** 들어간 문서 |
+| `final_sources` | 모델이 받은 전체 (injected + tool). **reference는 넣지 않는다** |
 | `cited_sources` | 답변 본문에 제목이나 출처가 나타난 근거 |
 | `dropped_evidence_ids` | 글자 수 제한에 걸려 빠진 카드 |
 | `skipped_tool_calls` | 상한 때문에 실행하지 않은 도구 요청 수 |

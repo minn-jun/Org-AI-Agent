@@ -6,7 +6,7 @@
 
 한 턴은 **세션 로드 → 질문 분석 → 계층별 검색 → 근거 선별 → 답변 생성 → 기록 저장** 순서로 실행된다. 모델은 필요하면 `retrieve_memory`로 추가 검색하거나 `expand_evidence`로 선택된 근거의 원문을 조회할 수 있다. 검색 기본값은 형태소 토큰화와 BM25(k1=1.2)이며, 여러 계층의 후보를 전역 점수로 합치고 같은 출처의 중복 근거를 접는다.
 
-실행 기록은 근거를 단계별로 나눠 남긴다 — **검색이 찾은 후보**(`retrieved_sources`), **프롬프트에 실제로 들어간 근거**(`injected_sources`), **실행 중 추가 검색한 근거**(`tool_sources`), **답변에 나타난 근거**(`cited_sources`). 근거 블록이 글자 수 상한을 넘겨 빠진 카드는 `dropped_evidence_ids`에 남는다. 마지막 항목은 제목 문자열 일치로 판정한 **추정값**이다.
+실행 기록은 근거를 단계별로 나눠 남긴다 — **검색이 찾은 후보**(`retrieved_sources`), **프롬프트에 실제로 들어간 근거**(`injected_sources`), **실행 중 추가 검색한 근거**(`tool_sources`), **앞선 턴에 이미 본문을 준 근거**(`reference_sources`), **답변에 나타난 근거**(`cited_sources`). 근거 블록이 글자 수 상한을 넘겨 빠진 카드는 `dropped_evidence_ids`에 남는다. 마지막 항목은 제목 문자열 일치로 판정한 **추정값**이다.
 
 | 위치 | 내용 | 기본 제공 |
 |---|---|---|
@@ -14,8 +14,10 @@
 | `tests/fixtures/memory/` | 실행 예시에 쓰는 가상 과제 A/B 메모리 | 예 |
 | `datasets/allganize-rag-eval-ko/` | 공개 한국어 RAG 검색 평가셋 | 예 |
 | `tests/fixtures/eval_cases_20200504.jsonl` | 자체 과제 평가 질문 60개 | 예 |
-| `datasets/20200504-doc_rag/` | 실제 과제 문서 코퍼스·청크 | 로컬 별도 보관 |
+| `datasets/20200504-doc_rag/` | 종료 과제 문서 코퍼스·청크 | 로컬 별도 보관 |
 | `memory_seed_20200504/` | 과제 사실을 바탕으로 만든 합성 STM/MTM 시드 | 로컬 별도 보관 |
+| `memory_seed_prentice/` | 진행 중 과제를 STM/MTM/LTM으로 올린 **실제 자료** 시드 | 로컬 별도 보관 |
+| `datasets/prentice/` | 계층 라우팅 평가셋과 기대 답 목록 | 로컬 별도 보관 |
 
 실제 과제 코퍼스는 698문서·26,031청크로 구축했다. 개인정보 문서를 제외하고 식별번호를 마스킹했지만, 승인된 조직 지식만 선별한 코퍼스는 아니다. 공개 평가셋은 PDF 64개에서 만든 2,960청크와 채점 가능한 질문 299개로 구성된다.
 
@@ -45,7 +47,7 @@ python -m org_agent_mvp --mock --verbose --question "이 과제의 전체 연구
 python -m unittest discover -s tests -v
 ```
 
-로컬 과제 자료가 있는 환경에서 **164건 통과**를 확인했다. 자료가 없으면 해당 자료를 검사하는 일부 테스트는 건너뛴다. 검색 품질 평가는 다음과 같이 실행한다.
+로컬 과제 자료가 있는 환경에서 **200건 통과**를 확인했다. 자료가 없으면 해당 자료를 검사하는 일부 테스트는 건너뛴다. 검색 품질 평가는 다음과 같이 실행한다.
 
 ```powershell
 # 공개 평가셋: 저장소에 포함된 데이터만 사용, LLM 호출 없음
@@ -62,8 +64,21 @@ python eval/run_eval.py
 근거가 모델까지 **전달되는지**만 따로 보려면 다음을 쓴다. LLM을 호출하지 않는다.
 
 ```powershell
-python datasets/allganize-rag-eval-ko/scripts/evidence_delivery_check.py
+# 공개 평가셋. --count로 문항 수를 바꾼다(유형 비율 유지)
+python datasets/allganize-rag-eval-ko/scripts/evidence_delivery_check.py --count 60 --max-per-file 2
 ```
+
+진행 중 과제 자료(로컬 별도 보관)가 있으면 **계층 라우팅**과 **답 전달**을 LLM 없이
+잴 수 있다. 질문마다 정답 문장 대신 **기대 계층만** 적어 두므로 라벨 작성 비용이 없다.
+
+```powershell
+python scripts/build_prentice_seed.py          # 패키지 → STM/MTM/LTM 시드
+python scripts/bench_prentice_routing.py       # 계층 라우팅 (무료)
+python scripts/check_prentice_delivery.py answers    # 답 전달 (무료)
+python scripts/check_prentice_delivery.py allganize  # 실제 문서를 방해자로 둔 교차 검사
+```
+
+턴 간 중복 전달을 재는 `scripts/measure_session_ledger.py`도 LLM을 호출하지 않는다.
 
 `eval/run_eval.py --analyzer llm`과 실제 모델을 쓰는 컨텍스트 평가는 API 키와 호출 비용이 필요하다. 답변 정확도를 재는 `datasets/allganize-rag-eval-ko/scripts/answer_check.py`도 실제 호출이 필요하다.
 
@@ -76,12 +91,17 @@ python datasets/allganize-rag-eval-ko/scripts/evidence_delivery_check.py
 | Allganize 현재 코드 재실행 | 페이지 MRR@10 **0.8201** | 과거 0.8234와 한 문항의 순위가 다름 |
 | 계층 병합 스트레스 검사 | 답 없는 STM/MTM 문서 698건 추가 시 Hit@8 **97.0% → 95.3%** | 공개 평가셋에 합성 방해 문서를 추가 |
 | 재정렬기 실험 | 전체 299문항 페이지 MRR **0.814 → 0.849** | bge-m3 사용 시 CPU 질문당 약 58.5초; 기본값에서는 비활성화 |
-
-| 근거 전달 검사 (20문항) | 정답 페이지 본문 전달 **17/20 → 19/20** | LLM 없이 전달 단계만 측정 |
+| 근거 전달 검사 (60문항) | 정답 페이지 본문 전달 **46/60 → 56/60** | LLM 없이 전달 단계만 측정 |
+| 계층 라우팅 (80문항) | 기대 계층 적중 tier@1 **94%**, tier@3 **99%** | 진행 과제 실자료. 기대 계층만 라벨 |
+| 진행 과제 답변 (20문항) | 전달 **20/20** · 정답 **20/20** · 근거 밖 숫자 **0** | 실제 모델 호출. 답을 아는 문항만 |
 
 MRR과 Hit@k는 **정답 근거를 검색한 순위**를 측정한다. 답변 정확도 지표는 아니다. 이미지·슬라이드 근거는 텍스트 검색에서 상대적으로 약하며, 실제 모델 호출은 소수 질문에서만 확인했다.
 
 검색 순위와 답변 정확도 사이에는 여러 단계가 있다. 20문항 실측에서 정답 문서는 20/20 찾았지만 답변은 10/20만 맞았다. 그 사이에 근거 전달 예산이 있다.
+
+60문항으로 손잡이를 하나씩 풀어 보면 **문서당 대목 수만 전달을 올린다.** 전체 상한은
+혼자서는 0건이고 대목 확대로 생기는 탈락을 없애는 역할이며, 청크 발췌 길이는 기여가
+없었다. 자세한 분해는 `docs/parameters-and-rationale.md` 6-3절에 있다.
 
 | 설정 | 기본값 | 무엇을 정하나 |
 |---|---:|---|
@@ -92,5 +112,13 @@ MRR과 Hit@k는 **정답 근거를 검색한 순위**를 측정한다. 답변 �
 | `TOOL_RESULT_CHUNKS_PER_DOC` | 1 | 그 카드가 실을 대목 수 |
 | `TOOL_RESULT_DEDUPE` | 0 | 이미 전달한 문서를 도구 결과에서 빼고 뒤 순위로 채운다 |
 | `TOOL_RESULT_TOP_K_CAP` | 0 | 모델이 요청할 수 있는 `top_k` 상한 (0이면 제한 없음) |
+| `SEED_EXCERPT_CHARS` | 0 | 시드 문서 카드의 본문 길이. 0이면 `LTM_EXCERPT_CHARS`를 따른다 |
+| `SESSION_EVIDENCE_LEDGER` | 0 | 앞선 턴에 본문을 준 문서를 참조 카드로만 넣는다 |
+| `SESSION_LEDGER_MAX_DOCS` | 200 | 원장에 남길 문서 수 |
+| `SESSION_LEDGER_MIN_BODIES` | 2 | 원장을 켜도 한 턴에 보낼 최소 본문 장수 |
+
+`SEED_EXCERPT_CHARS`를 따로 둔 이유는 두 자료의 모양이 달라서다. 청크 코퍼스는
+`LTM_CHUNKS_PER_DOC`으로 대목을 늘릴 수 있지만, 시드 문서는 **파일 하나가 카드
+하나**라 그 손잡이가 걸리지 않는다. 발췌 길이가 유일한 손잡이다.
 
 앞의 셋과 뒤의 둘을 나눈 이유는 비용이다. 1차 컨텍스트는 카드 8장이 턴에 한 번 실리지만, 도구 결과는 10~20장이 호출마다 다시 실린다. 한국어 근거는 **글자 1자가 입력 토큰 약 2개**이므로, 글자 단위 예산은 비용을 작아 보이게 한다.

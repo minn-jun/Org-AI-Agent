@@ -80,43 +80,39 @@ def loose(text: str) -> str:
     return re.sub(r"[.\-/]", "", text)
 
 
-def build(seed_root: Path, corpus: Path | None):
+def build(seed_root: Path, corpus: Path | None, analyzer_kind: str | None = None):
     os.environ["MEMORY_ROOT"] = str(seed_root)
     if corpus:
         os.environ["LTM_CORPUS"] = str(corpus)
     else:
         os.environ.pop("LTM_CORPUS", None)
 
+    from org_mem.builders import (
+        build_context_builder,
+        build_prefetcher,
+        build_query_analyzer,
+    )
     from org_mem.config import AppConfig
-    from org_mem.context_builder import ContextBuilder
     from org_mem.memory_store import build_memory_store
-    from org_mem.prefetch import MemoryPrefetcher
-    from org_mem.builders import build_query_analyzer
 
     config = AppConfig.load()
     store = build_memory_store(config)
     return (
         config,
         store,
-        RuleBasedQueryAnalyzer(vocabulary=store.filter_vocabulary()),
-        MemoryPrefetcher(
-            store,
-            total_top_k=config.prefetch_top_k,
-            alpha=config.tier_prior_alpha,
-            pool_per_tier=config.prefetch_pool_per_tier,
-            cut_ratio=config.prefetch_cut_ratio,
-            min_cards=config.prefetch_min_cards,
-            tier_floor=config.prefetch_tier_floor,
-        ),
-        ContextBuilder(
-            context_mode=config.context_mode,
-            max_evidence_chars=config.max_evidence_chars,
-        ),
+        build_query_analyzer(config, store, kind=analyzer_kind),
+        build_prefetcher(config, store),
+        build_context_builder(config),
     )
 
 
+#: main()에서 --analyzer를 받아 채운다. run_* 함수들이 인자를 받지 않는 구조라
+#: 시그니처를 바꾸면 호출부가 여러 군데 흔들린다.
+ANALYZER_KIND: str | None = None
+
+
 def run_answers() -> int:
-    config, store, analyzer, prefetcher, builder = build(SEED, None)
+    config, store, analyzer, prefetcher, builder = build(SEED, None, ANALYZER_KIND)
     full = {
         str(doc.metadata.get("source_id", doc.path.name)): compact(doc.text)
         for doc in store.documents
@@ -251,10 +247,17 @@ def run_allganize(count: int, no_seed: bool = False) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("mode", choices=("answers", "allganize"))
+    parser.add_argument(
+        "--analyzer",
+        choices=["rule", "llm", "jev"],
+        help="질의 분석기 (기본값은 QUERY_ANALYZER, 없으면 rule).",
+    )
     parser.add_argument("--count", type=int, default=20)
     parser.add_argument("--no-seed", action="store_true",
                         help="진행 과제 시드를 떼고 돌린다 (기준선)")
     args = parser.parse_args()
+    global ANALYZER_KIND
+    ANALYZER_KIND = args.analyzer
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     if args.mode == "answers":

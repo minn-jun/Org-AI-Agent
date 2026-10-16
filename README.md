@@ -99,6 +99,7 @@ python datasets/allganize-rag-eval-ko/scripts/evidence_delivery_check.py --count
 
 ```powershell
 python scripts/build_prentice_seed.py          # 패키지 → STM/MTM/LTM 시드
+python scripts/trace_question.py --qid r_01     # 질문 하나의 전 단계 추적 (무료)
 python scripts/bench_prentice_routing.py       # 계층 라우팅 (무료)
 python scripts/check_prentice_delivery.py answers    # 답 전달 (무료)
 python scripts/check_prentice_delivery.py allganize  # 실제 문서를 방해자로 둔 교차 검사

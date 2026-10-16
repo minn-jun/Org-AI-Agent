@@ -91,7 +91,7 @@ def build(seed_root: Path, corpus: Path | None):
     from org_mem.context_builder import ContextBuilder
     from org_mem.memory_store import build_memory_store
     from org_mem.prefetch import MemoryPrefetcher
-    from org_mem.query_analyzer import RuleBasedQueryAnalyzer
+    from org_mem.builders import build_query_analyzer
 
     config = AppConfig.load()
     store = build_memory_store(config)

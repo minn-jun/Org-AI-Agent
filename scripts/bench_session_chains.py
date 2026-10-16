@@ -122,12 +122,23 @@ def measure(turn_row: dict, result: dict, prior: list[dict]) -> dict:
     }
 
 
-def run_chain(turns: list[dict], *, ledger: bool) -> list[dict]:
+def run_chain(
+    turns: list[dict],
+    *,
+    ledger: bool,
+    analyzer_kind: str | None = None,
+) -> list[dict]:
+    """`analyzer_kind`를 주면 그 분석기로 돈다.
+
+    답변 모델은 MockLLM이라 무료지만, 분석기를 jev로 두면 **분석기만**
+    유료 호출이 발생한다(턴당 1회, 약 $0.00004). 배선을 큰 모델 비용 없이
+    확인할 때 쓴다.
+    """
     from org_mem.agent_runtime import AgentRuntime
     from org_mem.config import AppConfig
     from org_mem.memory_store import build_memory_store
     from org_mem.mock_llm import MockLLMClient
-    from org_mem.query_analyzer import RuleBasedQueryAnalyzer
+    from org_mem.builders import build_query_analyzer
 
     base = AppConfig.load()
     rows: list[dict] = []
@@ -140,7 +151,7 @@ def run_chain(turns: list[dict], *, ledger: bool) -> list[dict]:
             config=config,
             client=MockLLMClient(),
             memory_store=store,
-            query_analyzer=RuleBasedQueryAnalyzer(vocabulary=store.filter_vocabulary()),
+            query_analyzer=build_query_analyzer(config, store, kind=analyzer_kind),
         )
         session_id: str | None = None
         seen: set[str] = set()
@@ -188,6 +199,12 @@ def print_chain(rows: list[dict], *, label: str) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cids", nargs="*", help="특정 연쇄만")
+    parser.add_argument(
+        "--analyzer",
+        choices=["rule", "llm", "jev"],
+        help="질의 분석기 (기본 rule). 답변은 MockLLM이라 무료지만 "
+             "jev/llm은 분석기 호출이 턴마다 1회 발생한다.",
+    )
     parser.add_argument("--out", type=Path, default=ROOT / "logs" / "session_chains.json")
     args = parser.parse_args()
     if hasattr(sys.stdout, "reconfigure"):
@@ -210,8 +227,8 @@ def main() -> int:
         for turn_row in turns:
             mark = "↳" if turn_row.get("needs_prior") else " "
             print(f"   {mark} {turn_row['t']}. {turn_row['question']}")
-        off = run_chain(turns, ledger=False)
-        on = run_chain(turns, ledger=True)
+        off = run_chain(turns, ledger=False, analyzer_kind=args.analyzer)
+        on = run_chain(turns, ledger=True, analyzer_kind=args.analyzer)
         print_chain(off, label="원장 OFF (기본값)")
         print_chain(on, label="원장 ON")
         everything[cid] = {"title": turns[0]["chain_title"], "off": off, "on": on}

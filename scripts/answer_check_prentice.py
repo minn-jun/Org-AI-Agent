@@ -157,7 +157,7 @@ def main() -> int:
     from org_mem.config import AppConfig
     from org_mem.memory_store import build_memory_store
     from org_mem.openrouter_client import OpenRouterClient
-    from org_mem.query_analyzer import RuleBasedQueryAnalyzer
+    from org_mem.builders import build_query_analyzer
 
     config = AppConfig.load()
     if not config.api_key:
@@ -169,7 +169,7 @@ def main() -> int:
         memory_store=store,
         # 분석기는 규칙 기반으로 고정한다. LLM 분석기를 쓰면 실행마다 계획이
         # 흔들려 답변 차이의 원인이 섞인다.
-        query_analyzer=RuleBasedQueryAnalyzer(vocabulary=store.filter_vocabulary()),
+        query_analyzer=build_query_analyzer(config, store, kind=getattr(args, "analyzer", None)),
     )
     args.out.mkdir(parents=True, exist_ok=True)
     print(f"\n출력 {args.out}  발췌 {store.excerpt_chars}자  "

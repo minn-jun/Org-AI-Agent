@@ -79,6 +79,11 @@ def main() -> int:
     parser.add_argument("--dry", action="store_true", help="선정만 출력")
     parser.add_argument("--out", type=Path, default=OUT_DIR)
     parser.add_argument("--retries", type=int, default=2)
+    parser.add_argument(
+        "--analyzer",
+        choices=["rule", "llm", "jev"],
+        help="질의 분석기 (기본값은 QUERY_ANALYZER, 없으면 rule).",
+    )
     args = parser.parse_args()
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -101,22 +106,23 @@ def main() -> int:
         return 0
 
     from org_mem.agent_runtime import AgentRuntime
+    from org_mem.builders import build_query_analyzer, describe
     from org_mem.config import AppConfig
     from org_mem.memory_store import build_memory_store
     from org_mem.openrouter_client import OpenRouterClient
-    from org_mem.query_analyzer import RuleBasedQueryAnalyzer
 
     config = AppConfig.load()
     if not config.api_key:
         sys.exit("OPENROUTER_API_KEY가 없다")
     store = build_memory_store(config)
+    # 기본값은 규칙 기반이다. 턴마다 계획이 흔들리면 연쇄에서 차이의 원인을
+    # 가릴 수 없다. --analyzer로 바꿔 비교 실행한다.
+    analyzer = build_query_analyzer(config, store, kind=args.analyzer)
     runtime = AgentRuntime(
         config=config,
         client=OpenRouterClient(config),
         memory_store=store,
-        # 분석기는 규칙 기반으로 고정한다. 턴마다 계획이 흔들리면 연쇄에서
-        # 차이의 원인을 가릴 수 없다.
-        query_analyzer=RuleBasedQueryAnalyzer(vocabulary=store.filter_vocabulary()),
+        query_analyzer=analyzer,
     )
     args.out.mkdir(parents=True, exist_ok=True)
     print(f"\n출력 {args.out}  발췌 {store.excerpt_chars}자  "

@@ -235,7 +235,7 @@ class MemoryPrefetcher:
                         4,
                     )
             return self._finish(candidates, priors, collected, deduped,
-                                tier_result_counts, max_raw)
+                                tier_result_counts, max_raw, delivered)
 
         if mode == "tier":
             bases: dict[str, float] = {}

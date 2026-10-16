@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from dataclasses import replace
@@ -20,7 +21,8 @@ from org_mem.agent_runtime import AgentRuntime, AgentTrace
 from org_mem.config import AppConfig
 from org_mem.memory_store import MemoryStore
 from org_mem.mock_llm import MockLLMClient
-from org_mem.query_analyzer import RuleBasedQueryAnalyzer
+from org_mem.prefetch import MemoryPrefetcher
+from org_mem.query_analyzer import QueryPlan, RuleBasedQueryAnalyzer
 from org_mem.session_store import DELIVERED_KEY, SessionStore
 
 
@@ -410,6 +412,80 @@ class FollowUpScenarioTests(unittest.TestCase):
             for card in runtime_context(third)["prefetched_evidence"]:
                 if card.get("source_id") in references:
                     self.assertNotIn("content_excerpt", card)
+
+
+# ------------------------------------- 4. 정규화 모드별로 원장이 먹히는지
+
+
+class LedgerNormalizeModeTests(unittest.TestCase):
+    """`delivered`가 모든 정규화 경로에서 `_finish()`까지 가는지 본다.
+
+    2026-10-16까지 zscore/hybrid 경로만 `_finish(..., delivered)`에 인자를
+    넘기지 않았다. 그래서 이미 본문을 전달한 문서가 **새 문서 상한을 차지**해,
+    새 근거가 한 장도 들어오지 못했다.
+
+    기존 원장 검사 19건은 기본값(global)으로만 돌아서 이것을 잡지 못했다.
+    실패 방향이 "근거가 조용히 사라진다"라서 답변만 보면 알 수 없다.
+    """
+
+    #: 같은 계층에서 두 장을 주는 가짜 저장소. a는 이미 전달했다.
+    class _Store:
+        def retrieve(self, *, tier, query, filters, top_k):
+            if tier != "stm":
+                return {"results": [], "result_count": 0}
+            rows = [
+                {
+                    "evidence_id": f"ev_{doc_id}",
+                    "tier": tier,
+                    "title": f"문서 {doc_id}",
+                    "retrieval_score": score,
+                    "source_ref": {"document_id": doc_id},
+                    "excerpt": f"{doc_id} 본문",
+                }
+                for doc_id, score in (("a", 10.0), ("b", 9.0))
+            ]
+            return {"results": rows, "result_count": len(rows)}
+
+    PLAN = QueryPlan(
+        intent="organization_memory_lookup",
+        can_answer_directly=False,
+        memory_needed=True,
+        answer_source="memory_prefetch",
+        use_session_context=False,
+        memory_weights={"stm": 1.0, "mtm": 0.0, "ltm": 0.0},
+        query_rewrites=["질문"],
+        filters={},
+        reason="회귀 검사",
+    )
+
+    def _documents(self, mode: str, delivered: tuple[str, ...]) -> list[str]:
+        os.environ["PREFETCH_NORMALIZE"] = mode
+        try:
+            prefetcher = MemoryPrefetcher(
+                self._Store(),
+                total_top_k=1,          # 새 문서 상한 1장
+                pool_per_tier=10,
+                alpha=0.0,              # 계층 prior 영향 제거
+                cut_ratio=0.0,          # 컷 없음
+                tier_floor=0,           # 계층 최소 보장 없음
+                ledger_cap_ratio=2.0,   # 전체 상한 2장
+            )
+            result = prefetcher.prefetch(self.PLAN, delivered=delivered)
+        finally:
+            os.environ.pop("PREFETCH_NORMALIZE", None)
+        return [card["source_ref"]["document_id"] for card in result.cards]
+
+    def test_every_normalize_mode_honors_delivered(self) -> None:
+        for mode in ("global", "tier", "rrf", "zscore", "hybrid"):
+            with self.subTest(mode=mode):
+                # 원장을 주면 a는 참조로 남고 새 문서 b가 들어와야 한다.
+                self.assertEqual(self._documents(mode, ("a",)), ["a", "b"])
+
+    def test_without_ledger_cap_counts_every_document(self) -> None:
+        for mode in ("global", "tier", "rrf", "zscore", "hybrid"):
+            with self.subTest(mode=mode):
+                # 원장이 없으면 예전대로 상한 1장이 그대로 적용된다.
+                self.assertEqual(self._documents(mode, ()), ["a"])
 
 
 if __name__ == "__main__":

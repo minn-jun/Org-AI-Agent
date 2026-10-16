@@ -7,11 +7,8 @@ from dataclasses import replace
 from pathlib import Path
 
 from .agent_runtime import AgentRuntime
+from .builders import ANALYZER_KINDS, build_runtime
 from .config import AppConfig
-from .memory_store import build_memory_store
-from .mock_llm import MockLLMClient
-from .openrouter_client import OpenRouterClient
-from .query_analyzer import LLMQueryAnalyzer, RuleBasedQueryAnalyzer
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -24,6 +21,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--log-dir", type=Path, help="Directory for saved turn logs.")
     parser.add_argument("--session-id", help="Continue an existing saved session.")
     parser.add_argument(
+        "--analyzer",
+        choices=list(ANALYZER_KINDS),
+        help="질의 분석기 (기본값은 .env의 QUERY_ANALYZER, 없으면 rule).",
+    )
+    parser.add_argument(
         "--context-mode",
         choices=["full", "summary", "hybrid"],
         help="1차 컨텍스트에 원문을 얼마나 넣을지 (기본값은 .env의 CONTEXT_MODE).",
@@ -31,26 +33,6 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def build_runtime(config: AppConfig, use_mock: bool) -> AgentRuntime:
-    client = MockLLMClient() if use_mock else OpenRouterClient(config)
-    memory_store = build_memory_store(config)
-    query_analyzer = (
-        RuleBasedQueryAnalyzer(vocabulary=memory_store.filter_vocabulary())
-        if use_mock
-        else LLMQueryAnalyzer(
-            client,
-            model=config.query_analyzer_model,
-            max_tokens=config.query_analyzer_max_tokens,
-            # 코퍼스에 실제로 있는 값만 enum으로 열어 준다.
-            vocabulary=memory_store.filter_vocabulary(),
-        )
-    )
-    return AgentRuntime(
-        config=config,
-        client=client,
-        memory_store=memory_store,
-        query_analyzer=query_analyzer,
-    )
 
 
 def print_event(event: str, payload: dict) -> None:
@@ -241,7 +223,7 @@ def main() -> int:
     try:
         if args.context_mode:
             config = replace(config, context_mode=args.context_mode)
-        runtime = build_runtime(config, use_mock=args.mock)
+        runtime = build_runtime(config, use_mock=args.mock, analyzer=args.analyzer)
     except ValueError as exc:
         print(str(exc))
         print("OpenRouter 키를 .env에 넣거나 --mock 옵션으로 구조를 먼저 확인하세요.")

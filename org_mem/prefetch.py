@@ -113,7 +113,17 @@ class MemoryPrefetcher:
         tier_result_counts = {tier: 0 for tier in TIERS}
 
         # 1. tier별로 자르지 않고 넓게 수집한다.
+        #
+        # 가중치가 0인 계층은 **검색하지 않는다.** 0은 "순위를 조금 낮춘다"가
+        # 아니라 "이 계층은 보지 않는다"는 뜻이다. 아래 `_apply_tier_floor()`도
+        # 같은 기준으로 자리를 주지 않으므로, 검색만 하고 버리는 일이 없게 맞춘다.
+        #
+        # 규칙 기반 분석기는 검색이 필요한 질문에 0을 내보내지 않으므로
+        # (`official_knowledge_lookup`도 stm 0.10을 준다) 기존 동작은 그대로다.
+        # 계층을 실제로 고르는 분석기(JevQueryAnalyzer)에서만 갈라진다.
         for tier in TIERS:
+            if priors[tier] <= 0:
+                continue
             result = self.memory_store.retrieve(
                 tier=tier,
                 query=query,

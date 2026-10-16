@@ -16,12 +16,12 @@ import unittest
 from dataclasses import replace
 from pathlib import Path
 
-from org_agent_mvp.agent_runtime import AgentRuntime, AgentTrace
-from org_agent_mvp.config import AppConfig
-from org_agent_mvp.memory_store import MemoryStore
-from org_agent_mvp.mock_llm import MockLLMClient
-from org_agent_mvp.query_analyzer import RuleBasedQueryAnalyzer
-from org_agent_mvp.session_store import DELIVERED_KEY, SessionStore
+from org_mem.agent_runtime import AgentRuntime, AgentTrace
+from org_mem.config import AppConfig
+from org_mem.memory_store import MemoryStore
+from org_mem.mock_llm import MockLLMClient
+from org_mem.query_analyzer import RuleBasedQueryAnalyzer
+from org_mem.session_store import DELIVERED_KEY, SessionStore
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]

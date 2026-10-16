@@ -6,12 +6,12 @@ import unittest
 from dataclasses import replace
 from pathlib import Path
 
-from org_agent_mvp.agent_runtime import AgentRuntime
-from org_agent_mvp.config import AppConfig
-from org_agent_mvp.memory_store import MemoryStore
-from org_agent_mvp.mock_llm import MockLLMClient
-from org_agent_mvp.prefetch import MemoryPrefetcher
-from org_agent_mvp.query_analyzer import LLMQueryAnalyzer, RuleBasedQueryAnalyzer
+from org_mem.agent_runtime import AgentRuntime
+from org_mem.config import AppConfig
+from org_mem.memory_store import MemoryStore
+from org_mem.mock_llm import MockLLMClient
+from org_mem.prefetch import MemoryPrefetcher
+from org_mem.query_analyzer import LLMQueryAnalyzer, RuleBasedQueryAnalyzer
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]

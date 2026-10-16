@@ -33,8 +33,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from org_agent_mvp.config import AppConfig          # noqa: E402
-from org_agent_mvp.ltm_corpus import LtmCorpus      # noqa: E402
+from org_mem.config import AppConfig          # noqa: E402
+from org_mem.ltm_corpus import LtmCorpus      # noqa: E402
 
 OUT = ROOT / "tests" / "fixtures" / "eval_cases_20200504.jsonl"
 SEED = ROOT / "memory_seed_20200504"

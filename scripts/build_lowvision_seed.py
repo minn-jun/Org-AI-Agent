@@ -2064,7 +2064,7 @@ IP         선행특허 조사 · 특허 출원 · 학술대회 논문
 보고       연차보고서 · 주간 보고
 ```
 
-`ltm/` 폴더는 비워 둔다. LTM은 파일이 아니라 `org_agent_mvp/ltm_corpus.py`가
+`ltm/` 폴더는 비워 둔다. LTM은 파일이 아니라 `org_mem/ltm_corpus.py`가
 `chunks.jsonl`을 역색인으로 읽어서 채운다.
 
 파일로 떨구지 않는 이유는 세 가지다.
@@ -2151,7 +2151,7 @@ LTM을 안 보면 답할 수 없게 만든 것이다.
 환경변수 두 개로 붙인다.
 
 ```bash
-MEMORY_ROOT=memory_seed_20200504 LTM_CORPUS=auto python -m org_agent_mvp
+MEMORY_ROOT=memory_seed_20200504 LTM_CORPUS=auto python -m org_mem
 ```
 
 - `MEMORY_ROOT` — STM/MTM 시드 폴더. 기본값이 이 폴더다

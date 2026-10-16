@@ -107,9 +107,9 @@ def run(args: argparse.Namespace) -> int:
         env[key] = value
     os.environ.update(env)
     sys.path.insert(0, str(ROOT))
-    from org_agent_mvp.ltm_corpus import LtmCorpus
-    from org_agent_mvp.memory_store import _expand_query
-    from org_agent_mvp.tokenizer import tokenize
+    from org_mem.ltm_corpus import LtmCorpus
+    from org_mem.memory_store import _expand_query
+    from org_mem.tokenizer import tokenize
 
     cases = _load_cases(args.split)
     t0 = time.perf_counter()

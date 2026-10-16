@@ -41,11 +41,11 @@ sys.path.insert(0, str(PROJECT_ROOT))
 # 기본 평가셋이 실코퍼스를 가리키므로 LTM 코퍼스를 붙인다. 끄려면 LTM_CORPUS= 로 비운다.
 os.environ.setdefault("LTM_CORPUS", "auto")
 
-from org_agent_mvp.config import AppConfig  # noqa: E402
-from org_agent_mvp.memory_store import MemoryStore, build_memory_store  # noqa: E402
-from org_agent_mvp.prefetch import TIERS, MemoryPrefetcher, prefetch_query  # noqa: E402
-from org_agent_mvp.openrouter_client import OpenRouterClient  # noqa: E402
-from org_agent_mvp.query_analyzer import (  # noqa: E402
+from org_mem.config import AppConfig  # noqa: E402
+from org_mem.memory_store import MemoryStore, build_memory_store  # noqa: E402
+from org_mem.prefetch import TIERS, MemoryPrefetcher, prefetch_query  # noqa: E402
+from org_mem.openrouter_client import OpenRouterClient  # noqa: E402
+from org_mem.query_analyzer import (  # noqa: E402
     LLMQueryAnalyzer,
     QueryPlan,
     RuleBasedQueryAnalyzer,

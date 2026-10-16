@@ -6,8 +6,8 @@ import urllib.error
 from dataclasses import replace
 from unittest.mock import patch
 
-from org_agent_mvp.config import AppConfig
-from org_agent_mvp.openrouter_client import OpenRouterClient
+from org_mem.config import AppConfig
+from org_mem.openrouter_client import OpenRouterClient
 
 OK_BODY = b'{"choices":[{"message":{"role":"assistant","content":"ok"}}]}'
 

@@ -4,8 +4,8 @@ import json
 import unittest
 from pathlib import Path
 
-from org_agent_mvp.ltm_corpus import LtmCorpus, default_corpus_path
-from org_agent_mvp.memory_store import MemoryStore
+from org_mem.ltm_corpus import LtmCorpus, default_corpus_path
+from org_mem.memory_store import MemoryStore
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]

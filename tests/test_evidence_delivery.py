@@ -19,14 +19,14 @@ from contextlib import contextmanager
 from dataclasses import replace
 from pathlib import Path
 
-from org_agent_mvp.agent_runtime import AgentRuntime
-from org_agent_mvp.config import AppConfig
-from org_agent_mvp.context_builder import ContextBuilder
-from org_agent_mvp.ltm_corpus import LtmCorpus
-from org_agent_mvp.memory_store import MemoryStore
-from org_agent_mvp.mock_llm import MockLLMClient
-from org_agent_mvp.prefetch import MemoryPrefetcher
-from org_agent_mvp.query_analyzer import LLMQueryAnalyzer, RuleBasedQueryAnalyzer
+from org_mem.agent_runtime import AgentRuntime
+from org_mem.config import AppConfig
+from org_mem.context_builder import ContextBuilder
+from org_mem.ltm_corpus import LtmCorpus
+from org_mem.memory_store import MemoryStore
+from org_mem.mock_llm import MockLLMClient
+from org_mem.prefetch import MemoryPrefetcher
+from org_mem.query_analyzer import LLMQueryAnalyzer, RuleBasedQueryAnalyzer
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 MEMORY_FIXTURE = PROJECT_ROOT / "tests" / "fixtures" / "memory"
@@ -204,7 +204,7 @@ class ExpandReturnsSourceTests(unittest.TestCase):
             index = {str(card["evidence_id"]): card for card in cards}
             known = next(iter(index))
 
-            from org_agent_mvp.agent_runtime import AgentTrace
+            from org_mem.agent_runtime import AgentTrace
 
             message = runtime._execute_expand_evidence(
                 {
@@ -568,7 +568,7 @@ class ToolResultDedupeTests(unittest.TestCase):
         }
 
     def _trace(self, injected: list[str], tool: list[str] | None = None):
-        from org_agent_mvp.agent_runtime import AgentTrace
+        from org_mem.agent_runtime import AgentTrace
 
         trace = AgentTrace()
         trace.injected_sources = list(injected)
@@ -646,7 +646,7 @@ class ToolResultDedupeTests(unittest.TestCase):
             runtime = self._runtime(
                 temp_dir, tool_result_dedupe=False, tool_result_top_k_cap=3
             )
-            from org_agent_mvp.agent_runtime import AgentTrace
+            from org_mem.agent_runtime import AgentTrace
 
             message = runtime._execute_tool_call(
                 {
@@ -690,7 +690,7 @@ class BenchBaselineTests(unittest.TestCase):
         return module.BASE_ENV
 
     def test_base_env_matches_code_defaults(self) -> None:
-        from org_agent_mvp import ltm_corpus, memory_store, scoring, tokenizer
+        from org_mem import ltm_corpus, memory_store, scoring, tokenizer
 
         base = self._base_env()
         with env(**base):
@@ -725,7 +725,7 @@ class SeedExcerptTests(unittest.TestCase):
     """
 
     def _store(self, **overrides):
-        from org_agent_mvp.memory_store import build_memory_store
+        from org_mem.memory_store import build_memory_store
 
         config = replace(
             AppConfig.load(), memory_root=MEMORY_FIXTURE, ltm_corpus_path=None, **overrides
@@ -747,7 +747,7 @@ class SeedExcerptTests(unittest.TestCase):
         fixture 문서는 200자 안쪽이라 잘릴 것이 없다. 진행 과제 시드의 LTM
         문서는 평균 21,582자이므로, 그 길이를 흉내 낸 문서를 따로 만든다.
         """
-        from org_agent_mvp.memory_store import build_memory_store
+        from org_mem.memory_store import build_memory_store
 
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir) / "seed"

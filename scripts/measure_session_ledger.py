@@ -32,11 +32,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 os.environ.setdefault("LTM_CORPUS", "auto")
 
-from org_agent_mvp.agent_runtime import AgentRuntime  # noqa: E402
-from org_agent_mvp.config import AppConfig  # noqa: E402
-from org_agent_mvp.memory_store import build_memory_store  # noqa: E402
-from org_agent_mvp.mock_llm import MockLLMClient  # noqa: E402
-from org_agent_mvp.query_analyzer import RuleBasedQueryAnalyzer  # noqa: E402
+from org_mem.agent_runtime import AgentRuntime  # noqa: E402
+from org_mem.config import AppConfig  # noqa: E402
+from org_mem.memory_store import build_memory_store  # noqa: E402
+from org_mem.mock_llm import MockLLMClient  # noqa: E402
+from org_mem.query_analyzer import RuleBasedQueryAnalyzer  # noqa: E402
 
 
 #: 후속 질문의 밀착도를 셋으로 나눠 본다. 원장의 이득은 밀착도에 비례한다.

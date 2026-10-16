@@ -19,12 +19,12 @@ import unittest
 from contextlib import contextmanager
 from pathlib import Path
 
-from org_agent_mvp import dense as dense_mod
-from org_agent_mvp import scoring, tokenizer
-from org_agent_mvp.ltm_corpus import DEFAULT_DOC_TYPE, LtmCorpus
-from org_agent_mvp.memory_store import MemoryStore
-from org_agent_mvp.prefetch import MemoryPrefetcher, prefetch_query
-from org_agent_mvp.query_analyzer import QueryPlan
+from org_mem import dense as dense_mod
+from org_mem import scoring, tokenizer
+from org_mem.ltm_corpus import DEFAULT_DOC_TYPE, LtmCorpus
+from org_mem.memory_store import MemoryStore
+from org_mem.prefetch import MemoryPrefetcher, prefetch_query
+from org_mem.query_analyzer import QueryPlan
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -532,7 +532,7 @@ class LtmCorpusTests(unittest.TestCase):
         script = (
             "import json,sys;"
             "sys.path.insert(0, sys.argv[2]);"
-            "from org_agent_mvp.ltm_corpus import LtmCorpus;"
+            "from org_mem.ltm_corpus import LtmCorpus;"
             "c=LtmCorpus(sys.argv[1]);"
             "print(json.dumps([k['evidence_id'] for _,k in "
             "c.search(['알파','베타'], top_k=12)]))"
@@ -607,24 +607,24 @@ class CrossTierMergeTests(unittest.TestCase):
                 "retrieval_score": score, "source_ref": ref}
 
     def test_note_shares_key_with_its_source_document(self) -> None:
-        from org_agent_mvp.prefetch import _dedupe_key
+        from org_mem.prefetch import _dedupe_key
         self.assertEqual(_dedupe_key(self.note_card("doc1")), _dedupe_key(self.ltm_card("doc1")))
 
     def test_note_without_provenance_stays_separate(self) -> None:
-        from org_agent_mvp.prefetch import _dedupe_key
+        from org_mem.prefetch import _dedupe_key
         self.assertNotEqual(_dedupe_key(self.note_card(None)), _dedupe_key(self.ltm_card("doc1")))
 
     def test_unrelated_documents_keep_separate_keys(self) -> None:
-        from org_agent_mvp.prefetch import _dedupe_key
+        from org_mem.prefetch import _dedupe_key
         self.assertNotEqual(_dedupe_key(self.ltm_card("doc1")), _dedupe_key(self.ltm_card("doc2")))
 
     def test_merge_can_be_switched_off(self) -> None:
-        from org_agent_mvp.prefetch import _dedupe_key
+        from org_mem.prefetch import _dedupe_key
         with env(PREFETCH_MERGE_SAME_SOURCE="0"):
             self.assertNotEqual(_dedupe_key(self.note_card("doc1")), _dedupe_key(self.ltm_card("doc1")))
 
     def test_folding_records_the_other_card_without_losing_it(self) -> None:
-        from org_agent_mvp.prefetch import _fold_into
+        from org_mem.prefetch import _fold_into
         keep, dropped = self.note_card("doc1"), self.ltm_card("doc1")
         card = _fold_into(keep, dropped)
         ref = card["source_ref"]

@@ -7,13 +7,13 @@ import unittest
 from dataclasses import replace
 from pathlib import Path
 
-from org_agent_mvp.agent_runtime import AgentRuntime
-from org_agent_mvp.config import AppConfig
-from org_agent_mvp.context_builder import ContextBuilder
-from org_agent_mvp.memory_store import MemoryStore
-from org_agent_mvp.mock_llm import MockLLMClient
-from org_agent_mvp.prefetch import MemoryPrefetcher
-from org_agent_mvp.query_analyzer import RuleBasedQueryAnalyzer
+from org_mem.agent_runtime import AgentRuntime
+from org_mem.config import AppConfig
+from org_mem.context_builder import ContextBuilder
+from org_mem.memory_store import MemoryStore
+from org_mem.mock_llm import MockLLMClient
+from org_mem.prefetch import MemoryPrefetcher
+from org_mem.query_analyzer import RuleBasedQueryAnalyzer
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -93,7 +93,7 @@ class ExpandEvidenceTests(unittest.TestCase):
 
     def test_prefetch_hint_is_off_by_default(self) -> None:
         """기본 동작은 2026-09-16 이전과 같아야 한다."""
-        from org_agent_mvp.prompts import SYSTEM_PROMPT, system_prompt
+        from org_mem.prompts import SYSTEM_PROMPT, system_prompt
 
         previous = os.environ.pop("PROMPT_PREFETCH_HINT", None)
         try:
@@ -103,7 +103,7 @@ class ExpandEvidenceTests(unittest.TestCase):
                 os.environ["PROMPT_PREFETCH_HINT"] = previous
 
     def test_prefetch_hint_can_be_switched_on(self) -> None:
-        from org_agent_mvp.prompts import SYSTEM_PROMPT, system_prompt
+        from org_mem.prompts import SYSTEM_PROMPT, system_prompt
 
         previous = os.environ.get("PROMPT_PREFETCH_HINT")
         os.environ["PROMPT_PREFETCH_HINT"] = "1"
@@ -119,7 +119,7 @@ class ExpandEvidenceTests(unittest.TestCase):
 
     def test_evidence_strict_is_off_by_default(self) -> None:
         """기본 동작은 2026-09-28 이전과 같아야 한다."""
-        from org_agent_mvp.prompts import SYSTEM_PROMPT, system_prompt
+        from org_mem.prompts import SYSTEM_PROMPT, system_prompt
 
         previous = os.environ.pop("PROMPT_EVIDENCE_STRICT", None)
         try:
@@ -129,7 +129,7 @@ class ExpandEvidenceTests(unittest.TestCase):
                 os.environ["PROMPT_EVIDENCE_STRICT"] = previous
 
     def test_evidence_strict_can_be_switched_on(self) -> None:
-        from org_agent_mvp.prompts import SYSTEM_PROMPT, system_prompt
+        from org_mem.prompts import SYSTEM_PROMPT, system_prompt
 
         previous = os.environ.get("PROMPT_EVIDENCE_STRICT")
         os.environ["PROMPT_EVIDENCE_STRICT"] = "1"
@@ -168,7 +168,7 @@ class ExpandEvidenceTests(unittest.TestCase):
             _, cards = build_cards()
             index = {str(c["evidence_id"]): c for c in cards}
             known = next(iter(index))
-            from org_agent_mvp.agent_runtime import AgentTrace
+            from org_mem.agent_runtime import AgentTrace
 
             trace = AgentTrace()
             message = runtime._execute_expand_evidence(

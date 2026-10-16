@@ -29,12 +29,12 @@ from typing import Any
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from org_agent_mvp.agent_runtime import AgentRuntime  # noqa: E402
-from org_agent_mvp.config import AppConfig  # noqa: E402
-from org_agent_mvp.memory_store import build_memory_store  # noqa: E402
-from org_agent_mvp.mock_llm import MockLLMClient  # noqa: E402
-from org_agent_mvp.openrouter_client import OpenRouterClient  # noqa: E402
-from org_agent_mvp.query_analyzer import (  # noqa: E402
+from org_mem.agent_runtime import AgentRuntime  # noqa: E402
+from org_mem.config import AppConfig  # noqa: E402
+from org_mem.memory_store import build_memory_store  # noqa: E402
+from org_mem.mock_llm import MockLLMClient  # noqa: E402
+from org_mem.openrouter_client import OpenRouterClient  # noqa: E402
+from org_mem.query_analyzer import (  # noqa: E402
     LLMQueryAnalyzer,
     RuleBasedQueryAnalyzer,
 )

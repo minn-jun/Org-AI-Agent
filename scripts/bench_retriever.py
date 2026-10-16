@@ -102,13 +102,13 @@ def run_stage(stage: str, cases_path: Path) -> dict:
 
     # 설정이 모듈 상단에서 굳는 곳이 있어 매번 새로 불러온다.
     for name in list(sys.modules):
-        if name.startswith("org_agent_mvp"):
+        if name.startswith("org_mem"):
             del sys.modules[name]
 
-    from org_agent_mvp.config import AppConfig
-    from org_agent_mvp.memory_store import build_memory_store
-    from org_agent_mvp.prefetch import MemoryPrefetcher
-    from org_agent_mvp.query_analyzer import RuleBasedQueryAnalyzer
+    from org_mem.config import AppConfig
+    from org_mem.memory_store import build_memory_store
+    from org_mem.prefetch import MemoryPrefetcher
+    from org_mem.query_analyzer import RuleBasedQueryAnalyzer
 
     cfg = AppConfig.load()
     if not cfg.ltm_corpus_path:

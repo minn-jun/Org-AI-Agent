@@ -24,7 +24,7 @@ allganize-rag-eval-ko/
 │  └─ label_check.json              정답 페이지 ↔ PDF 원문 대조 결과
 ├─ chunks/chunks.sqlite3            doc_rag로 뽑은 최종 청크 2,960개 (page_nos 포함)
 ├─ ltm/                             LTM 검색기 평가용 (scripts/export_ltm_jsonl.py)
-│  ├─ chunks.jsonl                  청크를 org_agent_mvp LtmCorpus 형식으로 (문서 메타데이터 없음)
+│  ├─ chunks.jsonl                  청크를 org_mem LtmCorpus 형식으로 (문서 메타데이터 없음)
 │  ├─ cases_dev.jsonl / cases_test.jsonl   채점 299문항 150 / 149 (도메인 × 근거 유형 × 글자층 층화, 시드 20260915)
 │  ├─ split.json                    분할 기준과 칸별 개수
 │  └─ rerank_pairs.jsonl            재정렬 후보 쌍 8,970개 (scripts/rerank_pairs.py dump, 06 문서)

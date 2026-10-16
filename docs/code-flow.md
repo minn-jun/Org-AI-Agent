@@ -2,7 +2,7 @@
 
 갱신일: 2026-09-28
 
-이 문서는 `org_agent_mvp` 코드가 어떤 책임 분리로 동작하는지 설명한다.
+이 문서는 `org_mem` 코드가 어떤 책임 분리로 동작하는지 설명한다.
 함수 내부의 모든 분기보다, 나중에 수정할 때 어느 파일을 보면 되는지에 초점을 둔다.
 
 수치의 값과 근거는 [`parameters-and-rationale.md`](parameters-and-rationale.md)에 따로 있다.
@@ -12,7 +12,7 @@
 ## 호출 흐름 요약
 
 ```text
-org_agent_mvp/__main__.py
+org_mem/__main__.py
 │
 ├─ main()
 │  ├─ CLI 인자 파싱 (--mock, --context-mode, --session-id, --save-log)

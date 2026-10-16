@@ -36,13 +36,13 @@ def run(env: dict[str, str], top_k: int = 8) -> dict:
     for k, v in env.items():
         os.environ[k] = v
     for name in list(sys.modules):
-        if name.startswith("org_agent_mvp"):
+        if name.startswith("org_mem"):
             del sys.modules[name]
 
-    from org_agent_mvp.config import AppConfig
-    from org_agent_mvp.ltm_corpus import LtmCorpus
-    from org_agent_mvp.memory_store import _expand_query
-    from org_agent_mvp.tokenizer import tokenize
+    from org_mem.config import AppConfig
+    from org_mem.ltm_corpus import LtmCorpus
+    from org_mem.memory_store import _expand_query
+    from org_mem.tokenizer import tokenize
 
     corpus = LtmCorpus(AppConfig.load().ltm_corpus_path)
     rows = [json.loads(l) for l in CASES.read_text(encoding="utf-8").splitlines() if l.strip()]

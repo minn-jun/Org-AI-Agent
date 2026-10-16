@@ -1,7 +1,7 @@
 """재정렬기 점수를 GPU로 미리 계산해 org_agent_mvp 재정렬 캐시에 넣는다.
 
 CPU(기본 파이썬, torch CPU)에서 bge-reranker-v2-m3는 초당 1쌍 안팎이라 299문항 × 30쌍에 몇 시간이 걸린다.
-검색 코드(org_agent_mvp/rerank.py)는 (모델, 질문, 청크) 해시로 캐시를 먼저 보므로,
+검색 코드(org_mem/rerank.py)는 (모델, 질문, 청크) 해시로 캐시를 먼저 보므로,
 같은 쌍의 점수를 GPU에서 계산해 캐시에 넣어 두면 검색 결과는 CPU로 계산한 것과 같은 순서가 된다.
 
     # 1) 후보 쌍 뽑기 — 기본 파이썬 (kiwipiepy 필요). 설정은 bench_allganize.py와 같게 준다
@@ -37,12 +37,12 @@ FINAL_ENV = {
 
 
 def pair_key(query: str, passage: str) -> str:
-    """org_agent_mvp/rerank.py `_pair_key`와 같아야 한다."""
+    """org_mem/rerank.py `_pair_key`와 같아야 한다."""
     return hashlib.blake2b(f"{query}\x00{passage}".encode("utf-8"), digest_size=12).hexdigest()
 
 
 def cache_path(model: str, max_length: int) -> Path:
-    """org_agent_mvp/rerank.py `CrossEncoderScorer.cache_path`와 같아야 한다."""
+    """org_mem/rerank.py `CrossEncoderScorer.cache_path`와 같아야 한다."""
     digest = hashlib.blake2b(f"{model}|{max_length}".encode("utf-8"), digest_size=8).hexdigest()
     return CACHE_ROOT / f"{digest}.jsonl"
 
@@ -53,9 +53,9 @@ def dump(args: argparse.Namespace) -> int:
         key, _, value = item.partition("=")
         os.environ[key] = value
     sys.path.insert(0, str(APP))
-    from org_agent_mvp.ltm_corpus import LtmCorpus
-    from org_agent_mvp.memory_store import _expand_query
-    from org_agent_mvp.tokenizer import tokenize
+    from org_mem.ltm_corpus import LtmCorpus
+    from org_mem.memory_store import _expand_query
+    from org_mem.tokenizer import tokenize
 
     corpus = LtmCorpus(ROOT / "ltm" / "chunks.jsonl")
     cases = []

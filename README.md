@@ -10,7 +10,7 @@
 
 | 위치 | 내용 | 기본 제공 |
 |---|---|---|
-| `org_agent_mvp/` | 에이전트, 검색기, 세션, OpenRouter 연동 코드 | 예 |
+| `org_mem/` | 에이전트, 검색기, 세션, OpenRouter 연동 코드 | 예 |
 | `tests/fixtures/memory/` | 실행 예시에 쓰는 가상 과제 A/B 메모리 | 예 |
 | `datasets/allganize-rag-eval-ko/` | 공개 한국어 RAG 검색 평가셋 | 예 |
 | `tests/fixtures/eval_cases_20200504.jsonl` | 자체 과제 평가 질문 60개 | 예 |
@@ -28,7 +28,7 @@
 ```powershell
 $env:MEMORY_ROOT = "tests/fixtures/memory"
 $env:LTM_CORPUS = ""
-python -m org_agent_mvp --mock --verbose --question "A 과제 예산 검토에서 뭐가 지적됐어?"
+python -m org_mem --mock --verbose --question "A 과제 예산 검토에서 뭐가 지적됐어?"
 ```
 
 로컬에 별도 보관한 과제 자료가 있으면 두 폴더를 위 표의 경로에 둔 뒤 실행한다. `LTM_CORPUS=auto`는 `datasets/20200504-doc_rag/export/` 아래의 청크 파일을 찾는다.
@@ -36,7 +36,7 @@ python -m org_agent_mvp --mock --verbose --question "A 과제 예산 검토에�
 ```powershell
 $env:MEMORY_ROOT = "memory_seed_20200504"
 $env:LTM_CORPUS = "auto"
-python -m org_agent_mvp --mock --verbose --question "이 과제의 전체 연구개발기간은 언제부터 언제까지야?"
+python -m org_mem --mock --verbose --question "이 과제의 전체 연구개발기간은 언제부터 언제까지야?"
 ```
 
 실제 모델 호출은 `.env.example`을 참고해 `.env`에 `OPENROUTER_API_KEY`를 설정하고 `--mock`을 빼서 실행한다. API 호출 비용이 발생한다. `--context-mode full|hybrid|summary`로 초기 근거 주입 방식을 바꿀 수 있고, `--save-log`를 주면 턴 기록을 `logs/turns/`에 저장한다.

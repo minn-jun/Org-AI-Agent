@@ -12,8 +12,8 @@ import unittest
 from contextlib import contextmanager
 from pathlib import Path
 
-from org_agent_mvp import scoring
-from org_agent_mvp.ltm_corpus import LtmCorpus, title_bonus_mode
+from org_mem import scoring
+from org_mem.ltm_corpus import LtmCorpus, title_bonus_mode
 
 
 @contextmanager
@@ -120,7 +120,7 @@ class TitleBonusTests(CorpusCase):
 
 
 def scoring_title_bonus() -> float:
-    from org_agent_mvp.ltm_corpus import TITLE_BONUS
+    from org_mem.ltm_corpus import TITLE_BONUS
     return TITLE_BONUS
 
 
@@ -167,7 +167,7 @@ class FakeScorer:
 class RerankTests(CorpusCase):
     def setUp(self) -> None:
         super().setUp()
-        from org_agent_mvp import rerank
+        from org_mem import rerank
         self.rerank = rerank
         self.fake = FakeScorer()
         rerank._LOADED[("fake-model", rerank.DEFAULT_MAX_LENGTH)] = self.fake

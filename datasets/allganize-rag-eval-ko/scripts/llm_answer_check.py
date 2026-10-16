@@ -102,12 +102,12 @@ def run(args: argparse.Namespace) -> int:
     os.environ["MEMORY_ROOT"] = str(SEED_DIR)
     os.environ["LTM_CORPUS"] = str((DATA / "chunks.jsonl").resolve())
     sys.path.insert(0, str(APP))
-    from org_agent_mvp.agent_runtime import AgentRuntime
-    from org_agent_mvp.config import AppConfig
-    from org_agent_mvp.memory_store import build_memory_store
-    from org_agent_mvp.mock_llm import MockLLMClient
-    from org_agent_mvp.openrouter_client import OpenRouterClient
-    from org_agent_mvp.query_analyzer import RuleBasedQueryAnalyzer
+    from org_mem.agent_runtime import AgentRuntime
+    from org_mem.config import AppConfig
+    from org_mem.memory_store import build_memory_store
+    from org_mem.mock_llm import MockLLMClient
+    from org_mem.openrouter_client import OpenRouterClient
+    from org_mem.query_analyzer import RuleBasedQueryAnalyzer
 
     cases = _cases()
     qids = args.qids.split(",") if args.qids else _changed_qids(args.count)
@@ -130,12 +130,12 @@ def run(args: argparse.Namespace) -> int:
         for key, (label, env) in CONFIGS.items():
             os.environ.update(env)
             for name in list(sys.modules):
-                if name.startswith("org_agent_mvp."):
+                if name.startswith("org_mem."):
                     del sys.modules[name]
-            from org_agent_mvp.agent_runtime import AgentRuntime as Runtime
-            from org_agent_mvp.config import AppConfig as Config
-            from org_agent_mvp.memory_store import build_memory_store as build_store
-            from org_agent_mvp.query_analyzer import RuleBasedQueryAnalyzer as Analyzer
+            from org_mem.agent_runtime import AgentRuntime as Runtime
+            from org_mem.config import AppConfig as Config
+            from org_mem.memory_store import build_memory_store as build_store
+            from org_mem.query_analyzer import RuleBasedQueryAnalyzer as Analyzer
 
             cfg = Config.load()
             store = build_store(cfg)

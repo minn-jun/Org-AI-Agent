@@ -123,11 +123,11 @@ def measure(turn_row: dict, result: dict, prior: list[dict]) -> dict:
 
 
 def run_chain(turns: list[dict], *, ledger: bool) -> list[dict]:
-    from org_agent_mvp.agent_runtime import AgentRuntime
-    from org_agent_mvp.config import AppConfig
-    from org_agent_mvp.memory_store import build_memory_store
-    from org_agent_mvp.mock_llm import MockLLMClient
-    from org_agent_mvp.query_analyzer import RuleBasedQueryAnalyzer
+    from org_mem.agent_runtime import AgentRuntime
+    from org_mem.config import AppConfig
+    from org_mem.memory_store import build_memory_store
+    from org_mem.mock_llm import MockLLMClient
+    from org_mem.query_analyzer import RuleBasedQueryAnalyzer
 
     base = AppConfig.load()
     rows: list[dict] = []

@@ -153,11 +153,11 @@ def main() -> int:
     if args.dry:
         return 0
 
-    from org_agent_mvp.agent_runtime import AgentRuntime
-    from org_agent_mvp.config import AppConfig
-    from org_agent_mvp.memory_store import build_memory_store
-    from org_agent_mvp.openrouter_client import OpenRouterClient
-    from org_agent_mvp.query_analyzer import RuleBasedQueryAnalyzer
+    from org_mem.agent_runtime import AgentRuntime
+    from org_mem.config import AppConfig
+    from org_mem.memory_store import build_memory_store
+    from org_mem.openrouter_client import OpenRouterClient
+    from org_mem.query_analyzer import RuleBasedQueryAnalyzer
 
     config = AppConfig.load()
     if not config.api_key:

@@ -250,8 +250,8 @@ def main() -> int:
     os.environ.setdefault("MEMORY_ROOT", "datasets/allganize-rag-eval-ko/_empty_tiers")
     sys.path.insert(0, str(ROOT))
 
-    from org_agent_mvp.__main__ import build_runtime   # CLI와 같은 조립 경로를 쓴다
-    from org_agent_mvp.config import AppConfig
+    from org_mem.__main__ import build_runtime   # CLI와 같은 조립 경로를 쓴다
+    from org_mem.config import AppConfig
 
     args.out.mkdir(parents=True, exist_ok=True)
     turn_log_dir = args.out / "turns"

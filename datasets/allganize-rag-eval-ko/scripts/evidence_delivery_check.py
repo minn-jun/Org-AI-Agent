@@ -71,11 +71,11 @@ def main() -> int:
     os.environ["LTM_CORPUS"] = str(DATA / "chunks.jsonl")
     os.environ.setdefault("MEMORY_ROOT", str(ROOT / "memory_seed_empty"))
 
-    from org_agent_mvp.config import AppConfig
-    from org_agent_mvp.context_builder import ContextBuilder
-    from org_agent_mvp.memory_store import build_memory_store
-    from org_agent_mvp.prefetch import MemoryPrefetcher
-    from org_agent_mvp.query_analyzer import RuleBasedQueryAnalyzer
+    from org_mem.config import AppConfig
+    from org_mem.context_builder import ContextBuilder
+    from org_mem.memory_store import build_memory_store
+    from org_mem.prefetch import MemoryPrefetcher
+    from org_mem.query_analyzer import RuleBasedQueryAnalyzer
 
     config = AppConfig.load()
     store = build_memory_store(config)

@@ -754,3 +754,33 @@ python eval/run_eval.py --alpha 0
 python eval/run_eval.py --tier-floor 2
 python eval/run_eval.py --mode quota
 ```
+
+## 결론난 손잡이 목록 (2026-10-16)
+
+측정으로 결론이 난 값들이다. **선택지로 남겨 두는 이유는 측정 사다리의 재현**이다.
+지우면 `scripts/bench_retriever.py`의 단계별 비교가 돌지 않고, 발표 숫자의
+출처를 댈 수 없다.
+
+| 손잡이 | 값 | 결론 | 근거 |
+|---|---|---|---|
+| `RETRIEVER_SCORER` | `freq` | 쓰지 않는다 | 0~1단계 유물. bm25가 전 구간에서 낫다 |
+| `RETRIEVER_SCORER` | `bm25` | **기본값** | — |
+| `PREFETCH_NORMALIZE` | `tier` | 쓰지 않는다 | LTM MRR 0.451 → 0.176. 볼 것 없는 계층의 1등도 1.0이 된다 |
+| `PREFETCH_NORMALIZE` | `global` | **기본값** | — |
+| `RETRIEVER_BM25_B_SEED` | `1.0` | 시드에 쓴다 | 0.75/0.85/0.90/1.00 중 1.0이 tier@1 최고 (75/80). 녹취록을 뺀 뒤에야 방향이 단조로워졌다 |
+| `SESSION_LEDGER_CAP_RATIO` | 1.0~2.0 | **차이 없음** | 근거 글자 519,885 ~ 526,273 (1.2%). 가설 기각 |
+| 녹취록(`.vtt`) 포함 | 제외 | 코드에서 빼냈다 | 한 파일이 avgdl의 8배라 STM 검색을 독점. 음성 인식 오류가 답변에 섞였다 |
+| `JEV_WIDEN_ON_COMPARISON` | `1` | **기본값** | 비교 질문에 계층을 하나 더 열면 혼합 5/12 → 10/12 |
+| Jev confidence 임계값 | 쓰지 않는다 | 판별력 없음 | 맞은 것 중앙 0.32 · 틀린 것 0.26. conf<0.4면 틀린 14건 건지는 대신 맞은 35건도 넓어진다 |
+
+### 아직 결론 안 난 것
+
+| 손잡이 | 상태 |
+|---|---|
+| `CONTEXT_MODE` (full/summary/hybrid) | 비교군으로 유지 |
+| `RETRIEVER_RERANK` | 꺼짐. 전 계층 공통 인터페이스가 없어 LTM 경로만 비교 가능 |
+| `RETRIEVER_DENSE` | 꺼짐 |
+| `TOOL_RESULT_DEDUPE` | 꺼짐. 도구 결과 카드 96장 중 66장(69%)이 이미 전달한 문서였다는 측정은 있다 |
+| `SESSION_EVIDENCE_LEDGER` | 꺼짐. 켜면 본문 재전송이 되불러오기 왕복으로 바뀌어 입력이 늘었다 |
+| `TIER_PRIOR_ALPHA` | 1.0. 계층 가중치가 순위에 얼마나 먹히는지 어블레이션 미측정 |
+| `PREFETCH_TIER_FLOOR` | 1. 8장 중 3장이 계층 쿼터로 예약된다. 0과 비교 미측정 |

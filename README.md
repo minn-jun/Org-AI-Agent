@@ -47,7 +47,7 @@ python -m org_mem --mock --verbose --question "이 과제의 전체 연구개발
 python -m unittest discover -s tests -v
 ```
 
-로컬 과제 자료가 있는 환경에서 **212건 통과**를 확인했다. 자료가 없으면 해당 자료를 검사하는 일부 테스트는 건너뛴다. 검색 품질 평가는 다음과 같이 실행한다.
+로컬 과제 자료가 있는 환경에서 **234건 통과**를 확인했다. 자료가 없으면 해당 자료를 검사하는 일부 테스트는 건너뛴다. 검색 품질 평가는 다음과 같이 실행한다.
 
 ```powershell
 # 공개 평가셋: 저장소에 포함된 데이터만 사용, LLM 호출 없음
@@ -56,6 +56,32 @@ python scripts/bench_allganize.py run --split test --label current
 # 자체 60문항: 로컬 과제 코퍼스와 메모리 시드 필요, 기본 설정은 LLM 호출 없음
 python eval/run_eval.py
 ```
+
+## 질의 분석기 고르기
+
+어느 저장소를 검색할지 정하는 단계는 세 가지로 바꿔 끼운다.
+
+| 값 | 방식 | 호출 |
+|---|---|---|
+| `rule` | 신호어 규칙. 세 계층 모두에 0보다 큰 가중치를 주고 **전부 검색**한 뒤 점수에 곱한다 | 없음 (기본) |
+| `llm` | 작은 LLM이 JSON 계획을 생성한다 | 턴당 1회 |
+| `jev` | Jev가 7분기(stm·mtm·ltm·stm_mtm·stm_ltm·mtm_ltm·all) 중 하나를 골라 **그 저장소만 검색**한다 | 턴당 1회, 약 $0.00004 |
+
+```powershell
+# 환경변수로
+$env:QUERY_ANALYZER="jev"; python -m org_mem --question "..."
+
+# 또는 인자로 (측정 스크립트도 같은 인자를 받는다)
+python -m org_mem --analyzer jev --question "..."
+python scripts/bench_prentice_routing.py --analyzer jev --out logs/routing_jev.json
+```
+
+`jev`는 chat 엔드포인트가 아니라 `/api/alpha/decisions`를 쓴다. 모델은
+`JEV_MODEL`(기본 `typesafe/jev-1.14`)로 바꾼다. 키가 없는데 `llm`/`jev`를
+고르면 조용히 규칙으로 내려가지 않고 멈춘다.
+
+계층 가중치가 0인 계층은 **검색하지 않는다.** 규칙 분석기는 검색이 필요한
+질문에 0을 내보내지 않으므로 기존 동작은 그대로다.
 
 `bench_allganize.py`의 기준선 설정(`BASE_ENV`)은 **서비스 기본값과 같다.** 어긋나면
 `tests/test_evidence_delivery.py`의 검사가 걸린다. 다른 설정을 재려면 `BASE_ENV`를

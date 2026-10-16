@@ -51,7 +51,18 @@ def load_cases() -> list[dict]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--md", action="store_true", help="표를 markdown으로 낸다")
+    parser.add_argument(
+        "--out",
+        type=Path,
+        help="문항별 결과를 json으로 저장한다 (분석기 판정·확률까지 포함).",
+    )
     parser.add_argument("--set", action="append", default=[], metavar="KEY=VALUE")
+    parser.add_argument(
+        "--analyzer",
+        choices=["rule", "llm", "jev"],
+        help="질의 분석기 (기본값은 QUERY_ANALYZER, 없으면 rule). "
+             "jev/llm은 유료 호출이 문항마다 1회 발생한다.",
+    )
     args = parser.parse_args()
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -63,24 +74,17 @@ def main() -> int:
     os.environ.pop("LTM_CORPUS", None)
     os.environ["MEMORY_ROOT"] = os.environ.get("MEMORY_ROOT", str(SEED))
 
+    from org_mem.builders import build_prefetcher, build_query_analyzer, describe
     from org_mem.config import AppConfig
     from org_mem.memory_store import build_memory_store
-    from org_mem.prefetch import MemoryPrefetcher
-    from org_mem.query_analyzer import RuleBasedQueryAnalyzer
 
     config = AppConfig.load()
     store = build_memory_store(config)
     tiers = Counter(doc.tier for doc in store.documents)
-    analyzer = RuleBasedQueryAnalyzer(vocabulary=store.filter_vocabulary())
-    prefetcher = MemoryPrefetcher(
-        store,
-        total_top_k=config.prefetch_top_k,
-        alpha=config.tier_prior_alpha,
-        pool_per_tier=config.prefetch_pool_per_tier,
-        cut_ratio=config.prefetch_cut_ratio,
-        min_cards=config.prefetch_min_cards,
-        tier_floor=config.prefetch_tier_floor,
-    )
+    # 분석기를 바꿔 끼울 수 있어야 한다. 예전에는 규칙 기반을 직접 만들어서
+    # 이 스크립트로는 **규칙 기반만** 측정할 수 있었다.
+    analyzer = build_query_analyzer(config, store, kind=args.analyzer)
+    prefetcher = build_prefetcher(config, store)
 
     cases = load_cases()
     rows = []
@@ -91,6 +95,7 @@ def main() -> int:
     for case in cases:
         expect = [t.lower() for t in case["expect_tiers"]]
         plan = analyzer.analyze(case["question"])
+        decision = getattr(analyzer, "last_decision", {}) or {}
         cards = prefetcher.prefetch(plan).cards
         got = [str(card.get("tier", "")).lower() for card in cards]
         for card in cards:
@@ -120,8 +125,33 @@ def main() -> int:
                     any(want_doc in title for title in titles) if want_doc else None
                 ),
                 "got": "".join(t[0] for t in got),
+                # 분석기가 실제로 어느 계층을 골랐는지. 규칙 기반은 전부 검색하므로
+                # 비어 있고, Jev는 고른 분기가 들어온다.
+                "branch": (decision.get("jev") or {}).get("tier_branch", ""),
+                "branch_conf": (decision.get("jev") or {}).get("branch_confidence"),
+                "searched": "+".join((decision.get("applied") or {}).get("searched_tiers", [])),
+                "overrides": (decision.get("overrides") or []),
+                "analyzer_cost": decision.get("cost_usd"),
+                "analyzer_latency": decision.get("latency_s"),
             }
         )
+
+    if args.out:
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        args.out.write_text(
+            json.dumps(
+                {
+                    "config": describe(config, analyzer),
+                    "seed": config.memory_root.name,
+                    "documents": len(store.documents),
+                    "rows": rows,
+                },
+                ensure_ascii=False,
+                indent=1,
+            ),
+            encoding="utf-8",
+        )
+        print(f"저장: {args.out}")
 
     single = [r for r in rows if "+" not in r["expect"]]
     mixed = [r for r in rows if "+" in r["expect"]]

@@ -40,6 +40,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from .jev_client import choice_of, noul_of
@@ -47,6 +48,20 @@ from .query_analyzer import QueryPlan, RuleBasedQueryAnalyzer
 
 
 TIERS = ("stm", "mtm", "ltm")
+
+#: `is_comparison`이 이 값을 넘으면 비교 질문으로 본다.
+#: noul은 0~1 확률이고 confidence를 따로 주지 않으므로 이 값을 직접 쓴다.
+COMPARISON_THRESHOLD = 0.5
+
+
+def _widen_enabled() -> bool:
+    """비교 질문일 때 계층을 하나 더 여는 보정. 기본 켜짐."""
+    return os.environ.get("JEV_WIDEN_ON_COMPARISON", "1").strip().lower() not in {
+        "0",
+        "false",
+        "no",
+        "off",
+    }
 
 #: 분기 이름 -> 실제로 검색할 계층.
 BRANCH_TIERS: dict[str, tuple[str, ...]] = {
@@ -59,15 +74,60 @@ BRANCH_TIERS: dict[str, tuple[str, ...]] = {
     "all": ("stm", "mtm", "ltm"),
 }
 
-#: Jev에 보내는 분기 설명. 선택지 이름만으로 뜻이 서게 적는다.
-#: 긴 배경지식을 넣으면 판별 모델의 장점(좁은 결정)이 사라진다.
+#: 각 저장소에 **실제로 무엇이 들어 있는지**를 적는다.
+#:
+#: 첫 판에서는 계층을 일반적인 말("진행 중 문서", "공식 규정이나 매뉴얼")로
+#: 설명했다. 그 결과 MTM 기대 29문항 중 12건이 LTM으로 갔다. 실패가 전부
+#: 같은 모양이었다.
+#:
+#:     "라이브러리 RAG 문서에서 Ingestion과 Chunking 단계가 뭐야?"   -> ltm
+#:     "MTEB-ko 테스트셋 규모가 어떻게 돼?"                          -> ltm
+#:     "arctic-ko 라이센스 뭐였는지 얼마였어?"                        -> ltm
+#:
+#: 기술 조사 질문이 "문서·매뉴얼"로 읽혀서 LTM으로 간 것이다. 그런데 이
+#: 코퍼스의 LTM 매뉴얼은 **연구비 집행 매뉴얼(RCMS)** 같은 행정 문서이고,
+#: 기술 조사는 주차 회의자료(MTM)에 있다.
+#:
+#:     STM  세미나 피드백 10 · 킥오프 회의 1
+#:     MTM  주차 회의자료 22   (기술 조사 · 개념 정리 · 벤치마크 수치 · 설계 변경)
+#:     LTM  계획서 5 · 공식문서 9 · 매뉴얼 3   (예산 · 기간 · 협약 · 연구비 집행)
+#:
+#: 이것은 배경지식 주입이 아니라 **저장소 이름을 제대로 대는 것**이다.
+#: 판별 모델에 긴 설명을 넣으면 좁은 결정이라는 장점이 사라지므로, 각 항목은
+#: 저장소에 실제로 있는 자료 종류만 나열하고 추론 규칙은 적지 않는다.
 BRANCH_CRITERIA: dict[str, str] = {
-    "stm": "최근 대화·오늘이나 방금 정해진 것·세미나 피드백 같은 단기 기록만 보면 된다",
-    "mtm": "주간 회의 자료·초안·진행 중인 보고서 같은 작업 중 문서만 보면 된다",
-    "ltm": "공식 계획서·협약서·승인된 문서·조직 공통 규정이나 매뉴얼만 보면 된다",
-    "stm_mtm": "단기 기록과 진행 중 문서를 함께 봐야 한다",
-    "stm_ltm": "단기 기록과 공식 문서를 함께 봐야 한다",
-    "mtm_ltm": "진행 중 문서와 공식 문서를 함께 봐야 한다",
+    "stm": (
+        "세미나나 킥오프 회의에서 **구두로 받은 피드백·지적·제안**. "
+        "누가 무엇을 하라고 했는지, 어떤 방향이 좋겠다고 했는지."
+    ),
+    "mtm": (
+        "주차별 회의자료에 정리한 **기술 조사와 작업 기록**. "
+        "검색 방식·임베딩·RAG 구조 같은 기술 개념 정리, 벤치마크 수치와 모델 비교, "
+        "데이터셋 규모, 라이선스, 설계 변경 내역, 주차별 진행 상황."
+    ),
+    "ltm": (
+        "과제 **행정 문서**. 연구개발계획서, 협약서, 과제번호·총사업비·연구개발기간, "
+        "지원 조건, 연구비 집행 절차와 증빙 규정(RCMS), 특허·지표 같은 제출 항목."
+    ),
+    # 조합 분기는 "두 자료를 맞춰 봐야 하는 질문"의 모양을 적는다.
+    # 첫 판에서는 "A와 B를 함께 봐야 한다"고만 적었고, 혼합 기대 12문항 중
+    # 7건이 단일 분기로 떨어졌다. 어떤 질문이 두 곳을 필요로 하는지가
+    # 설명에 없었다 — "지적을 받고 무엇을 했나", "목표 대비 지금 어디까지"처럼
+    # 받은 쪽과 한 쪽이 다른 저장소에 있는 질문들이다.
+    "stm_mtm": (
+        "받은 피드백과 그에 따라 **실제로 한 작업**을 맞춰 봐야 한다. "
+        "'지적을 받고 무엇을 바꿨나', '요청대로 무엇을 했나'처럼 "
+        "말이 나온 곳과 반영된 곳이 서로 다른 질문."
+    ),
+    "stm_ltm": (
+        "회의에서 나온 이야기와 **문서에 적힌 내용**이 맞는지 맞춰 봐야 한다. "
+        "'그때 말한 것이 계획서에도 있나'처럼 구두 내용과 공식 문서를 대조하는 질문."
+    ),
+    "mtm_ltm": (
+        "계획서에 **약속한 것**과 작업 기록의 **실제 결과**를 맞춰 봐야 한다. "
+        "'목표 대비 지금 어디까지', '계획한 지표를 달성했나'처럼 "
+        "기준이 행정 문서에 있고 실적이 작업 기록에 있는 질문."
+    ),
     "all": "세 종류를 모두 봐야 한다",
 }
 
@@ -231,6 +291,11 @@ class JevQueryAnalyzer:
         memory_needed = source == "memory_prefetch"
         if memory_needed:
             tiers = BRANCH_TIERS[branch]
+            tiers, widen_note = self._widen_if_comparison(
+                tiers, comparison, branch_probabilities
+            )
+            if widen_note:
+                overrides.append(widen_note)
             # 고른 계층만 1.0. 균일하므로 (1 + alpha × prior) 곱이 순위를
             # 바꾸지 않는다. 0인 계층은 검색도 자리 배정도 받지 않는다.
             weights = {tier: (1.0 if tier in tiers else 0.0) for tier in TIERS}
@@ -289,6 +354,42 @@ class JevQueryAnalyzer:
                 + (f" / 보정: {'; '.join(overrides)}" if overrides else "")
             ),
         )
+
+    def _widen_if_comparison(
+        self,
+        tiers: tuple[str, ...],
+        comparison: float,
+        probabilities: dict[str, float],
+    ) -> tuple[tuple[str, ...], str]:
+        """비교 질문인데 계층을 하나만 골랐으면 한 계층을 더 연다.
+
+        비교 질문은 **두 자료를 맞춰 보는 것**이라 한 저장소만 열면 비교 대상이
+        없다. 라우팅 80문항에서 정답 계층이 둘인 12건이 여기 해당한다.
+
+        넓히는 기준을 confidence로 두지 않는다. 실측에서 confidence는
+        맞은 것(중앙 0.32)과 틀린 것(중앙 0.26)을 가르지 못했고, 임계값을
+        0.4로 두면 틀린 14건을 건지는 대신 맞은 35건까지 함께 넓어졌다.
+        대신 **질문의 뜻**을 쓴다 — `is_comparison`은 "두 자료의 차이·충돌을
+        확인해 달라는 질문인가"를 따로 물은 값이다.
+
+        더하는 계층은 분기 확률에서 **두 번째로 높은 분기**가 가리키는 것 중
+        아직 열지 않은 계층이다. 임의로 `all`로 넓히지 않는다.
+
+        `JEV_WIDEN_ON_COMPARISON=0`으로 끈다. 비교 실험에서 이 보정의
+        효과만 따로 보려면 꺼야 한다.
+        """
+        if not _widen_enabled() or len(tiers) != 1 or comparison < COMPARISON_THRESHOLD:
+            return tiers, ""
+        ranked = sorted(probabilities.items(), key=lambda kv: -kv[1])
+        for name, _ in ranked:
+            for tier in BRANCH_TIERS.get(name, ()):
+                if tier not in tiers:
+                    widened = tuple(t for t in TIERS if t in (*tiers, tier))
+                    return widened, (
+                        f"비교 질문({comparison:.2f})이라 {'+'.join(tiers)} -> "
+                        f"{'+'.join(widened)}로 넓힌다"
+                    )
+        return tiers, ""
 
     def _intent_for(self, source: str, branch: str, comparison: float) -> str:
         """intent는 판정에서 결정적으로 따라온다. 따로 묻지 않는다.

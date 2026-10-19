@@ -9,6 +9,7 @@ from uuid import uuid4
 
 from .config import AppConfig
 from .context_builder import ContextBuilder
+from .tokenizer import tokenize
 from .memory_store import MAX_RETRIEVE_TOP_K, MemoryStore
 from .prefetch import MemoryPrefetcher, prefetch_query
 from .prompts import system_prompt
@@ -890,6 +891,51 @@ class AgentRuntime:
             "stopped_reason": trace.stopped_reason,
         }
 
+    @staticmethod
+    def _match_window(body: str, query: str, chars: int, after: int) -> str:
+        """본문의 `after`자 뒤에서 **질문과 맞는 대목**을 잘라 온다.
+
+        앞에서부터 자른 발췌만 보내면 안 되는 이유가 실측으로 나왔다.
+
+        2026-10-19: "그 두 사람 작업을 비교하자는 이야기가 언제 나왔어?"에
+        도구 호출이 정답 문서(08-27 회의자료, 4,744자)를 가져왔는데 모델은
+        답을 못 했다. 도구 결과가 **앞 600자**만 실어 보냈고, 그 600자의
+        절반은 메타데이터 머리글이라 실제 본문은 300자뿐이었다. 문서는
+        도착했지만 답이 담긴 대목은 오지 않았다.
+
+        같은 병을 시드 발췌에서 한 번 겪었다(기본 600자 -> 30턴 23/30,
+        6000자 -> 28/30). 그때는 길이를 늘려 고쳤다. 도구 결과는 **왕복마다
+        다시 실리므로** 길이를 그만큼 늘리는 것이 비싸다. 그래서 머리글은
+        그대로 두고(제목·날짜·요약이 거기 있다) **뒤쪽에서 맞는 대목 한
+        조각만 더 붙인다.**
+
+        머리에 이미 들어간 구간(`after`자 앞)은 건너뛴다. 같은 내용을 두 번
+        보내지 않기 위해서다. 맞는 토큰이 뒤쪽에 없으면 빈 문자열을 준다 —
+        붙일 것이 없다는 뜻이다.
+        """
+        if len(body) <= after:
+            return ""
+        terms = {t for t in tokenize(query) if len(t) > 1}
+        if not terms:
+            return ""
+        hits = sorted(
+            i for t in terms for i in (body.find(t, after),) if i >= 0
+        )
+        if not hits:
+            return ""
+        # 맞은 지점이 가장 많이 모인 창을 고른다. 창 시작점 후보는 각 지점을
+        # 창의 1/4 위치에 놓는 자리다 — 맞은 대목 앞 문맥도 조금 남긴다.
+        best_start, best_score = after, -1
+        for hit in hits:
+            start = max(after, min(hit - chars // 4, len(body) - chars))
+            score = sum(1 for h in hits if start <= h < start + chars)
+            if score > best_score:
+                best_start, best_score = start, score
+        window = body[best_start : best_start + chars]
+        prefix = "… " if best_start > after else ""
+        suffix = " …" if best_start + chars < len(body) else ""
+        return prefix + window + suffix
+
     def _trim_tool_result(
         self,
         result: dict[str, Any],
@@ -940,16 +986,22 @@ class AgentRuntime:
         if limit is not None and limit > 0:
             cards = cards[:limit]
 
+        query = str(result.get("query") or "")
         trimmed: list[dict[str, Any]] = []
         for card in cards:
             item = dict(card)
             body = item.get("content_excerpt")
+            matched = ""
             if isinstance(body, str) and len(body) > chars:
+                matched = self._match_window(body, query, chars, chars)
                 item["content_excerpt"] = body[:chars]
             extra = [
                 {**part, "content": str(part.get("content", ""))[:chars]}
                 for part in (item.get("additional_excerpts") or [])[: chunks - 1]
             ]
+            if matched:
+                # 머리글 뒤에 답이 있는 문서다. 맞는 대목을 한 조각 더 붙인다.
+                extra.append({"content": matched, "reason": "query_match"})
             item["additional_excerpts"] = extra
             ref = item.get("source_ref")
             if isinstance(ref, dict) and "extra_chunk_indexes" in ref:

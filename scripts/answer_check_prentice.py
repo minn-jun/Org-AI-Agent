@@ -84,19 +84,42 @@ def loose(text: str) -> str:
 
 
 def evidence_text(result: dict) -> str:
-    """프롬프트에 실제로 들어간 근거 본문만 모은다."""
+    """프롬프트에 실제로 들어간 근거 **본문만** 모은다.
+
+    2026-10-19 정정: 도구 결과는 메시지 문자열을 통째로 넣고 있었다. 그
+    문자열에는 `source_ref.document_id`(파일명)가 들어 있어서, 기대값이
+    날짜인 문항이 **파일명 때문에 전달 O로 잡혔다.**
+
+    실제로 걸렸던 경우: "그 두 사람 작업을 비교하자는 이야기가 언제
+    나왔어?"의 기대값 `2026-08-27`이 `2026-08-27-...회의자료....md`라는
+    파일명에 매칭됐다. 정답 문서는 STM의 08-27 세미나 피드백이고 그것은
+    도구 결과에 들어오지 않았다. 본문이 전달된 적이 없는데 전달 O였다.
+
+    그래서 도구 결과도 프리페치와 같은 방식으로 **발췌 필드만** 모은다.
+    """
     blobs: list[str] = []
+
+    def take_cards(cards: list) -> None:
+        for card in cards or []:
+            blobs.append(str(card.get("content_excerpt") or ""))
+            blobs.append(str(card.get("quote") or ""))
+            blobs.append(str(card.get("summary") or ""))
+            for extra in card.get("additional_excerpts") or []:
+                blobs.append(str(extra.get("content") or ""))
+
     for message in result.get("messages", []):
         content = str(message.get("content", ""))
         if content.startswith("[RUNTIME_CONTEXT]"):
             body = content.split("[RUNTIME_CONTEXT]\n", 1)[1]
             payload = json.loads(body.split("\n[/RUNTIME_CONTEXT]", 1)[0])
-            for card in payload.get("prefetched_evidence", []):
-                blobs.append(str(card.get("content_excerpt") or ""))
-                for extra in card.get("additional_excerpts") or []:
-                    blobs.append(str(extra.get("content") or ""))
+            take_cards(payload.get("prefetched_evidence", []))
         elif message.get("role") == "tool":
-            blobs.append(content)
+            try:
+                payload = json.loads(content)
+            except (json.JSONDecodeError, TypeError):
+                # 도구가 오류 문자열을 돌려준 경우다. 근거가 아니다.
+                continue
+            take_cards(payload.get("results", []))
     return compact(" ".join(blobs))
 
 

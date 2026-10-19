@@ -97,8 +97,35 @@ class AppConfig:
     #: 있으면 호출마다 다시 실린다.
     #:
     #: 이미 프롬프트에 있는 내용이므로 빼도 모델이 잃는 정보가 없다.
-    #: 기본은 꺼짐이다 — 켜고 재서 효과를 확인한 뒤 판단한다.
-    tool_result_dedupe: bool = False
+    #:
+    #: 2026-10-19: **기본을 켬으로 바꿨다.** 계층을 좁히는 분석기(Jev)에서는
+    #: 도구 호출이 누락된 근거를 되살리는 유일한 창구다. 그 창구로 들어온
+    #: 결과가 프리페치와 같은 문서로 채워지면 창구가 있어도 쓸모가 없다.
+    #: 빼고 나서도 top_k장이 남도록 넉넉히 받아 오므로(`_execute_tool`의
+    #: fetch_k) 결과가 비어 나가지 않는다.
+    #:
+    #: 범위는 **한 턴 안**이다. `trace`가 턴마다 새로 만들어지므로 다음 턴의
+    #: 프리페치는 영향을 받지 않는다. 이전 턴에 전달한 문서까지 빼려면
+    #: `SESSION_EVIDENCE_LEDGER=1`을 따로 켜야 한다(기본 꺼짐).
+    #:
+    #: 이 값을 켠 뒤의 측정과 끈 상태의 예전 측정은 직접 비교하면 안 된다.
+    #: 예전 숫자를 재현하려면 `TOOL_RESULT_DEDUPE=0`을 준다.
+    tool_result_dedupe: bool = True
+    #: 좁힌 턴에서 **안 본 계층이 있다**는 사실을 1차 컨텍스트에 적는다.
+    #:
+    #: 2026-10-16 실측(30턴, Jev): 기대 근거가 전달되지 않은 3턴이 전부 도구
+    #: 호출 0회였다. 모델은 들어온 카드만 보고 빠진 것을 볼 수 없어서, 부족한
+    #: 줄 모른 채 답했다. 계층을 좁히는 분석기에서는 도구 호출이 누락을
+    #: 되살리는 유일한 창구이므로 그 판단 재료를 줘야 한다.
+    #:
+    #: 2026-10-19 실측(30턴 3회): 사실만 알리는 허용형 문구로는 도구 호출이
+    #: 한 건도 늘지 않았다. "답하기 전에 먼저 판단한다"는 의무형으로 바꾸니
+    #: 도구 호출 턴 7 -> 8, 기대 근거 전달 27 -> 28/30이 되었고, 입력 토큰은
+    #: 12% 늘었다. 끄면 예전 동작이다.
+    #:
+    #: 규칙 분석기는 검색이 필요한 질문에 0인 계층을 내보내지 않으므로
+    #: 이 줄은 Jev처럼 계층을 좁히는 분석기에서만 붙는다.
+    context_search_scope_notice: bool = True
     #: 모델이 요청할 수 있는 retrieve_memory top_k의 상한. 0이면 제한하지 않는다.
     #:
     #: 모델은 top_k=20까지 요청한다(58회 중 3회). 1차 컨텍스트가 8장인데 도구
@@ -203,6 +230,10 @@ class AppConfig:
             ),
             context_mode=os.environ.get("CONTEXT_MODE", "full").strip().lower(),
             max_evidence_chars=int(os.environ.get("CONTEXT_MAX_EVIDENCE_CHARS", "7000")),
+            context_search_scope_notice=os.environ.get(
+                "CONTEXT_SEARCH_SCOPE_NOTICE", "1"
+            ).strip().lower()
+            in {"1", "true", "yes", "on"},
             ltm_excerpt_chars=int(os.environ.get("LTM_EXCERPT_CHARS", "600")),
             ltm_chunks_per_doc=int(os.environ.get("LTM_CHUNKS_PER_DOC", "1")),
             seed_excerpt_chars=int(os.environ.get("SEED_EXCERPT_CHARS", "0")),
@@ -212,7 +243,7 @@ class AppConfig:
             tool_result_chunks_per_doc=int(
                 os.environ.get("TOOL_RESULT_CHUNKS_PER_DOC", "1")
             ),
-            tool_result_dedupe=os.environ.get("TOOL_RESULT_DEDUPE", "0")
+            tool_result_dedupe=os.environ.get("TOOL_RESULT_DEDUPE", "1")
             .strip()
             .lower()
             in {"1", "true", "yes", "on"},

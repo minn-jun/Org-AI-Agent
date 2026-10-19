@@ -196,6 +196,7 @@ class AgentRuntime:
             context_mode=config.context_mode,
             max_evidence_chars=config.max_evidence_chars,
             ledger_min_bodies=config.session_ledger_min_bodies,
+            search_scope_notice=config.context_search_scope_notice,
         )
         self.session_store = SessionStore(
             config.project_root / "logs" / "sessions",

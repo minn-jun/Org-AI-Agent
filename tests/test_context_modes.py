@@ -115,7 +115,11 @@ class ExpandEvidenceTests(unittest.TestCase):
             else:
                 os.environ["PROMPT_PREFETCH_HINT"] = previous
         self.assertIn(SYSTEM_PROMPT.rstrip(), text)
-        self.assertIn("이미 STM·MTM·LTM을 모두 검색해 고른 결과", text)
+        self.assertIn("미리 검색해 고른 결과", text)
+        # 2026-10-19: "세 계층을 모두 검색했다"고 단정하지 않는다. Jev가 계층을
+        # 좁히면 거짓이 되고, 좁혀서 생긴 누락을 되살릴 창구를 막는다.
+        self.assertNotIn("이미 STM·MTM·LTM을 모두 검색해", text)
+        self.assertIn("검색하지 않은 계층이 있다고 적혀 있으면", text)
 
     def test_evidence_strict_is_off_by_default(self) -> None:
         """기본 동작은 2026-09-28 이전과 같아야 한다."""
@@ -194,3 +198,56 @@ class ExpandEvidenceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SearchScopeNoticeTests(unittest.TestCase):
+    """검색하지 않은 계층을 모델에게 알려 주는지 본다.
+
+    2026-10-16 실측(30턴, Jev): 기대 근거가 전달되지 않은 3턴이 전부 도구 호출
+    0회였다. 모델은 들어온 카드만 보고 안 들어온 것을 볼 수 없어서, 부족한 줄
+    모른 채 답했다. 이 안내가 그 판단 재료다.
+    """
+
+    def _text(self, weights: dict[str, float], *, memory_needed: bool = True) -> str:
+        plan, cards = build_cards()
+        plan = replace(plan, memory_weights=weights, memory_needed=memory_needed)
+        builder = ContextBuilder(context_mode="full")
+        return builder.build(plan, cards, recent_turns=[])
+
+    def test_notice_lists_opened_and_skipped_tiers(self) -> None:
+        text = self._text({"stm": 0.0, "mtm": 1.0, "ltm": 0.0})
+        self.assertIn("mtm만 검색했고", text)
+        self.assertIn("stm·ltm는 검색하지 않았다", text)
+        # 허용형("부족하면 불러도 된다")이 아니라 의무 절차여야 한다.
+        # 2026-10-19 실측: 허용형 문구로는 도구 호출이 한 건도 늘지 않았다.
+        self.assertIn("답하기 전에 먼저 판단한다", text)
+        self.assertIn("retrieve_memory로 검색하지 않은 계층을 확인한다", text)
+
+    def test_notice_is_absent_when_every_tier_was_searched(self) -> None:
+        """규칙 분석기는 세 계층에 모두 0보다 큰 가중치를 준다 — 붙지 않는다."""
+        text = self._text({"stm": 0.1, "mtm": 0.2, "ltm": 0.7})
+        self.assertNotIn("검색하지 않았다", text)
+
+    def test_notice_is_absent_when_search_is_not_needed(self) -> None:
+        text = self._text(
+            {"stm": 0.0, "mtm": 0.0, "ltm": 0.0}, memory_needed=False
+        )
+        self.assertNotIn("검색하지 않았다", text)
+
+    def test_notice_does_not_leak_the_branch_decision(self) -> None:
+        """안 본 계층이라는 **사실만** 준다. 분기 이름·확률은 주지 않는다.
+
+        판정 결과를 답변 모델에 흘리면 생성이 판정에 끌려간다.
+        """
+        text = self._text({"stm": 1.0, "mtm": 0.0, "ltm": 1.0})
+        self.assertIn("stm·ltm만 검색했고", text)
+        for leaked in ("stm_ltm", "분기", "confidence", "probabilit"):
+            self.assertNotIn(leaked, text)
+
+    def test_notice_can_be_switched_off_for_reproduction(self) -> None:
+        """예전 측정을 재현하려면 끌 수 있어야 한다."""
+        plan, cards = build_cards()
+        plan = replace(plan, memory_weights={"stm": 0.0, "mtm": 1.0, "ltm": 0.0})
+        builder = ContextBuilder(context_mode="full", search_scope_notice=False)
+        text = builder.build(plan, cards, recent_turns=[])
+        self.assertNotIn("검색하지 않았다", text)

@@ -67,6 +67,7 @@ class ContextBuilder:
         context_mode: str = "full",
         hybrid_full_cards: int = HYBRID_FULL_CARDS,
         ledger_min_bodies: int = 2,
+        search_scope_notice: bool = True,
     ):
         if context_mode not in CONTEXT_MODES:
             raise ValueError(f"unknown context_mode: {context_mode}")
@@ -75,6 +76,7 @@ class ContextBuilder:
         self.context_mode = context_mode
         self.hybrid_full_cards = hybrid_full_cards
         self.ledger_min_bodies = ledger_min_bodies
+        self.search_scope_notice = search_scope_notice
 
     def includes_body(self, index: int) -> bool:
         if self.context_mode == "full":
@@ -193,6 +195,9 @@ class ContextBuilder:
             "prefetched_evidence": compact_cards,
         }
         guidance = self._guidance(plan)
+        scope = self._search_scope(plan)
+        if scope:
+            guidance += "\n" + scope
         if reference_cards:
             guidance += "\n" + (
                 "delivered_in_turn이 붙은 근거는 앞선 턴에서 본문을 이미 전달한 "
@@ -212,6 +217,43 @@ class ContextBuilder:
             reference=reference_cards,
             dropped_evidence_ids=dropped,
             evidence_chars=used_chars,
+        )
+
+    def _search_scope(self, plan: QueryPlan) -> str:
+        """프리페치가 **어느 계층을 안 봤는지** 알려 준다.
+
+        이것이 없으면 모델은 근거가 부족한 것을 알 수 없다. 모델이 보는 것은
+        들어온 카드뿐이고, 안 들어온 것이 무엇인지는 볼 방법이 없다. 엉뚱한
+        계층 카드 4장과 제대로 된 카드 4장이 똑같이 "근거 갖춰짐"으로 보인다.
+
+        2026-10-16 실측(30턴, Jev): 기대 근거가 전달되지 않은 3턴이 **전부
+        도구 호출 0회**였다. 부족하다고 판단하고 포기한 것이 아니라 부족한
+        줄 몰랐던 것이다.
+
+        세 계층을 모두 검색했으면 아무 말도 하지 않는다. 규칙 분석기는 검색이
+        필요한 질문에 0을 내보내지 않으므로, 이 줄은 Jev처럼 계층을 좁히는
+        분석기에서만 붙는다.
+
+        **분기 이름이나 확률은 주지 않는다.** 판정 결과를 답변 모델에 흘리면
+        생성이 판정에 끌려간다. 여기서 주는 것은 "안 본 계층이 있다"는
+        사실뿐이고, 그 사실은 모델이 도구를 부를지 정하는 데 필요하다.
+        """
+        if not self.search_scope_notice or not plan.memory_needed:
+            return ""
+        tiers = ("stm", "mtm", "ltm")
+        opened = [t for t in tiers if plan.memory_weights.get(t, 0.0) > 0]
+        skipped = [t for t in tiers if plan.memory_weights.get(t, 0.0) <= 0]
+        if not opened or not skipped:
+            return ""
+        return (
+            f"이번 prefetch는 {'·'.join(opened)}만 검색했고 "
+            f"{'·'.join(skipped)}는 검색하지 않았다. "
+            "답하기 전에 먼저 판단한다 — 질문이 묻는 자료가 검색한 계층에만 "
+            "있다고 확신할 수 있는가. 확신할 수 없으면 답하기 전에 "
+            f"retrieve_memory로 검색하지 않은 계층을 확인한다(tier에 all 또는 "
+            f"{skipped[0]}을 넘긴다). 날짜·수치·고유명사를 묻는 질문이면 특히 "
+            "그렇게 한다. 이미 받은 근거와 같은 문서는 결과에서 자동으로 빠지므로 "
+            "재검색은 새 문서만 가져온다."
         )
 
     def _guidance(self, plan: QueryPlan) -> str:

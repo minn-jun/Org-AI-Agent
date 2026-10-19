@@ -618,10 +618,21 @@ class ToolResultDedupeTests(unittest.TestCase):
             ids = [c["source_ref"]["document_id"] for c in out["results"]]
             self.assertEqual(ids, ["c", "d", "e"])   # 빈 목록이 아니다
 
-    def test_dedupe_is_off_by_default(self) -> None:
+    def test_dedupe_is_on_by_default(self) -> None:
+        """2026-10-19에 기본을 켬으로 바꿨다.
+
+        계층을 좁히는 분석기에서는 도구 호출이 누락된 근거를 되살리는 유일한
+        창구다. 그 결과가 프리페치와 같은 문서로 채워지면 창구가 무용해진다.
+        """
         config = AppConfig.load()
-        self.assertFalse(config.tool_result_dedupe)
+        self.assertTrue(config.tool_result_dedupe)
         self.assertEqual(config.tool_result_top_k_cap, 0)
+
+    def test_dedupe_does_not_reach_across_turns_by_default(self) -> None:
+        """중복 제거 범위는 한 턴이다. 다음 턴 프리페치는 영향받지 않는다."""
+        config = AppConfig.load()
+        self.assertTrue(config.tool_result_dedupe)
+        self.assertFalse(config.session_evidence_ledger)
 
     def test_dedupe_off_keeps_every_card(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -144,6 +144,7 @@ def build_context_builder(
         "context_mode": context_mode or config.context_mode,
         "max_evidence_chars": config.max_evidence_chars,
         "ledger_min_bodies": config.session_ledger_min_bodies,
+        "search_scope_notice": config.context_search_scope_notice,
     }
     kwargs.update(overrides)
     return ContextBuilder(**kwargs)

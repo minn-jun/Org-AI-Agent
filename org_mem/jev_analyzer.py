@@ -26,8 +26,36 @@
 둘**이다(ltm+mtm 6 · mtm+stm 5 · ltm+stm 1). 하나만 고르게 하면 이 12건은
 구조적으로 틀린다. 그래서 조합까지 포함한 7택으로 묻는다.
 
-"아무 계층도 필요 없음"은 분기에 넣지 않는다. 검색을 건너뛰는 결정은
-`answer_source`가 따로 맡고, 아래 규칙 방어가 한 번 더 막는다.
+"아무 계층도 필요 없음"은 분기에 넣지 않는다. 검색을 건너뛸지는 규칙
+분석기가 정한다(`fallback_plan.memory_needed`).
+
+## 검색 여부를 Jev에 묻지 않는 이유 (2026-10-19)
+
+처음에는 `answer_source`(memory_prefetch / session_only / direct_answer)도
+Jev에 물었다. 라우팅 80문항에서 **19건이 "검색 불필요"로 나왔고 80문항은
+전부 검색이 필요한 질문이다.** 규칙 방어가 19건을 모두 되돌렸고, 반대로
+Jev가 검색을 추가해 준 경우는 없었다. 즉 이 판정은 비용과 지연만 쓰고
+최종 동작에 한 건도 반영되지 않았다.
+
+원인은 모델이 아니라 **배치**다. 이 판정은 `state_for()`에 없는 정보를
+요구한다.
+
+    session_only  : 이전 **답변 본문**에 그 값이 있는지 알아야 한다.
+                    state에는 이전 **질문**만 들어간다(본문은 일부러 뺐다).
+    direct_answer : 조직 저장소에 그 내용이 있는지 알아야 한다.
+                    state에는 저장소 목록이 없다.
+    tier_branch   : 질문의 주제를 저장소 종류에 대응시키면 된다.
+                    criteria가 그 대응을 적어 주므로 질문만으로 답이 된다.
+
+실제로 `session_only` 9건은 대화 기록이 아예 없는 상태에서 골랐다 —
+되짚을 대화가 존재하지 않는데 "되짚으면 되는 질문처럼 생겼다"는 문장
+모양만 보고 답한 것이다. `direct_answer` 10건은 "TF와 IDF", "Naive RAG"
+처럼 우리 MTM에 정리돼 있는 개념을 일반 지식으로 읽은 것이다.
+
+고치는 방향은 두 가지였다. 설명 문구를 좁히거나(증상), 저장소 목록을
+state에 넣거나(좁은 입력·빠른 결정이라는 Jev를 쓰는 이유를 깬다).
+둘 다 택하지 않고 **질문에서 뺐다.** 검색 여부는 규칙이, 저장소 선택은
+Jev가 맡는다. 질문이 3개에서 2개로 줄어 호출 입력도 작아진다.
 
 ## 실측 (2026-10-16)
 
@@ -131,12 +159,9 @@ BRANCH_CRITERIA: dict[str, str] = {
     "all": "세 종류를 모두 봐야 한다",
 }
 
-#: 답을 어디서 가져오는가.
-SOURCE_CRITERIA: dict[str, str] = {
-    "memory_prefetch": "조직에 쌓인 문서나 기록을 찾아봐야 답할 수 있다",
-    "session_only": "바로 앞 대화에 이미 나온 내용만 되짚으면 답이 된다",
-    "direct_answer": "일반 상식이나 개념 설명이라 조직 자료가 필요 없다",
-}
+#: 답을 어디서 가져오는가는 Jev에 묻지 않는다. 모듈 설명의
+#: "검색 여부를 Jev에 묻지 않는 이유"를 참고한다. 규칙 분석기의
+#: `answer_source`를 그대로 쓴다.
 
 #: 단일 계층 분기 -> intent. 조합 분기는 organization_memory_lookup으로 둔다.
 _BRANCH_INTENT = {
@@ -153,11 +178,6 @@ QUESTIONS: dict[str, dict[str, Any]] = {
             "질문이 가리키는 자료의 종류로 판단한다."
         ),
         "criteria": BRANCH_CRITERIA,
-    },
-    "answer_source": {
-        "type": "choice",
-        "instructions": "이 질문의 답은 어디에서 나오는가?",
-        "criteria": SOURCE_CRITERIA,
     },
     "is_comparison": {
         "type": "noul",
@@ -262,33 +282,16 @@ class JevQueryAnalyzer:
         branch, branch_probabilities, branch_confidence = choice_of(
             answers.get("tier_branch") or {}
         )
-        jev_source, source_probabilities, source_confidence = choice_of(
-            answers.get("answer_source") or {}
-        )
         comparison = noul_of(answers.get("is_comparison") or {})
 
         overrides: list[str] = []
         if branch not in BRANCH_TIERS:
             overrides.append(f"분기 {branch!r}가 목록에 없어 all로 둔다")
             branch = "all"
-        source = jev_source
-        if source not in SOURCE_CRITERIA:
-            overrides.append(f"출처 {source!r}가 목록에 없어 memory_prefetch로 둔다")
-            source = "memory_prefetch"
 
-        # 규칙이 검색이 필요하다고 보면 Jev가 불필요라 해도 검색을 유지한다.
-        #
-        # 불필요한 검색은 토큰을 더 쓸 뿐이지만, 필요한 검색을 건너뛰면 근거 없이
-        # 답하게 되어 실패 방향이 훨씬 나쁘다. 다만 이 방어가 켜져 있는 동안에는
-        # "Jev가 불필요한 검색을 줄였다"를 관측할 수 없다. 그래서 덮어쓴 사실을
-        # last_decision에 남겨 나중에 비율을 셀 수 있게 한다.
-        if source != "memory_prefetch" and fallback_plan.memory_needed:
-            overrides.append(
-                f"규칙은 검색이 필요하다고 보아 {source} -> memory_prefetch로 되돌린다"
-            )
-            source = "memory_prefetch"
-
-        memory_needed = source == "memory_prefetch"
+        # 검색 여부는 규칙이 정한다. Jev는 "검색한다면 어디를"만 답한다.
+        source = fallback_plan.answer_source
+        memory_needed = fallback_plan.memory_needed
         if memory_needed:
             tiers = BRANCH_TIERS[branch]
             tiers, widen_note = self._widen_if_comparison(
@@ -316,9 +319,6 @@ class JevQueryAnalyzer:
                 "tier_branch": branch,
                 "branch_probabilities": branch_probabilities,
                 "branch_confidence": branch_confidence,
-                "answer_source": jev_source,
-                "source_probabilities": source_probabilities,
-                "source_confidence": source_confidence,
                 "is_comparison": comparison,
             },
             "rule": {

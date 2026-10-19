@@ -24,11 +24,14 @@ from org_mem.query_analyzer import RuleBasedQueryAnalyzer
 def jev_response(
     branch: str = "ltm",
     *,
-    source: str = "memory_prefetch",
     comparison: float = 0.0,
     confidence: float = 0.8,
 ) -> dict:
-    """실제 응답과 같은 모양. 2026-10-16 실측 응답을 본으로 삼았다."""
+    """실제 응답과 같은 모양. 2026-10-16 실측 응답을 본으로 삼았다.
+
+    `answer_source`는 없다. 2026-10-19에 Jev 질문에서 뺐다 —
+    `jev_analyzer` 모듈 설명의 "검색 여부를 Jev에 묻지 않는 이유" 참고.
+    """
     return {
         "model": "typesafe/jev-1.14-20261014",
         "latency_s": 0.52,
@@ -38,12 +41,6 @@ def jev_response(
                 "choice": branch,
                 "probabilities": {name: 0.0 for name in BRANCH_TIERS} | {branch: confidence},
                 "confidence": confidence,
-            },
-            "answer_source": {
-                "type": "choice",
-                "choice": source,
-                "probabilities": {source: 0.9},
-                "confidence": 0.9,
             },
             "is_comparison": {"type": "noul", "noul": comparison},
         },
@@ -163,33 +160,45 @@ class SearchOnlySelectedTiersTests(unittest.TestCase):
 # ----------------------------------------- 3. 검색 생략과 규칙 방어
 
 
-class SkipSearchDefenseTests(unittest.TestCase):
-    def test_direct_answer_skips_search_when_rule_agrees(self) -> None:
-        # "개념"은 규칙의 DIRECT_MARKERS라 규칙도 검색이 필요 없다고 본다.
-        analyzer = JevQueryAnalyzer(FakeJevClient(jev_response("ltm", source="direct_answer")))
+class SearchDecisionTests(unittest.TestCase):
+    """검색 여부는 규칙이 정한다. Jev는 저장소 선택만 한다."""
+
+    def test_rule_skips_search_and_branch_is_discarded(self) -> None:
+        # "개념"은 규칙의 DIRECT_MARKERS라 규칙이 검색이 필요 없다고 본다.
+        # Jev가 ltm을 골랐어도 계층은 열리지 않는다.
+        analyzer = JevQueryAnalyzer(FakeJevClient(jev_response("ltm")))
         plan = analyzer.analyze("트랜스포머 개념이 뭐야?")
         self.assertFalse(plan.memory_needed)
+        self.assertEqual(plan.answer_source, "direct_answer")
         self.assertEqual(set(plan.memory_weights.values()), {0.0})
 
-    def test_rule_restores_search_when_jev_wants_to_skip(self) -> None:
-        """규칙이 검색이 필요하다고 보면 Jev의 생략 판단을 덮어쓴다.
-
-        필요한 검색을 건너뛰면 근거 없이 답하게 되어 실패 방향이 훨씬 나쁘다.
-        """
-        analyzer = JevQueryAnalyzer(FakeJevClient(jev_response("mtm", source="direct_answer")))
+    def test_rule_search_decision_is_used_as_is(self) -> None:
+        analyzer = JevQueryAnalyzer(FakeJevClient(jev_response("mtm")))
         plan = analyzer.analyze("지난주 회의록에서 결정된 담당자가 누구야?")
         self.assertTrue(plan.memory_needed)
         self.assertEqual(plan.answer_source, "memory_prefetch")
         self.assertEqual(plan.memory_weights, {"stm": 0.0, "mtm": 1.0, "ltm": 0.0})
 
-    def test_override_is_recorded_separately_from_jev_answer(self) -> None:
-        """덮어쓴 사실을 남기지 않으면 Jev가 무엇을 골랐는지 되읽을 수 없다."""
-        analyzer = JevQueryAnalyzer(FakeJevClient(jev_response("mtm", source="session_only")))
+    def test_jev_is_not_asked_about_answer_source(self) -> None:
+        """Jev에 보내는 질문은 분기와 비교 여부 둘뿐이다.
+
+        `answer_source`는 state에 없는 정보를 요구해서 답할 수 없었다.
+        라우팅 80문항에서 19건이 "검색 불필요"로 나왔고 그 80문항은
+        전부 검색이 필요한 질문이었다.
+        """
+        client = FakeJevClient()
+        JevQueryAnalyzer(client).analyze("지난주 회의록에서 결정된 담당자가 누구야?")
+        _, questions = client.calls[0][0], client.calls[0][1]
+        self.assertEqual(set(questions), {"tier_branch", "is_comparison"})
+
+    def test_rule_decision_is_recorded_for_readback(self) -> None:
+        analyzer = JevQueryAnalyzer(FakeJevClient(jev_response("mtm")))
         analyzer.analyze("지난주 회의록에서 결정된 담당자가 누구야?")
         decision = analyzer.last_decision
-        self.assertEqual(decision["jev"]["answer_source"], "session_only")
+        self.assertEqual(decision["jev"]["tier_branch"], "mtm")
+        self.assertNotIn("answer_source", decision["jev"])
+        self.assertEqual(decision["rule"]["answer_source"], "memory_prefetch")
         self.assertEqual(decision["applied"]["answer_source"], "memory_prefetch")
-        self.assertTrue(decision["overrides"])
 
 
 # -------------------------------------------------- 4. 실패 시 복귀

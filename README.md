@@ -80,6 +80,10 @@ python scripts/bench_prentice_routing.py --analyzer jev --out logs/routing_jev.j
 `JEV_MODEL`(기본 `typesafe/jev-1.14`)로 바꾼다. 키가 없는데 `llm`/`jev`를
 고르면 조용히 규칙으로 내려가지 않고 멈춘다.
 
+`jev`는 **저장소 선택만** 맡는다. 검색이 필요한지 아닌지는 규칙 분석기가
+정한다 — 그 판정은 state에 없는 정보를 요구해서 Jev가 답할 수 없었다
+(`org_mem/jev_analyzer.py` 모듈 설명 참고).
+
 계층 가중치가 0인 계층은 **검색하지 않는다.** 규칙 분석기는 검색이 필요한
 질문에 0을 내보내지 않으므로 기존 동작은 그대로다.
 

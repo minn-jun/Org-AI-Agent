@@ -42,6 +42,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+#: 기본 시드 루트. Codex 작업기록을 합친 루트를 보려면 `--seed`로 넘긴다.
 SEED = ROOT / "memory_seed_prentice"
 DATA = ROOT / "datasets" / "prentice"
 LABELS = DATA / "labels"
@@ -308,16 +309,38 @@ def label_file(name: str, docs: list[dict], write: bool) -> None:
         print(f"\n   -> {out.relative_to(ROOT)}")
 
 
+#: 기본으로 라벨을 붙이는 평가셋.
+DEFAULT_FILES = ("routing_cases.jsonl", "session_chains.jsonl", "answer_checks.jsonl")
+
+
 def main() -> int:
+    global SEED
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--write", action="store_true", help="labels/*.jsonl 생성")
+    parser.add_argument(
+        "--seed",
+        default=None,
+        help="시드 루트 폴더 이름. 기본은 memory_seed_prentice",
+    )
+    parser.add_argument(
+        "--file",
+        action="append",
+        default=None,
+        help="라벨을 붙일 평가셋 파일. 여러 번 줄 수 있다",
+    )
     args = parser.parse_args()
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
 
+    if args.seed:
+        SEED = ROOT / args.seed
+        if not SEED.is_dir():
+            print(f"시드 루트가 없다: {SEED}")
+            return 1
+
     docs = load_documents()
-    print(f"시드 문서 {len(docs)}건 (본문만, 머리글 제외)")
-    for name in ("routing_cases.jsonl", "session_chains.jsonl", "answer_checks.jsonl"):
+    print(f"시드 루트 {SEED.name}  문서 {len(docs)}건 (본문만, 머리글 제외)")
+    for name in args.file or DEFAULT_FILES:
         label_file(name, docs, args.write)
     return 0
 

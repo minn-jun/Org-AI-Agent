@@ -123,14 +123,83 @@ def mask(text: str) -> str:
     return text
 
 
-def slug(title: str) -> str:
-    """파일명에 쓸 조각. 기존 시드처럼 한글을 살리고 하이픈으로 잇는다."""
-    # 내보내기가 제목에 첫 메시지를 그대로 쓴 스레드가 있다. 머리글·경로·
-    # 코드가 섞여 있으므로 첫 줄만 쓴다.
-    head = title.strip().splitlines()[0] if title.strip() else "무제"
-    head = re.sub(r"^#\s*", "", head)
-    head = re.sub(r"[^0-9A-Za-z가-힣]+", "-", head).strip("-")
-    return (head[:44] or "무제").strip("-")
+#: 제목을 바로잡는 이름표.
+#:
+#: 내보내기는 제목이 없는 스레드의 **첫 메시지를 그대로 제목으로** 썼다.
+#: 그대로 두면 파일명이 "지금-openspec을-배워서-바이브코딩을-활용해서-나에게"
+#: 처럼 된다. 문서 이름은 검색 대상이고 채점에서 `expect_doc`으로 맞춰 보는
+#: 값이라 알아볼 수 있어야 한다. 아래 조각이 제목에 들어 있으면 그 이름을 쓴다.
+TOPICS: list[tuple[str, str]] = [
+    # 과제 관련
+    ("오픈라우터에서 https://openrouter.ai/nvidia/nemotron", "헤르메스-Nemotron-실행실험"),
+    ("이전 대화에서는 hermes-agent 위주로", "openclaw-설치-실험"),
+    ("헤르메스 코드에서 실제로 가져와서 작게", "헤르메스-축소판-구현"),
+    ("260618-0701 안에 open-source-agents-latest", "오픈소스-에이전트-문서-정리"),
+    ("클로드가 org", "org_agent_mvp-인수인계-검토"),
+    ("프로젝트 한번 전부 읽어보고 어느부분이 문제인지", "프로젝트-점검-개선안"),
+    ("이번 6월 17일 세미나에서", "6월-17일-세미나-보완"),
+    ("최근 피드백이야", "컨텍스트초기화-세미나-피드백-반영"),
+    ("bm25, bm25+, 리랭킹", "검색-용어-정리"),
+    ("코드 분석 한번 해줘", "코드-분석-깃-연결-확인"),
+    ("jev가 어떤 모델이야", "jev-모델-소개"),
+    ("하 씨 중기청과제는", "과제-분담-상의"),
+    ("지금 openspec을 배워서", "OpenSpec-자유주제-개발"),
+    # 과제와 무관한 것(방해 문서)
+    ("reinforcement_learning 디렉토리", "강화학습-강의자료-정리"),
+    ("이전에 이 pc에 클로드코드를 설치", "클로드코드-설치-확인"),
+    ("지능형 정보보호 특론 안에 docx", "정보보호특론-자료-번역"),
+    ("지능형정보보호특론에 assignment", "정보보호특론-과제2-작성"),
+    ("지능형 정보보호 특론 안에 PEC01", "정보보호특론-PEC02-번역"),
+    ("지능형 정보보호 특론에 pet short paper", "정보보호특론-PET-과제-번역"),
+    ("ipynb 파일 두개 있는데", "ipynb-템플릿-비교"),
+    ("과제/검토 안에 zip파일들", "제출과제-zip-검토"),
+    ("그 학술대회에 제출할 논문을 작성", "학술대회-단편논문-작성"),
+    ("중간고사/문제 안에 보면 C언어", "C언어-중간고사-문제-검토"),
+    ("#include <stdio.h>", "C언어-코드-질문"),
+    ("스마트서비스응용 안에 클로드가 자료조사", "스마트서비스응용-자료-검증"),
+    ("스마트서비스응용 폴더에서 작업하자", "스마트서비스응용-작업-시작"),
+    ("깃 레포지토리 하나를 프라이빗으로", "비공개-레포-공유-방법"),
+    ("혹시 메일보내달라하면", "메일-발송-가능-확인"),
+    ("이 컴퓨터에서 코덱스로 대화한 로그", "이-PC-코덱스-로그-확인"),
+    ("번역해줘", "문서-번역"),
+]
+
+#: 제목 끝에 붙는 말버릇. 이름에 남길 것이 아니다.
+TAIL = re.compile(
+    r"(?:해\s*줄\s*수?\s*있(?:어|나|을까)|해\s*줄래|해\s*줘|줄\s*수?\s*있(?:어|나)"
+    r"|있거든|있는데|할\s*수\s*있(?:어|나)|가능(?:해|한지)|부탁해|해\s*봐|해\s*보자"
+    r"|어떻게\s*해야해|이거|한번|좀)\s*[?.!]*$"
+)
+#: 제목 앞에 붙는 군더더기.
+HEAD = re.compile(r"^(?:지금|이번|혹시|일단|그래서|근데|하\s*씨|좀|그)\s+")
+
+#: 어디에 있어도 뜻을 보태지 않는 낱말. 토큰이 정확히 이것이면 뺀다.
+FILLER = {"이거", "이걸", "한번", "좀", "혹시", "일단", "그냥", "다시", "너가", "니가"}
+
+
+def topic(title: str) -> str:
+    """파일명에 쓸 이름. 기존 시드처럼 한글을 살리고 하이픈으로 잇는다."""
+    raw = title.strip()
+    for needle, name in TOPICS:
+        if needle in raw:
+            return name
+    # 제목에 첫 메시지가 들어간 스레드다. 첫 줄만 쓰고 군더더기를 떼어 낸다.
+    head = raw.splitlines()[0] if raw else "무제"
+    head = re.sub(r"^#+\s*", "", head)
+    head = re.sub(r"https?://\S+", " ", head)
+    head = re.sub(r"[A-Za-z]:[/\\]\S+", " ", head)
+    head = re.sub(r"\s+", " ", head).strip()
+    for _ in range(3):
+        trimmed = TAIL.sub("", HEAD.sub("", head)).strip(" ,.?!")
+        if trimmed == head:
+            break
+        head = trimmed
+    head = " ".join(word for word in head.split() if word not in FILLER)
+    # 밑줄은 살린다 — `llm_study`, `org_agent_mvp`가 그대로 검색에 걸려야 한다.
+    head = re.sub(r"[^0-9A-Za-z가-힣_]+", "-", head).strip("-")
+    if len(head) > 40:
+        head = head[:40].rsplit("-", 1)[0] or head[:40]
+    return (head or "무제").strip("-")
 
 
 def usable(message: dict) -> bool:
@@ -235,7 +304,7 @@ def build(exports: list[str], out: Path, write: bool) -> int:
                 if len(PERSONAL.findall(body)) >= PERSONAL_LIMIT:
                     skip("개인정보 본문")
                     continue
-                piece = slug(title)
+                piece = topic(title)
                 rows.append(
                     {
                         "date": date,

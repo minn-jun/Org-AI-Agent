@@ -112,18 +112,41 @@ class DocumentTests(unittest.TestCase):
         self.assertIn("라우팅 재측정 결과", summary)
 
 
-class SlugTests(unittest.TestCase):
+class TopicTests(unittest.TestCase):
+    """문서 이름은 검색 대상이고 채점에서 `expect_doc`으로 맞춰 보는 값이다.
+
+    내보내기가 제목 없는 스레드의 첫 메시지를 제목으로 써서, 손대지 않으면
+    "지금-openspec을-배워서-바이브코딩을-활용해서-나에게"가 파일명이 된다.
+    """
+
     def test_first_line_only(self) -> None:
-        """제목에 첫 메시지를 그대로 쓴 스레드가 있다(머리글·경로·코드)."""
-        piece = seeds.slug("# Files mentioned by the user:\n\n## 붙임1. 어쩌고")
+        piece = seeds.topic("# Files mentioned by the user:\n\n## 붙임1. 어쩌고")
         self.assertNotIn("\n", piece)
         self.assertTrue(piece.startswith("Files"))
 
     def test_korean_survives(self) -> None:
-        self.assertEqual(seeds.slug("JEV 조사 및 적용 지점 확인"), "JEV-조사-및-적용-지점-확인")
+        self.assertEqual(seeds.topic("JEV 조사 및 적용 지점 확인"), "JEV-조사-및-적용-지점-확인")
+
+    def test_underscore_survives(self) -> None:
+        """`llm_study`·`org_agent_mvp`는 그대로 검색에 걸려야 한다."""
+        self.assertIn("llm_study", seeds.topic("llm_study 검증 및 정리"))
+
+    def test_named_thread_uses_label(self) -> None:
+        raw = "헤르메스 코드에서 실제로 가져와서 작게 돌아가는 프로그램 만들어볼수 있나"
+        self.assertEqual(seeds.topic(raw), "헤르메스-축소판-구현")
+
+    def test_filler_is_stripped(self) -> None:
+        piece = seeds.topic("이거 한번 확인해줄수 있나")
+        self.assertNotIn("해줄수", piece)
+        self.assertNotIn("한번", piece)
+
+    def test_long_title_cuts_at_word_boundary(self) -> None:
+        piece = seeds.topic("사용자 요청을 아주 길게 늘어놓은 제목이 들어온 경우를 자르는지 본다 더 길게")
+        self.assertLessEqual(len(piece), 41)
+        self.assertFalse(piece.endswith("-"))
 
     def test_empty_title_falls_back(self) -> None:
-        self.assertEqual(seeds.slug("   "), "무제")
+        self.assertEqual(seeds.topic("   "), "무제")
 
 
 class BuildTests(unittest.TestCase):

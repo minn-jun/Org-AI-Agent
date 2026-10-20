@@ -12,6 +12,9 @@ cache/
 /memory_seed_20200504/
 # 진행 중 과제의 실제 문서로 만든 시드. 공개 저장소에 올리지 않는다.
 /memory_seed_prentice/
+# 내보낸 Codex 대화로 만든 작업기록 시드와 둘을 합친 실행용 루트.
+/memory_seed_codex/
+/memory_seed_prentice_codex/
 /logs/answer_check_prentice/
 # 진행 과제 평가셋(질문에 실제 과제명·사람 이름이 들어간다)
 /datasets/prentice/
